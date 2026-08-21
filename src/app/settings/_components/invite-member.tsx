@@ -36,11 +36,6 @@ export function InviteMember({ seatsLeft }: { seatsLeft: number | null }) {
             Every seat on this plan is taken. Move up a plan to add someone.
           </p>
         )}
-        {state.ok && (
-          <p className="inspector-saved" role="status">
-            {state.message}
-          </p>
-        )}
       </>
     );
   }
@@ -60,11 +55,6 @@ export function InviteMember({ seatsLeft }: { seatsLeft: number | null }) {
       {state.error && (
         <p className="auth-error" role="alert">
           {state.error}
-        </p>
-      )}
-      {state.ok && (
-        <p className="inspector-saved" role="status">
-          {state.message}
         </p>
       )}
 

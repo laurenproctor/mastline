@@ -1,11 +1,29 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireContext } from "@/lib/session-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { isSupportedTimezone, parseWorkspaceName } from "@/lib/timezones";
+
+/**
+ * Why these actions redirect instead of calling revalidatePath.
+ *
+ * revalidatePath for the route an action was invoked from leaves the action's
+ * promise unresolved on the client. The write lands and the server re-renders
+ * in under 100ms, but the form sits on "Saving..." for ever and the person has
+ * no idea whether their change took. Measured, not guessed: the buyer template
+ * save hung on two of five attempts before this change.
+ *
+ * A redirect is a fresh request, so the screen shows the new state and the
+ * confirmation rides along in the query string.
+ */
+const SAVED = {
+  buyer: "/settings?saved=buyer",
+  invite: "/settings?saved=invite",
+  removed: "/settings?saved=removed",
+  workspace: "/settings?saved=workspace",
+} as const;
 
 export interface BuyerState {
   readonly ok?: boolean;
@@ -49,8 +67,7 @@ export async function saveBuyerTemplateAction(
 
   if (error) return { error: `Could not save the buyer: ${error.message}` };
 
-  revalidatePath("/settings");
-  return { ok: true, message: "Buyer template saved." };
+  redirect(SAVED.buyer);
 }
 
 export interface InviteState {
@@ -130,8 +147,9 @@ export async function inviteMemberAction(
     event_data: { summary: `Invited ${email} as ${role.replace(/_/g, " ")}`, role },
   });
 
-  revalidatePath("/settings");
-  return { ok: true, message: `${email} has been invited as ${role.replace(/_/g, " ")}.` };
+  // The address is deliberately not carried in the query string; it would sit
+  // in browser history for a person who never chose to be listed there.
+  redirect(SAVED.invite);
 }
 
 export async function removeMemberAction(
@@ -154,8 +172,7 @@ export async function removeMemberAction(
 
   if (error) return { error: `Could not remove that person: ${error.message}` };
 
-  revalidatePath("/settings");
-  return { ok: true, message: "Removed from the workspace." };
+  redirect(SAVED.removed);
 }
 
 export interface WorkspaceState {
@@ -199,8 +216,10 @@ export async function updateWorkspaceAction(
 
   // Nothing to record, and no reason to write an activity event for a
   // no-op save.
+  // Nothing to write, but the same confirmation: from the outside, saving a
+  // form that changed nothing succeeded.
   if (parsed.name === previousName && timezone === previousTimezone) {
-    return { ok: true, message: "No changes to save." };
+    redirect(SAVED.workspace);
   }
 
   const { error } = await supabase
@@ -235,5 +254,5 @@ export async function updateWorkspaceAction(
   // router.refresh() afterwards does not take effect either. A redirect is a
   // fresh request, so the new name is correct in this panel and in the shell,
   // which is the whole point of having saved it.
-  redirect("/settings?saved=workspace");
+  redirect(SAVED.workspace);
 }

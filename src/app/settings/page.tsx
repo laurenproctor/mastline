@@ -37,9 +37,10 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ saved?: string }>;
 }) {
-  // Set by the redirect a successful save performs, so the confirmation
-  // survives the fresh request that makes the new name visible.
-  const savedWorkspace = (await searchParams).saved === "workspace";
+  // Set by the redirect each successful save performs, so the confirmation
+  // survives the fresh request that makes the new state visible.
+  const saved = (await searchParams).saved;
+  const savedWorkspace = saved === "workspace";
   const cookieStore = await cookies();
   const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
   const workspace = session.activeWorkspace;
@@ -165,6 +166,16 @@ export default async function SettingsPage({
               ) : (
                 <p className="section-note">Only an owner can invite people to this workspace.</p>
               )}
+              {saved === "invite" && (
+                <p className="inspector-saved" role="status">
+                  Invitation sent.
+                </p>
+              )}
+              {saved === "removed" && (
+                <p className="inspector-saved" role="status">
+                  Removed from the workspace.
+                </p>
+              )}
             </div>
           </Panel>
 
@@ -243,6 +254,11 @@ export default async function SettingsPage({
             action={<span className="muted">{buyers.length} buyers</span>}
             title="Buyers & delivery profiles"
           >
+            {saved === "buyer" && (
+              <p className="inspector-saved" role="status">
+                Buyer template saved.
+              </p>
+            )}
             {buyers.length === 0 && (
               <div className="side-card">
                 <p>No buyers recorded yet.</p>

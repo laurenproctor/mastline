@@ -342,3 +342,30 @@ test.describe("editing the workspace", () => {
     await expect(page.getByRole("button", { name: "Edit workspace" })).toHaveCount(0);
   });
 });
+
+test.describe("saving on the settings screen confirms itself", () => {
+  /**
+   * These actions used to call revalidatePath for the route they were invoked
+   * from, which leaves the action's promise unresolved on the client: the write
+   * lands and the server re-renders, but the form sits on "Saving..." for ever.
+   * The buyer template hung on two of five attempts before the fix. Saving
+   * twice here is deliberate -- once passed by luck often enough to hide it.
+   */
+  test("a buyer template saves and says so, repeatedly", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+
+    for (const attempt of [1, 2, 3]) {
+      await page.goto("/settings");
+      await page.getByRole("button", { name: "Edit template" }).first().click();
+      // The seeded value, so the record ends as it started.
+      await page.getByLabel("Desk or contact").first().fill("New York picture desk");
+      await page.getByRole("button", { name: "Save", exact: true }).first().click();
+
+      await expect(
+        page.getByText("Buyer template saved."),
+        `attempt ${attempt} did not confirm`,
+      ).toBeVisible();
+    }
+  });
+});
+

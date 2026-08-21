@@ -87,11 +87,6 @@ export function BuyerTemplate({
           {state.error}
         </p>
       )}
-      {state.ok && (
-        <p className="inspector-saved" role="status">
-          {state.message}
-        </p>
-      )}
 
       <div className="spacer" />
       <div className="actions">
