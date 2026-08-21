@@ -7,7 +7,16 @@ done and what is still needed.
 ## Already done
 
 - Vercel project `mastline` exists in `lauren-proctors-projects`, on Node 24.x,
-  serving <https://mastline.vercel.app>.
+  serving <https://mastline.co>.
+- **The apex is canonical.** `mastline.co` serves the site and
+  `www.mastline.co` returns a 308 to it, preserving the path. Vercel had it the
+  other way round when the domain was added, which is the default. If it ever
+  flips back, the setting is per-domain on the project: clear `redirect` on the
+  apex first, then set `redirect` on `www` -- doing it in the other order points
+  both at each other.
+- DNS lives at Hurricane Electric, not Vercel. `vercel domains inspect` marks
+  the nameservers with a red cross for that reason; it is not a fault and there
+  is no need to move them. The apex A record and the `www` CNAME are correct.
 - The GitHub repository `laurenproctor/mastline` is connected, so a push to
   `main` deploys to production and every branch gets a preview.
 - `WEBHOOK_SECRET_DEFAULT` is set for production and preview: a fresh 32-byte
@@ -63,11 +72,13 @@ and `organizations` at the GRANT level, before RLS is consulted.
 
 ## Supabase auth settings
 
-Set, via the management API. Site URL is `https://mastline.vercel.app`; the
+Set, via the management API. Site URL is `https://mastline.co`; the
 allow list keeps the integration's preview wildcards so auth works on preview
 deployments, plus localhost for development:
 
 ```
+https://mastline.co/**
+https://www.mastline.co/**
 https://mastline.vercel.app/**
 https://mastline-lauren-proctors-projects.vercel.app/**
 https://mastline-*-lauren-proctors-projects.vercel.app/**
@@ -75,8 +86,8 @@ http://localhost:3000/**
 ```
 
 Without this, password-reset and confirmation emails link back to `localhost`
-and silently fail for a real user. Update Site URL when a custom domain is
-chosen, and keep the wildcards.
+and silently fail for a real user. Site URL must track the canonical host: it
+is what Supabase puts in reset and confirmation emails.
 
 ## Stripe
 
@@ -95,15 +106,17 @@ already signed-in visitor, which needs the session.
 ## Verifying a deploy
 
 ```sh
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.vercel.app/welcome   # 200
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.vercel.app/pricing   # 200
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.vercel.app/login     # 200 once configured
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/welcome           # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/pricing           # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/login             # 200
+# www must redirect to the apex, not serve:
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.mastline.co/welcome
 ```
 
 The browser suite can be pointed at the deployment:
 
 ```sh
-E2E_BASE_URL=https://mastline.vercel.app npx playwright test --project=desktop
+E2E_BASE_URL=https://mastline.co npx playwright test --project=desktop
 ```
 
 Tests that expect the seeded workspace will fail against an empty production
