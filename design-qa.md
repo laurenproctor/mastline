@@ -29,5 +29,5 @@
 - TypeScript: passed.
 - ESLint: passed.
 - Component tests: 3 passed for confirmation, pitch, and Shop-the-Look gating.
-- Full available suite: 405 passed; database-backed tests skip without the local Supabase stack.
+- Full available suite: 407 passed; database-backed tests skip without the local Supabase stack.
 - Production build: passed with `/commercial` and `/commercial/[opportunityId]` included.
