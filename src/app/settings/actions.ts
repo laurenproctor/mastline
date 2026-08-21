@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireContext } from "@/lib/session-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { isSupportedTimezone, parseWorkspaceName } from "@/lib/timezones";
 
 export interface BuyerState {
   readonly ok?: boolean;
@@ -154,4 +156,84 @@ export async function removeMemberAction(
 
   revalidatePath("/settings");
   return { ok: true, message: "Removed from the workspace." };
+}
+
+export interface WorkspaceState {
+  readonly ok?: boolean;
+  readonly message?: string;
+  readonly error?: string;
+}
+
+/**
+ * Rename a workspace or move it to another timezone.
+ *
+ * The slug is deliberately not editable. It is unique across every workspace
+ * and it names the export file; letting it drift would rename the artefact a
+ * photographer may already have filed away, for no gain, since nothing routes
+ * by it. Currency is likewise fixed: money is stored per record in minor units
+ * plus its currency, so changing it here would misdescribe history rather than
+ * convert it.
+ *
+ * Only an owner reaches this. That is enforced three times over -- the button
+ * is gated on the capability, requireContext refuses without it, and the
+ * organizations RLS policy restricts UPDATE to an owner. The billing columns
+ * are untouched, so the trigger guarding them stays quiet.
+ */
+export async function updateWorkspaceAction(
+  _previous: WorkspaceState,
+  formData: FormData,
+): Promise<WorkspaceState> {
+  const parsed = parseWorkspaceName(String(formData.get("name") ?? ""));
+  if ("error" in parsed) return { error: parsed.error };
+
+  const timezone = String(formData.get("timezone") ?? "");
+  if (!isSupportedTimezone(timezone)) {
+    return { error: "Choose a timezone from the list." };
+  }
+
+  const { session, organizationId, actorId } = await requireContext("workspace.settings");
+  const supabase = await createClient();
+
+  const previousName = session.activeWorkspace.name;
+  const previousTimezone = session.activeWorkspace.timezone;
+
+  // Nothing to record, and no reason to write an activity event for a
+  // no-op save.
+  if (parsed.name === previousName && timezone === previousTimezone) {
+    return { ok: true, message: "No changes to save." };
+  }
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ name: parsed.name, timezone })
+    .eq("id", organizationId);
+
+  if (error) return { error: `Could not save the workspace: ${error.message}` };
+
+  const changes: string[] = [];
+  if (parsed.name !== previousName) changes.push(`renamed to ${parsed.name}`);
+  if (timezone !== previousTimezone) changes.push(`timezone set to ${timezone}`);
+
+  await supabase.from("activity_events").insert({
+    organization_id: organizationId,
+    actor_id: actorId,
+    entity_type: "organization",
+    entity_id: organizationId,
+    action: "workspace.updated",
+    event_data: {
+      summary: `Workspace ${changes.join(" and ")}`,
+      previous_name: previousName,
+      previous_timezone: previousTimezone,
+    },
+  });
+
+  // Post/redirect/get, deliberately, and not revalidatePath.
+  //
+  // revalidatePath for the route an action was invoked from leaves the action's
+  // promise unresolved on the client: the write lands and the server re-renders
+  // in under 100ms, but the button sits on "Saving..." for ever. A
+  // router.refresh() afterwards does not take effect either. A redirect is a
+  // fresh request, so the new name is correct in this panel and in the shell,
+  // which is the whole point of having saved it.
+  redirect("/settings?saved=workspace");
 }

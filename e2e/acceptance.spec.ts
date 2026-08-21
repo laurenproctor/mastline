@@ -261,3 +261,84 @@ test.describe("exporting the workspace", () => {
     expect(await response.text()).toContain("cannot export");
   });
 });
+
+test.describe("editing the workspace", () => {
+  const SEEDED_NAME = "Marcus Hale Studio";
+
+  async function setWorkspaceName(page: import("@playwright/test").Page, value: string) {
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Edit workspace" }).click();
+    await page.getByLabel("Workspace name").fill(value);
+    await page.getByRole("button", { name: "Save workspace" }).click();
+  }
+
+  test("an owner renames the workspace and it takes effect everywhere", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+
+    await page.getByRole("button", { name: "Edit workspace" }).click();
+    await expect(page.getByLabel("Workspace name")).toHaveValue(SEEDED_NAME);
+    await page.getByRole("button", { name: "Cancel" }).click();
+
+    const renamed = "Hale Media Group";
+    try {
+      await setWorkspaceName(page, renamed);
+
+      // A save redirects, so the confirmation arrives on a fresh render that
+      // already shows the new name rather than a stale one.
+      await expect(page.getByText("Workspace saved.")).toBeVisible();
+      await expect(page.getByRole("heading", { level: 3, name: renamed })).toBeVisible();
+
+      // The name lives in the shell, so a rename has to reach past this screen.
+      // Attached rather than visible: the shell hides its identity block on a
+      // phone, which is a layout decision this test has no business asserting.
+      await page.goto("/work");
+      await expect(page.getByText(renamed).first()).toBeAttached();
+    } finally {
+      // Leave the seeded workspace as it was found, whatever happened above.
+      await setWorkspaceName(page, SEEDED_NAME);
+      await expect(page.getByRole("heading", { level: 3, name: SEEDED_NAME })).toBeVisible();
+    }
+  });
+
+  test("the timezone can be changed and is the one offered", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    try {
+      await page.goto("/settings");
+      await page.getByRole("button", { name: "Edit workspace" }).click();
+      await page.getByLabel("Timezone").selectOption("Europe/London");
+      await page.getByRole("button", { name: "Save workspace" }).click();
+
+      await expect(page.getByText("Workspace saved.")).toBeVisible();
+      await expect(page.getByText("Europe/London").first()).toBeVisible();
+    } finally {
+      await page.goto("/settings");
+      await page.getByRole("button", { name: "Edit workspace" }).click();
+      await page.getByLabel("Timezone").selectOption("America/New_York");
+      await page.getByRole("button", { name: "Save workspace" }).click();
+      await expect(page.getByText("Workspace saved.")).toBeVisible();
+    }
+  });
+
+  test("an empty name is refused with a sentence, not a constraint error", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+
+    await page.getByRole("button", { name: "Edit workspace" }).click();
+    // Spaces defeat the required attribute, so the server-side check answers.
+    await page.getByLabel("Workspace name").fill("   ");
+    await page.getByRole("button", { name: "Save workspace" }).click();
+
+    await expect(page.getByText("A workspace needs a name.")).toBeVisible();
+    // A refusal does not redirect, and the real name is untouched.
+    await page.goto("/settings");
+    await expect(page.getByRole("heading", { level: 3, name: SEEDED_NAME })).toBeVisible();
+  });
+
+  test("an editor cannot edit the workspace", async ({ page }) => {
+    await signIn(page, SEEDED.editor);
+    await page.goto("/settings");
+
+    await expect(page.getByRole("button", { name: "Edit workspace" })).toHaveCount(0);
+  });
+});

@@ -14,6 +14,7 @@ import { formatBytes, trialDaysRemaining } from "@/lib/subscription";
 import { findPlan, type PlanId } from "@/lib/pricing";
 import { Progress } from "@/components/primitives";
 import { BuyerTemplate } from "./_components/buyer-template";
+import { EditWorkspace } from "./_components/edit-workspace";
 import { InviteMember } from "./_components/invite-member";
 import { BillingPanel, type PlanOption } from "./_components/billing-panel";
 import { billingSummary, type BillingState } from "@/lib/billing";
@@ -31,7 +32,14 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   viewer: "Read-only, no sensitive access",
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ saved?: string }>;
+}) {
+  // Set by the redirect a successful save performs, so the confirmation
+  // survives the fresh request that makes the new name visible.
+  const savedWorkspace = (await searchParams).saved === "workspace";
   const cookieStore = await cookies();
   const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
   const workspace = session.activeWorkspace;
@@ -119,7 +127,12 @@ export default async function SettingsPage() {
                 </div>
               </dl>
               {can(workspace.role, "workspace.settings") && (
-                <PendingButton small>Edit workspace</PendingButton>
+                <EditWorkspace name={workspace.name} timezone={workspace.timezone} />
+              )}
+              {savedWorkspace && (
+                <p className="inspector-saved" role="status">
+                  Workspace saved.
+                </p>
               )}
             </div>
           </Panel>

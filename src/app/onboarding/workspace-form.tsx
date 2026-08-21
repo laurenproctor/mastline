@@ -2,23 +2,11 @@
 
 import { useActionState } from "react";
 import { Field } from "@/components/primitives";
+import { DEFAULT_TIMEZONE, WORKSPACE_TIMEZONES, formatTimezone } from "@/lib/timezones";
 import { type OnboardingState, createWorkspaceAction } from "./actions";
 
 const INITIAL: OnboardingState = {};
 
-/** A short list of the zones a working photographer is most likely to want. */
-const TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Los_Angeles",
-  "Europe/London",
-  "Europe/Paris",
-  "Europe/Berlin",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "UTC",
-];
 
 export function WorkspaceForm({ suggestedName }: { suggestedName: string }) {
   const [state, formAction, pending] = useActionState(createWorkspaceAction, INITIAL);
@@ -35,14 +23,14 @@ export function WorkspaceForm({ suggestedName }: { suggestedName: string }) {
       <div className="spacer" />
       <Field
         control="select"
-        defaultValue="America/New_York"
+        defaultValue={DEFAULT_TIMEZONE}
         hint="Times are stored in UTC and shown in this zone."
         label="Timezone"
         name="timezone"
       >
-        {TIMEZONES.map((zone) => (
+        {WORKSPACE_TIMEZONES.map((zone) => (
           <option key={zone} value={zone}>
-            {zone.replace(/_/g, " ")}
+            {formatTimezone(zone)}
           </option>
         ))}
       </Field>
