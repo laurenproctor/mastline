@@ -34,7 +34,29 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
+/**
+ * Marketing pages that never vary by who is looking.
+ *
+ * These are served before a Supabase client is built, so the public site does
+ * not depend on the database being reachable or the environment being
+ * configured. A missing key should cost you the application, not the front
+ * door -- previously it returned MIDDLEWARE_INVOCATION_FAILED for every route,
+ * including these.
+ *
+ * /login and /signup are deliberately NOT here: they redirect an already
+ * signed-in visitor onward, which needs the session.
+ */
+const MARKETING_ROUTES = ["/welcome", "/pricing"];
+
+function isMarketing(pathname: string): boolean {
+  return MARKETING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
 export async function middleware(request: NextRequest) {
+  if (isMarketing(request.nextUrl.pathname)) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
