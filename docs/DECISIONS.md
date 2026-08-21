@@ -73,6 +73,15 @@ Item numbers below are permanent. Resolved items keep their number so older note
 - Originals are tombstoned, never hard-deleted. A deliberate purge exists for
   account closure and erasure requests, behind a service-role routine.
 - Mastline records a dispatch; it does not yet transmit to a buyer's systems.
+- No route-level `loading.tsx`. It wraps its subtree in an implicit Suspense
+  boundary, and with one present a Server Action that revalidated the route it
+  was invoked from left its promise unresolved on the client: the write landed,
+  the server re-rendered in under 100ms, and the form sat on "Saving..." for
+  ever. Measured at 15 hangs in 60 saves with the file and 0 in 60 without. It
+  also stopped `router.refresh()` reliably taking effect, which the contact
+  sheet depends on after a selection or rating. Both failures are silent.
+  Navigation feedback, if wanted again, needs something that does not wrap a
+  route in Suspense. Guarded by `tests/route-loading-boundary.test.ts`.
 
 ## Strategic pushback
 

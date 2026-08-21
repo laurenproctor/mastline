@@ -369,3 +369,47 @@ test.describe("saving on the settings screen confirms itself", () => {
   });
 });
 
+test.describe("a save is reflected on the screen that made it", () => {
+  /**
+   * A save has to show up on the screen that made it: caption a frame and its
+   * warning badge clears, with no reload in between.
+   *
+   * This covers the behaviour a route-level loading.tsx used to break, but it
+   * is not the guard for it -- that fault was intermittent, so this passes most
+   * of the time even when it is present. The deterministic check lives in
+   * tests/route-loading-boundary.test.ts, which asserts on the file tree.
+   */
+  const INCOMPLETE_ASSET = "a0000000-0000-0000-0000-0000000000d2";
+
+  test("captioning a frame clears its warning without a reload", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto(`/shoots/${SEEDED_SHOOT}`);
+
+    const warnings = page.getByRole("button", { name: /^Warnings / });
+    const form = page.locator("form.inspector");
+    const caption = form.getByLabel("Caption");
+    await expect(warnings).toHaveText("Warnings 1");
+
+    // End moves the sheet's focus to the last frame, which is the uncaptioned
+    // one. Clicking the tile would toggle its selection instead, and the
+    // warnings filter would empty out the moment the warning clears.
+    await page.locator("[data-frame=true]").first().press("End");
+    await expect(form.locator("input[name=assetId]")).toHaveValue(INCOMPLETE_ASSET);
+
+    try {
+      await caption.fill("A caption good enough to clear the warning.");
+      await page.getByRole("button", { name: "Save metadata" }).click();
+      await expect(page.getByText(/previous version is kept/)).toBeVisible();
+
+      // The whole point: no reload between the save and this assertion.
+      await expect(warnings).toHaveText("Warnings 0");
+    } finally {
+      // Focus has not moved, because this view lists every frame regardless of
+      // its warnings. Put the frame back to its seeded, uncaptioned state.
+      await expect(form.locator("input[name=assetId]")).toHaveValue(INCOMPLETE_ASSET);
+      await caption.fill("");
+      await page.getByRole("button", { name: "Save metadata" }).click();
+      await expect(warnings).toHaveText("Warnings 1");
+    }
+  });
+});
