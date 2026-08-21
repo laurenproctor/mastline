@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  SEEDED,
   SEEDED_SHOOT,
   collectPageErrors,
   hasHorizontalOverflow,
@@ -194,5 +195,69 @@ test.describe("the seeded workspace shows real records", () => {
     await signIn(page);
     await page.goto("/assets/not-a-uuid");
     await expect(page.getByText(/does not exist in this workspace/i)).toBeVisible();
+  });
+});
+
+test.describe("exporting the workspace", () => {
+  /**
+   * The settings screen promises "no vendor lock-in" and says confidential
+   * source notes are excluded. Both are claims about a file nobody had ever
+   * downloaded, so this checks the bytes rather than the wiring.
+   */
+  const EXPECTED_FILES = [
+    "README.txt",
+    "assets.csv",
+    "asset_versions.csv",
+    "caption_history.csv",
+    "shoots.csv",
+    "submissions.csv",
+    "licenses.csv",
+    "payments.csv",
+    "allocations.csv",
+    "activity.csv",
+  ];
+
+  test("an owner downloads the whole commercial record", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+
+    const link = page.getByRole("link", { name: "Export workspace" });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/api/export");
+
+    const response = await page.request.get("/api/export");
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-disposition"]).toContain("attachment");
+
+    const body = await response.text();
+    for (const file of EXPECTED_FILES) {
+      expect(body, `${file} missing from the export`).toContain(`=== ${file} ===`);
+    }
+
+    // An export of nothing would satisfy every check above.
+    expect(body).toContain("Avery Hart departs Hotel Chelsea");
+
+    // Promised on the screen: confidential notes stay out of a bulk export.
+    expect(body).not.toContain("Tip from hotel staff; do not attribute.");
+    expect(body).not.toContain("Service entrance on 23rd");
+
+    // Another workspace's record must never ride along.
+    expect(body).not.toContain("Northline exclusive frame");
+    expect(body).not.toContain("Northline confidential source");
+  });
+
+  test("an editor is refused, in the interface and at the route", async ({ page }) => {
+    await signIn(page, SEEDED.editor);
+    await page.goto("/settings");
+
+    // The control is present but inert, so the capability is discoverable
+    // without being usable.
+    await expect(page.getByRole("link", { name: "Export workspace" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Export workspace" })).toBeVisible();
+
+    // The route is the boundary, not the absence of a link.
+    const response = await page.request.get("/api/export");
+    expect(response.status()).toBe(403);
+    expect(await response.text()).toContain("cannot export");
   });
 });
