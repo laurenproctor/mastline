@@ -32,17 +32,23 @@ export function subscriptionFrom(workspace: Workspace): Subscription {
 export async function getStorageUsage(
   organizationId: Id,
   client?: SupabaseClient,
-): Promise<{ bytesUsed: number; objectCount: number }> {
+): Promise<{ bytesUsed: number; objectCount: number; allowanceBytes: number | null }> {
   const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("organization_storage_usage")
-    .select("bytes_used, object_count")
+    .select("bytes_used, object_count, allowance_bytes")
     .eq("organization_id", organizationId)
     .maybeSingle();
 
   return {
     bytesUsed: Number(data?.bytes_used ?? 0),
     objectCount: Number(data?.object_count ?? 0),
+    // The allowance the database will actually enforce, which is the plan's
+    // once a card is on file rather than the stored trial cap.
+    allowanceBytes:
+      data?.allowance_bytes === null || data?.allowance_bytes === undefined
+        ? null
+        : Number(data.allowance_bytes),
   };
 }
 
@@ -60,14 +66,12 @@ export async function getWorkspaceStatus(
   const subscription = subscriptionFrom(workspace);
   const usage = await getStorageUsage(workspace.id, client);
 
-  // The allowance recorded on the workspace wins, because a negotiated Agency
-  // limit and a trial cap both live there and nowhere else. Falling back to the
-  // plan default only matters for a workspace created before limits existed.
-  const limitBytes = workspace.storageLimitBytes;
+  // The database is the authority on what it will enforce. Reading the stored
+  // column instead would show a paying customer their old trial cap.
   const storage =
-    limitBytes === undefined
-      ? storageState(subscription, usage.bytesUsed)
-      : storageStateWithLimit(usage.bytesUsed, limitBytes);
+    usage.allowanceBytes === null
+      ? storageState({ ...subscription, plan: "agency" }, usage.bytesUsed)
+      : storageStateWithLimit(usage.bytesUsed, usage.allowanceBytes);
 
   return {
     subscription,

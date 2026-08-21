@@ -27,6 +27,13 @@ export interface Workspace {
   readonly trialEndsAt?: string;
   readonly storageLimitBytes?: number;
   readonly seatLimit?: number;
+  readonly billingPeriod?: "annual" | "monthly";
+  readonly paymentMethodAttachedAt?: string;
+  readonly pastDueSince?: string;
+  readonly currentPeriodEnd?: string;
+  readonly cancelAtPeriodEnd?: boolean;
+  /** Present once this workspace has a provider customer. */
+  readonly stripeCustomerId?: string;
 }
 
 export interface Session {
@@ -68,7 +75,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   const { data: memberships } = await supabase
     .from("memberships")
     .select(
-      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit)",
+      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit, billing_period, payment_method_attached_at, past_due_since, current_period_end, cancel_at_period_end, stripe_customer_id)",
     )
     .eq("user_id", user.id)
     .eq("status", "active");
@@ -86,6 +93,12 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         trial_ends_at: string | null;
         storage_limit_bytes: number | null;
         seat_limit: number | null;
+        billing_period: "annual" | "monthly" | null;
+        payment_method_attached_at: string | null;
+        past_due_since: string | null;
+        current_period_end: string | null;
+        cancel_at_period_end: boolean | null;
+        stripe_customer_id: string | null;
       } | null;
       if (!org) return null;
       return {
@@ -101,6 +114,12 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         storageLimitBytes:
           org.storage_limit_bytes === null ? undefined : Number(org.storage_limit_bytes),
         seatLimit: org.seat_limit === null ? undefined : Number(org.seat_limit),
+        billingPeriod: org.billing_period ?? undefined,
+        paymentMethodAttachedAt: org.payment_method_attached_at ?? undefined,
+        pastDueSince: org.past_due_since ?? undefined,
+        currentPeriodEnd: org.current_period_end ?? undefined,
+        cancelAtPeriodEnd: org.cancel_at_period_end ?? undefined,
+        stripeCustomerId: org.stripe_customer_id ?? undefined,
       };
     })
     .filter((workspace): workspace is Workspace => workspace !== null)

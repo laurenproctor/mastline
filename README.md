@@ -80,6 +80,8 @@ Business rules are centralized, not spread across components:
 | `src/lib/export.ts` | Workspace export |
 | `src/lib/webhook.ts` | Signature verification and payload parsing |
 | `src/lib/subscription.ts` | Trial state, storage limits, and what a workspace is told |
+| `src/lib/billing.ts` | Subscription lifecycle, grace window, plan-change rules |
+| `src/lib/billing/provider.ts` | The provider contract; Stripe sits behind it |
 | `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
@@ -230,6 +232,31 @@ stop. That is enforced by a trigger on every table that represents doing work,
 so a Server Action nobody remembered to guard cannot write into a lapsed
 workspace. `past_due` still writes — a card that failed on Tuesday should not
 stop a photographer working a story on Wednesday.
+
+**Conversion** — a trialing workspace can start paying. Stripe sits behind a
+provider interface, so the lifecycle rules are testable without it and the
+provider is swappable.
+
+### How billing behaves
+
+- Attaching a card during a trial lifts the storage cap immediately but does
+  **not** end the trial or bring the charge forward. The first charge lands when
+  the 30 days do.
+- A failed renewal keeps the workspace working for **14 days**, then read-only.
+  Writability is derived from the recorded date, so nothing has to run nightly
+  and nothing can fall behind.
+- A downgrade applies at the end of the period already paid for, and warns first
+  if it would strand stored work or people.
+- Plan, status, and provider identifiers can only be written by
+  `apply_billing_state`, which is service-role only. A workspace owner cannot
+  grant themselves a plan; the database refuses it.
+- `POST /api/webhooks/billing` verifies a Stripe signature with a timestamp
+  tolerance, then claims the event id before acting, so a provider retry cannot
+  apply a payment twice.
+
+Without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` the endpoints refuse
+every request and the interface says billing is unavailable rather than offering
+a checkout that cannot work.
 
 Only News Radar still reads the mock layer, because there is no opportunity
 source to read from yet; the first release uses manually entered stories. That

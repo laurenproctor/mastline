@@ -200,6 +200,13 @@ describe("plan limits", () => {
     expect(PLAN_STORAGE_BYTES.studio!).toBeGreaterThan(PLAN_STORAGE_BYTES.pro!);
   });
 
+  it("says how many people every self-serve plan includes", () => {
+    // The page was silent about Pro, which left a paying customer guessing.
+    expect(findPlan("solo").features.join(" ")).toMatch(/1 photographer/i);
+    expect(findPlan("pro").features.join(" ")).toMatch(/1 photographer/i);
+    expect(findPlan("studio").features.join(" ")).toMatch(/5 team members/i);
+  });
+
   it("agrees with the feature copy on each plan card", () => {
     expect(findPlan("solo").features.join(" ")).toMatch(/250 GB/);
     expect(findPlan("pro").features.join(" ")).toMatch(/1 TB/);

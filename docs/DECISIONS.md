@@ -16,6 +16,16 @@
   available — never locked, because a commercial record is not held hostage.
   The duration is 30 rather than 14 because sale-to-payment averages 24 days,
   so a shorter trial cannot show a payment arriving.
+- Conversion: **Stripe**, not a merchant of record. A card attached mid-trial
+  lifts the storage cap immediately but does not bring the charge forward — the
+  trial runs its full course. A failed renewal keeps the workspace working for
+  **14 days**, then read-only.
+- **Pro includes 1 person.** Solo and Pro are single-photographer plans; Studio
+  (5) is where team begins.
+- Choosing Stripe over a merchant of record means Mastline is the **seller of
+  record** and owns VAT and sales-tax registration in every jurisdiction it
+  sells into. That is a business obligation, not a code change, and it must be
+  settled before charging a non-US customer.
 - Storage/scale: Solo 250 GB and 1 photographer; Pro 1 TB; Studio up to 5 people and 5 TB shared; Agency flexible/custom
 - Optional Mastline Sales Engine split: photographer 70%, Mastline 30%, only on licenses generated inside Mastline
 - Human review before outbound or consequential actions
@@ -39,10 +49,8 @@ Item numbers below are permanent. Resolved items keep their number so older note
 
 ## Unresolved product decisions
 
-1. ~~Free-trial duration, payment-method requirement, and end-of-trial behaviour~~
-   (all resolved above). Still open: **conversion mechanics** — how a trialing
-   workspace actually starts paying, and whether trial eligibility is one per
-   person or one per workspace.
+1. ~~Free trial and conversion~~ — fully resolved (see above). Still open only:
+   whether trial **eligibility** is one per person or one per workspace.
 2. Storage overage economics. Today an import is refused once the allowance is
    full and nothing already stored is affected. Whether overage is billable
    instead is open.

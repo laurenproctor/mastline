@@ -17,19 +17,32 @@ const OWNER = "11111111-1111-1111-1111-111111111111";
 const NADIA = "99999999-9999-9999-9999-999999999999";
 const createdOrgs: string[] = [];
 
-/** Put Org B into a given subscription state for the duration of one test. */
+/**
+ * Put Org B into a given subscription state for the duration of one test.
+ *
+ * Billing columns are protected by a trigger, so even the service role goes
+ * through apply_billing_state. That is the point: a workspace owner cannot
+ * grant themselves a plan, and neither can a stray UPDATE.
+ */
 async function setOrgB(patch: Record<string, unknown>) {
-  const { error } = await serviceClient().from("organizations").update(patch).eq("id", ORG_B);
+  const { error } = await serviceClient().rpc("apply_billing_state", {
+    target_org: ORG_B,
+    ...patch,
+  });
   if (error) throw new Error(error.message);
 }
 
 async function restoreOrgB() {
-  await setOrgB({
-    plan: "pro",
-    subscription_status: "trialing",
-    trial_ends_at: new Date(Date.now() + 24 * 86_400_000).toISOString(),
-    storage_limit_bytes: 25 * 1024 ** 3,
-    seat_limit: 1,
+  await serviceClient().rpc("apply_billing_state", {
+    target_org: ORG_B,
+    new_plan: "pro",
+    new_status: "trialing",
+    new_trial_ends_at: new Date(Date.now() + 24 * 86_400_000).toISOString(),
+    new_storage_limit_bytes: 25 * 1024 ** 3,
+    new_seat_limit: 1,
+    clear_payment_method: true,
+    clear_subscription: true,
+    clear_customer: true,
   });
 }
 
@@ -37,6 +50,13 @@ async function restoreOrgB() {
 const ORG_B_SEEDED_BYTES = 48_000_000;
 
 afterAll(async () => {
+  const service = serviceClient();
+
+  // Purge first. Asserting before cleaning up meant a failed check left
+  // workspaces behind for every later run.
+  for (const orgId of createdOrgs) {
+    await service.rpc("purge_organization_admin", { target_org: orgId });
+  }
   await restoreOrgB();
 
   // A leaked version silently changes what every storage assertion means, and
@@ -51,16 +71,11 @@ afterAll(async () => {
       `Storage tests leaked: Org B holds ${usage?.bytes_used} bytes, expected ${ORG_B_SEEDED_BYTES}.`,
     );
   }
-
-  const service = serviceClient();
-  for (const orgId of createdOrgs) {
-    await service.rpc("purge_organization_admin", { target_org: orgId });
-  }
 });
 
 describeIf("a lapsed workspace is read-only, not locked", () => {
   it("refuses a write once the trial has ended", async () => {
-    await setOrgB({ trial_ends_at: new Date(Date.now() - 86_400_000).toISOString() });
+    await setOrgB({ new_status: "expired" });
     const nadia = await clientFor("otherOrgOwner");
 
     const { error } = await nadia.from("shoots").insert({
@@ -75,7 +90,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
   });
 
   it("still lets everything be read", async () => {
-    await setOrgB({ trial_ends_at: new Date(Date.now() - 86_400_000).toISOString() });
+    await setOrgB({ new_status: "expired" });
     const nadia = await clientFor("otherOrgOwner");
 
     const { data: shoots, error } = await nadia.from("shoots").select("id, title");
@@ -98,7 +113,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
       .limit(1)
       .single();
 
-    await setOrgB({ trial_ends_at: new Date(Date.now() - 86_400_000).toISOString() });
+    await setOrgB({ new_status: "expired" });
     const nadia = await clientFor("otherOrgOwner");
 
     const update = await nadia.from("shoots").update({ status: "ready" }).eq("id", shoot!.id);
@@ -111,7 +126,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
   });
 
   it("still lets the workspace change its own plan, which is how it stops being lapsed", async () => {
-    await setOrgB({ trial_ends_at: new Date(Date.now() - 86_400_000).toISOString() });
+    await setOrgB({ new_status: "expired" });
     const nadia = await clientFor("otherOrgOwner");
 
     const { error } = await nadia
@@ -143,7 +158,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
    * story on Wednesday.
    */
   it("keeps a past-due workspace working", async () => {
-    await setOrgB({ subscription_status: "past_due", trial_ends_at: null });
+    await setOrgB({ new_status: "past_due", new_past_due_since: new Date().toISOString() });
     const nadia = await clientFor("otherOrgOwner");
 
     const { data, error } = await nadia
@@ -157,7 +172,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
   });
 
   it("refuses writes on a cancelled workspace", async () => {
-    await setOrgB({ subscription_status: "cancelled", trial_ends_at: null });
+    await setOrgB({ new_status: "cancelled" });
     const nadia = await clientFor("otherOrgOwner");
 
     const { error } = await nadia.from("shoots").insert({
@@ -182,7 +197,7 @@ describeIf("a lapsed workspace is read-only, not locked", () => {
 
 describeIf("storage limits", () => {
   it("refuses an import that would exceed the cap", async () => {
-    await setOrgB({ storage_limit_bytes: 1000 });
+    await setOrgB({ new_storage_limit_bytes: 1000 });
     const service = serviceClient();
 
     const { data: asset } = await service
@@ -215,7 +230,7 @@ describeIf("storage limits", () => {
     const service = serviceClient();
     const before = await service.from("asset_versions").select("id").eq("organization_id", ORG_B);
 
-    await setOrgB({ storage_limit_bytes: 1 });
+    await setOrgB({ new_storage_limit_bytes: 1 });
     const after = await service.from("asset_versions").select("id").eq("organization_id", ORG_B);
 
     expect(after.data).toHaveLength(before.data!.length);
@@ -231,7 +246,7 @@ describeIf("storage limits", () => {
       .single();
 
     const used = Number(usage!.bytes_used);
-    await setOrgB({ storage_limit_bytes: used + 500 });
+    await setOrgB({ new_storage_limit_bytes: used + 500 });
 
     // A throwaway asset, so purging it afterwards leaves the workspace's real
     // records untouched.
@@ -265,10 +280,12 @@ describeIf("storage limits", () => {
   });
 
   it("leaves a negotiated plan unconstrained", async () => {
+    // Agency is negotiated: the plan alone is not enough, the recorded
+    // allowance has to be cleared for there to be nothing to enforce.
     await setOrgB({
-      storage_limit_bytes: null,
-      subscription_status: "active",
-      trial_ends_at: null,
+      new_plan: "agency",
+      new_status: "active",
+      clear_storage_limit: true,
     });
     const service = serviceClient();
 

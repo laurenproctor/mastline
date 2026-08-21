@@ -607,3 +607,49 @@ a.button { text-decoration: none; }
     padding: 13px 16px;
   }
 }
+
+/* --- Billing ---------------------------------------------------------------- */
+
+.billing-status {
+  padding: 11px 13px;
+  border-left: 2px solid var(--blue);
+  background: #eef1ff;
+  margin-bottom: 14px;
+}
+.billing-status.warn { border-left-color: var(--amber); background: #fff6e2; }
+.billing-status.danger { border-left-color: var(--red); background: #fff0ed; }
+.billing-status strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.billing-status p { margin: 0; font-size: 12px; color: #4a4944; }
+
+.billing-period { display: flex; gap: 6px; margin-bottom: 14px; }
+
+.plan-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.plan-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.plan-option.current { border-left: 2px solid var(--blue); }
+.plan-option strong { font-size: 13px; margin-right: 7px; }
+.plan-option small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.plan-option-price { text-align: right; }
+.plan-option-price strong { font-family: Georgia, serif; font-weight: 400; font-size: 19px; }
+.plan-option-price small { margin-top: 0; }
+
+.billing-warning {
+  margin: 14px 0 0;
+  padding: 11px 13px;
+  border-left: 2px solid var(--amber);
+  background: #fff6e2;
+}
+.billing-warning strong { display: block; font-size: 12px; margin-bottom: 5px; }
+.billing-warning p { margin: 0 0 6px; font-size: 12px; }
+
+@media (max-width: 680px) {
+  .plan-option { grid-template-columns: 1fr; }
+  .plan-option-price { text-align: left; }
+}

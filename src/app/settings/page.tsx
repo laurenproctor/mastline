@@ -15,6 +15,12 @@ import { findPlan, type PlanId } from "@/lib/pricing";
 import { Progress } from "@/components/primitives";
 import { BuyerTemplate } from "./_components/buyer-template";
 import { InviteMember } from "./_components/invite-member";
+import { BillingPanel, type PlanOption } from "./_components/billing-panel";
+import { billingSummary, type BillingState } from "@/lib/billing";
+import { createStripeProvider } from "@/lib/billing/stripe";
+import { PLANS, annualSavingsClaim, formatPlanPrice, isCustomPriced } from "@/lib/pricing";
+import { formatBytes as formatPlanBytes } from "@/lib/subscription";
+import { PLAN_SEATS, PLAN_STORAGE_BYTES } from "@/lib/pricing";
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   owner: "All workspace control",
@@ -41,6 +47,34 @@ export default async function SettingsPage() {
   const daysLeft = trialDaysRemaining(workspace.trialEndsAt, new Date());
   const activeMembers = members.filter((person) => person.status !== "suspended").length;
   const seatsLeft = workspace.seatLimit === undefined ? null : workspace.seatLimit - activeMembers;
+
+  const billingState: BillingState = {
+    plan: workspace.plan as PlanId,
+    status: workspace.subscriptionStatus,
+    billingPeriod: workspace.billingPeriod ?? "annual",
+    trialEndsAt: workspace.trialEndsAt,
+    paymentMethodAttachedAt: workspace.paymentMethodAttachedAt,
+    pastDueSince: workspace.pastDueSince,
+    currentPeriodEnd: workspace.currentPeriodEnd,
+    cancelAtPeriodEnd: workspace.cancelAtPeriodEnd,
+  };
+  const billing = billingSummary(billingState, new Date());
+
+  const planOptions: readonly PlanOption[] = PLANS.filter(
+    (candidate) => !isCustomPriced(candidate),
+  ).map((candidate) => {
+    const storage = PLAN_STORAGE_BYTES[candidate.id];
+    const seats = PLAN_SEATS[candidate.id];
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      annualPrice: formatPlanPrice(candidate, "annual"),
+      monthlyPrice: formatPlanPrice(candidate, "monthly"),
+      storage: storage === null ? "Negotiated storage" : formatPlanBytes(storage),
+      seats: seats === null ? "Custom team" : `${seats} ${seats === 1 ? "person" : "people"}`,
+      isCurrent: candidate.id === workspace.plan,
+    };
+  });
 
   const mayInvite = can(workspace.role, "member.invite");
 
@@ -120,6 +154,21 @@ export default async function SettingsPage() {
               )}
             </div>
           </Panel>
+
+          {can(workspace.role, "workspace.settings") && (
+            <Panel title="Billing">
+              <BillingPanel
+                billingAvailable={createStripeProvider().isConfigured()}
+                detail={billing.detail}
+                needsCard={billing.needsCard}
+                plans={planOptions}
+                portalAvailable={Boolean(workspace.stripeCustomerId)}
+                savingsClaim={annualSavingsClaim()}
+                summary={billing.headline}
+                tone={billing.tone}
+              />
+            </Panel>
+          )}
 
           <Panel title="Storage">
             <div className="panel-body">

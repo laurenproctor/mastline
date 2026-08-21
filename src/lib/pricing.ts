@@ -65,6 +65,7 @@ export const PLANS: readonly Plan[] = [
     ctaLabel: "Start free",
     features: [
       "Everything in Solo",
+      "1 photographer workspace",
       "Live news monitoring",
       "Archive-to-story matching",
       "Rights & usage monitoring",
