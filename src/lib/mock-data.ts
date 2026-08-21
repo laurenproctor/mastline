@@ -1,0 +1,135 @@
+export const tasks = [
+  {
+    type: "Shoot",
+    title: "Finish captions for Hotel Chelsea departure",
+    detail: "11 of 18 complete",
+    age: "42 min",
+    action: "Continue",
+    tone: "warn",
+  },
+  {
+    type: "Delivery",
+    title: "Retry failed Backgrid delivery",
+    detail: "6 files need retry",
+    age: "Urgent",
+    action: "Review",
+    tone: "danger",
+  },
+  {
+    type: "Money",
+    title: "Match three August statement sales",
+    detail: "$1,240 unmatched",
+    age: "1 hr",
+    action: "Reconcile",
+    tone: "warn",
+  },
+  {
+    type: "Rights",
+    title: "Decide whether The Daily Edit is licensed",
+    detail: "Detected 2 hours ago",
+    age: "2 hr",
+    action: "Review",
+    tone: "blue",
+  },
+];
+
+export const opportunities = [
+  {
+    signal: "Rising",
+    story: "Avery Hart cast in Midnight Hotel",
+    source: "Entertainment Wire · 14m",
+    match: "92%",
+    assets: 12,
+    value: "$900–$1,400",
+    window: "Act now",
+  },
+  {
+    signal: "High",
+    story: "Maya Chen confirms September tour",
+    source: "Music Daily · 27m",
+    match: "88%",
+    assets: 18,
+    value: "$700–$1,200",
+    window: "Act now",
+  },
+  {
+    signal: "High",
+    story: "Noah Vale returns to New York",
+    source: "City Beat · 43m",
+    match: "81%",
+    assets: 9,
+    value: "$600–$1,000",
+    window: "Act now",
+  },
+  {
+    signal: "Steady",
+    story: "Riviera Nights renewed",
+    source: "TV Insider · 1h",
+    match: "64%",
+    assets: 7,
+    value: "$400–$750",
+    window: "2h 10m",
+  },
+];
+
+export const payments = [
+  {
+    status: "Unmatched",
+    sale: "Hotel Chelsea departure",
+    agency: "Backgrid",
+    reported: "$840",
+    expected: "—",
+    action: "Match",
+  },
+  {
+    status: "Suggested",
+    sale: "NYFW Street Style",
+    agency: "Backgrid",
+    reported: "$620",
+    expected: "—",
+    action: "Review",
+  },
+  {
+    status: "Commission issue",
+    sale: "Premiere: The Night Before",
+    agency: "The Mega Agency",
+    reported: "$1,000",
+    expected: "$1,210",
+    action: "Review",
+  },
+  {
+    status: "Matched",
+    sale: "US Open Qualifying",
+    agency: "Getty Images",
+    reported: "$780",
+    expected: "—",
+    action: "View",
+  },
+];
+
+export const rightsMatches = [
+  {
+    outlet: "The Daily Edit",
+    asset: "MH_0819_0472",
+    found: "2h ago",
+    confidence: "94%",
+    license: "No license found",
+    status: "Review",
+  },
+  {
+    outlet: "Style Ledger",
+    asset: "MH_0819_0468",
+    found: "6h ago",
+    confidence: "87%",
+    license: "Possible syndication",
+    status: "Verify",
+  },
+  {
+    outlet: "Scene Weekly",
+    asset: "MH_0728_1120",
+    found: "Yesterday",
+    confidence: "81%",
+    license: "Backgrid sale found",
+    status: "Licensed",
+  },
+];
