@@ -10,6 +10,7 @@ import {
   billingCadenceLabel,
   formatPlanPrice,
   isCustomPriced,
+  trialTermsLabel,
 } from "@/lib/pricing";
 import { formatMoney } from "@/lib/money";
 
@@ -83,6 +84,7 @@ export function PricingTable() {
               <button className={`button plan-cta${custom ? "" : " blue"}`} type="button">
                 {plan.ctaLabel}
               </button>
+              {!custom && <p className="plan-trial-note">{trialTermsLabel()}</p>}
 
               <div className="plan-divider" />
               <div className="plan-includes">What&apos;s included</div>

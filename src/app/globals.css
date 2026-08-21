@@ -213,6 +213,7 @@ button { cursor: pointer; }
 
 /* The annual total, shown so the yearly charge is never a surprise. */
 .plan-annual-total { margin: -6px 0 18px; color: var(--muted); font-size: 13px; }
+.plan-trial-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
 
 /* Dark workspace panels keep their own heading treatment. */
 .shoot-layout .panel-head h2 { color: #f4f4f2; }
@@ -519,3 +520,46 @@ a.badge:hover { border-color: var(--ink); }
   .confirm-list dd { text-align: left; }
   .package-tabs { flex-direction: column; }
 }
+
+/* --- Delivery attempts and statement reconciliation ------------------------ */
+
+.attempt-list { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 10px; }
+.attempt {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-left-width: 2px;
+  font-size: 12px;
+}
+/* Status is stated in words; the rule is a secondary signal. */
+.attempt.delivered { border-left-color: var(--green); }
+.attempt.failed { border-left-color: var(--red); }
+.attempt.sending { border-left-color: var(--blue); }
+.attempt-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.attempt-head span { text-transform: uppercase; letter-spacing: .07em; font-size: 9px; font-weight: 850; color: var(--muted); }
+.attempt small { color: var(--muted); font-size: 11px; }
+.attempt-error {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: #8f231c;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* A file input should not look like a text field. */
+.field input[type="file"] {
+  padding: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+.field input[type="file"]::file-selector-button {
+  border: 1px solid var(--ink);
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+  padding: 5px 10px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+/* Download links styled as buttons keep the button's focus treatment. */
+a.button { text-decoration: none; }

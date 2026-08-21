@@ -8,6 +8,7 @@ import { getPackage } from "@/lib/data/packages";
 import { listAssets } from "@/lib/data/assets";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { reviewDispatch } from "@/lib/dispatch-rules";
+import { retryDelivery } from "@/lib/data/delivery";
 import { requireContext } from "@/lib/session-context";
 import type { SubmissionStatus } from "@/lib/domain";
 
@@ -159,4 +160,28 @@ export async function recordOutcomeAction(
   revalidatePath(`/submissions/${submissionId}`);
   revalidatePath("/submissions");
   return { ok: true, message: "Outcome recorded. What was sent is unchanged." };
+}
+
+/**
+ * Retry a failed delivery.
+ *
+ * The submission snapshot is untouched: what goes out again is exactly what
+ * went out before. Only a failed delivery can be retried, so this cannot
+ * resend something that already arrived.
+ */
+export async function retryDeliveryAction(
+  _previous: DispatchState,
+  formData: FormData,
+): Promise<DispatchState> {
+  const submissionId = String(formData.get("submissionId") ?? "");
+  const { organizationId, actorId } = await requireContext("submission.send");
+
+  try {
+    const { attemptNumber } = await retryDelivery({ organizationId, actorId, submissionId });
+    revalidatePath(`/submissions/${submissionId}`);
+    revalidatePath("/work");
+    return { ok: true, message: `Attempt ${attemptNumber} recorded and queued.` };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not retry the delivery." };
+  }
 }

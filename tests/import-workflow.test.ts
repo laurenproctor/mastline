@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { afterAll, describe, expect, it } from "vitest";
-import { ORG_A, clientFor, hasLocalSupabase, serviceClient } from "./helpers/supabase";
+import { ORG_A, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
  * The import contract from docs/ACCEPTANCE.md, exercised against the database
@@ -31,14 +31,7 @@ async function makeShoot(title: string): Promise<string> {
 }
 
 afterAll(async () => {
-  const service = serviceClient();
-  for (const shootId of created) {
-    const { data: assets } = await service.from("assets").select("id").eq("shoot_id", shootId);
-    for (const asset of assets ?? []) {
-      await service.rpc("purge_asset_admin", { target_asset: asset.id });
-    }
-    await service.from("shoots").delete().eq("id", shootId);
-  }
+  for (const shootId of created) await purgeShoot(shootId);
 });
 
 describeIf("a shoot exists before any file does", () => {

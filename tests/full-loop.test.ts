@@ -12,7 +12,7 @@ import {
   recordPayment,
 } from "../src/lib/data/money";
 import { money } from "../src/lib/money";
-import { ORG_A, clientFor, hasLocalSupabase, serviceClient } from "./helpers/supabase";
+import { ORG_A, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
  * One shoot, all the way from selection to money in the bank.
@@ -40,17 +40,7 @@ afterAll(async () => {
   const service = serviceClient();
   for (const id of cleanup.payments) await service.from("payments").delete().eq("id", id);
   for (const id of cleanup.licenses) await service.from("licenses").delete().eq("id", id);
-  for (const shootId of cleanup.shoots) {
-    const { data: pkgs } = await service.from("packages").select("id").eq("shoot_id", shootId);
-    for (const pkg of pkgs ?? [])
-      await service.from("submissions").delete().eq("package_id", pkg.id);
-    const { data: assets } = await service.from("assets").select("id").eq("shoot_id", shootId);
-    for (const asset of assets ?? []) {
-      await service.rpc("purge_asset_admin", { target_asset: asset.id });
-    }
-    await service.from("packages").delete().eq("shoot_id", shootId);
-    await service.from("shoots").delete().eq("id", shootId);
-  }
+  for (const shootId of cleanup.shoots) await purgeShoot(shootId);
 });
 
 describeIf("assignment to payment", () => {

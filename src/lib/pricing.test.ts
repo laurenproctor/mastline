@@ -11,6 +11,9 @@ import {
   isCustomPriced,
   maxAnnualSavingsRate,
   monthlyPrice,
+  TRIAL_DAYS,
+  TRIAL_REQUIRES_PAYMENT_METHOD,
+  trialTermsLabel,
   twelveMonthlyPaymentsTotal,
 } from "./pricing";
 
@@ -99,6 +102,29 @@ describe("the savings claim", () => {
   });
 });
 
+describe("approved trial terms", () => {
+  it("is 14 days and needs no payment method", () => {
+    expect(TRIAL_DAYS).toBe(14);
+    expect(TRIAL_REQUIRES_PAYMENT_METHOD).toBe(false);
+  });
+
+  it("states the approved duration and the card position", () => {
+    expect(trialTermsLabel()).toBe("14 days free. No card required.");
+  });
+
+  it("states no duration other than the approved one", () => {
+    const durations = trialTermsLabel().match(/\d+/g) ?? [];
+    expect(durations).toEqual([String(TRIAL_DAYS)]);
+  });
+
+  it("claims nothing about what happens when the trial ends", () => {
+    // Conversion mechanics are unresolved (docs/DECISIONS.md #1). Copy that
+    // promises auto-renewal, cancellation, or continued access would be an
+    // invented product fact.
+    expect(trialTermsLabel()).not.toMatch(/cancel|renew|auto|then|after|expire|keep|charge/i);
+  });
+});
+
 describe("presentation rules", () => {
   it("defaults to annual billing", () => {
     expect(DEFAULT_BILLING_PERIOD).toBe("annual");
@@ -119,7 +145,7 @@ describe("presentation rules", () => {
     expect(findPlan("agency").ctaLabel).toBe("Talk to us");
   });
 
-  it("does not invent a trial duration anywhere in plan copy", () => {
+  it("keeps trial terms out of per-plan copy so there is one place to change them", () => {
     const copy = PLANS.flatMap((plan) => [
       plan.name,
       plan.description,

@@ -81,6 +81,14 @@ describe("separation of duties", () => {
     expect(can("rights_reviewer", "rights.triage")).toBe(true);
   });
 
+  it("restricts a bulk workspace export to owner and finance", () => {
+    const exporters = APP_ROLES.filter((role: AppRole) => can(role, "export.workspace"));
+    expect([...exporters].sort()).toEqual(["finance", "owner"]);
+    // An editor can read a payment screen but cannot take the whole record.
+    expect(can("editor", "payment.read")).toBe(true);
+    expect(can("editor", "export.workspace")).toBe(false);
+  });
+
   it("lets only the owner invite people or change workspace settings", () => {
     const inviters = APP_ROLES.filter((role: AppRole) => can(role, "member.invite"));
     expect(inviters).toEqual(["owner"]);

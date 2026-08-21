@@ -5,6 +5,13 @@ import { defineConfig } from "vitest/config";
 
 const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
 
+// See tests/stubs/server-only.ts for why this alias exists and what it does not
+// weaken.
+const databaseAlias = {
+  ...alias,
+  "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
+};
+
 /**
  * Two kinds of test, run differently.
  *
@@ -43,7 +50,7 @@ export default defineConfig(({ mode }) => {
           },
         },
         {
-          resolve: { alias },
+          resolve: { alias: databaseAlias },
           test: {
             name: "database",
             environment: "node",

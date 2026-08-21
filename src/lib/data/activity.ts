@@ -53,8 +53,9 @@ export async function recordEventWith(
 export async function listActivity(
   organizationId: Id,
   filter: { entityId?: Id; entityType?: string; limit?: number } = {},
+  client?: SupabaseClient,
 ): Promise<readonly ActivityEvent[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   let query = supabase
     .from("activity_events")
     .select("id, organization_id, actor_id, entity_type, entity_id, action, event_data, created_at")

@@ -33,6 +33,9 @@ export const CAPABILITIES = [
   "expense.write",
   "member.invite",
   "workspace.settings",
+  // A bulk download of the whole commercial record is a higher-privilege act
+  // than reading any one screen of it, so it has its own capability.
+  "export.workspace",
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
@@ -63,7 +66,9 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
   // status as part of dispatching. They do not rewrite briefs: shoot.write
   // covers the brief, and a database trigger enforces that boundary.
   dispatcher: [...READ_ONLY, "package.write", "submission.send", "shoot.status"],
-  finance: [...READ_ONLY, "license.write", "payment.write", "expense.write"],
+  // docs/DATA_MODEL.md puts exports under finance alongside revenue and
+  // statements.
+  finance: [...READ_ONLY, "license.write", "payment.write", "expense.write", "export.workspace"],
   // Evidence and triage only. Escalation to a demand is a separate approved
   // workflow, deliberately not a role permission.
   rights_reviewer: [...READ_ONLY, "rights.triage"],

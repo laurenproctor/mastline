@@ -9,6 +9,7 @@ import {
   listWorkspaceBuyers,
   listWorkspaceMembers,
 } from "@/lib/data/workspace";
+import { BuyerTemplate } from "./_components/buyer-template";
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   owner: "All workspace control",
@@ -131,28 +132,54 @@ export default async function SettingsPage() {
                 <p>No buyers recorded yet.</p>
               </div>
             )}
-            {buyers.map((buyer) => (
-              <div className="side-card" key={buyer.id}>
-                <h3>{buyer.name}</h3>
-                <p>
-                  {humanizeStatus(buyer.buyerType)}
-                  {buyer.deliveryProfile ? ` · ${buyer.deliveryProfile}` : ""}
-                  {buyer.contactName ? ` · ${buyer.contactName}` : ""}
-                </p>
-              </div>
-            ))}
+            {buyers.map((buyer) =>
+              can(workspace.role, "workspace.settings") ? (
+                <BuyerTemplate
+                  buyer={{
+                    id: buyer.id,
+                    name: buyer.name,
+                    buyerType: buyer.buyerType,
+                    contactName: buyer.contactName,
+                    defaultDeliveryMethod: buyer.deliveryProfile,
+                    defaultTerms: buyer.defaultTerms,
+                    defaultRestrictions: buyer.defaultRestrictions,
+                    paymentTermsDays: buyer.paymentTermsDays,
+                  }}
+                  key={buyer.id}
+                />
+              ) : (
+                <div className="side-card" key={buyer.id}>
+                  <h3>{buyer.name}</h3>
+                  <p>
+                    {humanizeStatus(buyer.buyerType)}
+                    {buyer.deliveryProfile ? ` · ${buyer.deliveryProfile}` : ""}
+                    {buyer.contactName ? ` · ${buyer.contactName}` : ""}
+                  </p>
+                </div>
+              ),
+            )}
           </Panel>
 
           <Panel title="Data control">
             <div className="panel-body">
               <div className="actions">
-                <PendingButton>Export workspace</PendingButton>
+                {can(workspace.role, "export.workspace") ? (
+                  <a className="button" download href="/api/export">
+                    Export workspace
+                  </a>
+                ) : (
+                  <PendingButton>Export workspace</PendingButton>
+                )}
                 <PendingButton>Retention controls</PendingButton>
               </div>
               <p className="section-note">
-                No vendor lock-in: assets, metadata, financial records, and audit history are
-                exportable. Retention requirements for originals and evidence are still an open
-                product decision.
+                No vendor lock-in. The export contains every asset record, its file hashes and
+                object keys, caption history, shoots, submissions, licences, payments, allocations,
+                and the full activity record, as CSV you can open anywhere.
+              </p>
+              <p className="section-note">
+                Confidential source notes are deliberately excluded from a bulk export. Retention
+                requirements for originals and evidence are still an open product decision.
               </p>
             </div>
           </Panel>

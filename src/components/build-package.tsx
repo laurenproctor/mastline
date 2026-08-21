@@ -22,7 +22,13 @@ export function BuildPackage({
 }: {
   shootId: string;
   shootTitle: string;
-  buyers: readonly { id: string; name: string; defaultTerms?: string; deliveryProfile?: string }[];
+  buyers: readonly {
+    id: string;
+    name: string;
+    defaultTerms?: string;
+    deliveryProfile?: string;
+    defaultRestrictions?: string;
+  }[];
   suggestedBuyerId?: string;
   readyCount: number;
   blockedCount: number;
@@ -101,7 +107,8 @@ export function BuildPackage({
       <div className="spacer" />
       <Field
         control="textarea"
-        defaultValue="Editorial use only. No commercial use."
+        defaultValue={buyer?.defaultRestrictions ?? "Editorial use only. No commercial use."}
+        key={`restrictions-${buyerId}`}
         label="Usage restrictions"
         name="restrictions"
       />

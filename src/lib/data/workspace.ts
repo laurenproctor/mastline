@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AppRole, Buyer, Id } from "../domain";
 import { createClient } from "../supabase/server";
 
@@ -53,11 +54,21 @@ export async function listWorkspaceMembers(
   });
 }
 
-export async function listWorkspaceBuyers(organizationId: Id): Promise<readonly Buyer[]> {
-  const supabase = await createClient();
+export interface WorkspaceBuyer extends Buyer {
+  readonly defaultRestrictions?: string;
+  readonly paymentTermsDays?: number;
+}
+
+export async function listWorkspaceBuyers(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<readonly WorkspaceBuyer[]> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("buyers")
-    .select("id, organization_id, name, buyer_type, contact_name, default_terms, delivery_profile")
+    .select(
+      "id, organization_id, name, buyer_type, contact_name, default_terms, delivery_profile, default_delivery_method, default_restrictions, payment_terms_days",
+    )
     .eq("organization_id", organizationId)
     .order("name");
 
@@ -71,8 +82,11 @@ export async function listWorkspaceBuyers(organizationId: Id): Promise<readonly 
     contactName: (row.contact_name as string | null) ?? undefined,
     defaultTerms: (row.default_terms as string | null) ?? undefined,
     deliveryProfile:
+      (row.default_delivery_method as string | null) ??
       ((row.delivery_profile as Record<string, unknown> | null)?.profile as string | undefined) ??
       ((row.delivery_profile as Record<string, unknown> | null)?.method as string | undefined),
+    defaultRestrictions: (row.default_restrictions as string | null) ?? undefined,
+    paymentTermsDays: (row.payment_terms_days as number | null) ?? undefined,
   }));
 }
 

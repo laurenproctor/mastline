@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Asset, AssetVersion, CaptionRevision, Id } from "../domain";
 import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
@@ -93,8 +94,9 @@ function toVersion(row: Record<string, unknown>): AssetVersion {
 export async function listAssets(
   organizationId: Id,
   filter: { shootId?: Id; selectedOnly?: boolean } = {},
+  client?: SupabaseClient,
 ): Promise<readonly Asset[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
 
   let query = supabase
     .from("assets")
@@ -142,8 +144,12 @@ export async function listAssets(
   );
 }
 
-export async function getAsset(organizationId: Id, assetId: Id): Promise<Asset | null> {
-  const supabase = await createClient();
+export async function getAsset(
+  organizationId: Id,
+  assetId: Id,
+  client?: SupabaseClient,
+): Promise<Asset | null> {
+  const supabase = client ?? (await createClient());
 
   const { data, error } = await supabase
     .from("assets")
@@ -161,7 +167,7 @@ export async function getAsset(organizationId: Id, assetId: Id): Promise<Asset |
       .select(VERSION_COLUMNS)
       .eq("asset_id", assetId)
       .order("created_at", { ascending: true }),
-    listCaptionHistory(organizationId, assetId),
+    listCaptionHistory(organizationId, assetId, supabase),
     supabase
       .from("asset_lifetime_earnings")
       .select("lifetime_earnings_minor")
@@ -180,8 +186,9 @@ export async function getAsset(organizationId: Id, assetId: Id): Promise<Asset |
 export async function listCaptionHistory(
   organizationId: Id,
   assetId: Id,
+  client?: SupabaseClient,
 ): Promise<readonly CaptionRevision[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("asset_caption_revisions")
     .select("id, asset_id, headline, caption, edited_by, created_at")
@@ -282,22 +289,45 @@ export async function updateAssetMetadata(input: {
   }
 }
 
-/** Apply the same metadata to many assets at once. */
+/**
+ * Apply metadata across many assets, merging rather than replacing.
+ *
+ * Only the fields the caller supplied are written; anything absent keeps its
+ * existing value. A bulk action that blanked untouched fields would quietly
+ * destroy work across a whole card.
+ */
 export async function applyMetadataToMany(input: {
   organizationId: Id;
   actorId: Id;
   assetIds: readonly Id[];
   metadata: AssetMetadataInput;
 }): Promise<{ updated: number }> {
-  for (const assetId of input.assetIds) {
+  const { organizationId, actorId, assetIds, metadata } = input;
+  let updated = 0;
+
+  for (const assetId of assetIds) {
+    const current = await getAsset(organizationId, assetId);
+    if (!current) continue;
+
     await updateAssetMetadata({
-      organizationId: input.organizationId,
-      actorId: input.actorId,
+      organizationId,
+      actorId,
       assetId,
-      metadata: input.metadata,
+      metadata: {
+        headline: metadata.headline ?? current.headline,
+        caption: metadata.caption ?? current.caption,
+        subjects: metadata.subjects.length > 0 ? metadata.subjects : [...current.subjects],
+        locationName: metadata.locationName ?? current.locationName,
+        keywords: metadata.keywords.length > 0 ? metadata.keywords : [...current.keywords],
+        creditLine: metadata.creditLine ?? current.creditLine,
+        copyrightNotice: metadata.copyrightNotice ?? current.copyrightNotice,
+        usageRestrictions: metadata.usageRestrictions ?? current.usageRestrictions,
+      },
     });
+    updated += 1;
   }
-  return { updated: input.assetIds.length };
+
+  return { updated };
 }
 
 export async function setSelection(input: {

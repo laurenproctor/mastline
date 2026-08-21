@@ -8,8 +8,10 @@ import { formatDate, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { currentContext } from "@/lib/session-context";
+import { listStatementImports } from "@/lib/data/statements";
 import { AllocateForm } from "./_components/allocate";
 import { RecordPayment } from "./_components/record-payment";
+import { ConfirmLine, ImportStatement } from "./_components/statement-import";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue"> = {
   expected: "neutral",
@@ -36,6 +38,14 @@ export default async function MoneyPage() {
     listSubmissions(organizationId),
     listWorkspaceBuyers(organizationId),
   ]);
+
+  // Statements are money, so only finance and owner can read them at all.
+  const statements = can(role, "payment.write") ? await listStatementImports(organizationId) : [];
+  const openLines = statements.flatMap((statement) =>
+    statement.lines
+      .filter((line) => line.matchStatus === "suggested" || line.matchStatus === "unmatched")
+      .map((line) => ({ statement, line })),
+  );
 
   const buyerNames = new Map(buyers.map((buyer) => [buyer.id, buyer.name]));
   const mayWrite = can(role, "payment.write");
@@ -94,6 +104,58 @@ export default async function MoneyPage() {
 
         <div className="panel-grid">
           <div className="stack">
+            {mayWrite && openLines.length > 0 && (
+              <Panel
+                action={<span className="muted">{openLines.length} lines</span>}
+                title="Statement lines awaiting confirmation"
+              >
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Reference</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Gross</th>
+                        <th scope="col">Deducted</th>
+                        <th scope="col">Net</th>
+                        <th scope="col">Why</th>
+                        <th scope="col">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {openLines.slice(0, 20).map(({ statement, line }) => (
+                        <tr key={line.id}>
+                          <td>
+                            <strong>{line.externalReference ?? "—"}</strong>
+                            <small>{statement.filename}</small>
+                          </td>
+                          <td>{line.description ?? "—"}</td>
+                          <td>{formatMoney(line.gross)}</td>
+                          <td>{formatMoney(line.deductions)}</td>
+                          <td>
+                            <strong>{formatMoney(line.net)}</strong>
+                          </td>
+                          <td>
+                            <small>{line.matchBasis ?? "No basis recorded."}</small>
+                          </td>
+                          <td>
+                            <ConfirmLine
+                              disabled={!line.matchedSubmissionId && !line.matchedLicenseId}
+                              lineId={line.id}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="section-note panel-body">
+                  Every proposed match states its basis. Confirming a line creates a payment and
+                  attributes it; the imported figures are never rewritten.
+                </p>
+              </Panel>
+            )}
+
             <Panel
               action={<span className="muted">{needsAttention.length} lines</span>}
               title="Reconciliation queue"
@@ -261,6 +323,23 @@ export default async function MoneyPage() {
                 <RecordPayment
                   buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
                 />
+                <ImportStatement
+                  buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
+                />
+                <div className="side-card">
+                  <h3>Export everything</h3>
+                  <p>
+                    Assets, metadata, submissions, licences, payments, allocations, and the full
+                    activity record, as CSV.
+                  </p>
+                  <a className="button" download href="/api/export">
+                    Download workspace export
+                  </a>
+                  <p className="section-note">
+                    Confidential source notes are excluded. Export those deliberately if you need
+                    them.
+                  </p>
+                </div>
               </Panel>
             )}
 

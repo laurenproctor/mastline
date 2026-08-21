@@ -94,10 +94,29 @@ describe("approved pricing presentation", () => {
     expect(screen.getByRole("button", { name: "Talk to us" })).toBeInTheDocument();
   });
 
-  it("never states a trial duration", () => {
+  it("states the approved trial terms on every self-serve plan", () => {
+    render(<PricingTable />);
+    for (const name of ["Solo", "Pro", "Studio"]) {
+      expect(
+        within(cardFor(name)).getByText("14 days free. No card required."),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("does not offer a trial on the custom-priced Agency plan", () => {
+    render(<PricingTable />);
+    expect(within(cardFor("Agency")).queryByText(/days free/i)).not.toBeInTheDocument();
+  });
+
+  it("states no trial duration other than the approved 14 days", () => {
     const { container } = render(<PricingTable />);
-    expect(container.textContent).not.toMatch(/\b\d+[- ]?(day|week|month)s?\b.*free/i);
-    expect(container.textContent).not.toMatch(/trial/i);
+    const claims = container.textContent?.match(/\d+[- ]?(day|week|month)s?\s+free/gi) ?? [];
+    expect(new Set(claims)).toEqual(new Set(["14 days free"]));
+  });
+
+  it("makes no on-page claim about what happens when the trial ends", () => {
+    const { container } = render(<PricingTable />);
+    expect(container.textContent).not.toMatch(/auto[- ]?renew|cancel any ?time|after your trial/i);
   });
 
   it("gives the billing toggle an accessible group name", () => {

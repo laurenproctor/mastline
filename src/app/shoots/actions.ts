@@ -263,12 +263,29 @@ export async function applyMetadataToManyAction(
 
   const { organizationId, actorId } = await requireContext("asset.write");
 
+  // A field left empty is left alone. Blanking eighteen captions because a box
+  // was untouched would be a far worse mistake than not applying anything.
+  const provided = parsed.value;
+  const hasAnything =
+    provided.headline ||
+    provided.caption ||
+    provided.locationName ||
+    provided.creditLine ||
+    provided.copyrightNotice ||
+    provided.usageRestrictions ||
+    provided.subjects.length > 0 ||
+    provided.keywords.length > 0;
+
+  if (!hasAnything) {
+    return { errors: { _form: "Fill in at least one field to apply." } };
+  }
+
   try {
     const { updated } = await applyMetadataToMany({
       organizationId,
       actorId,
       assetIds,
-      metadata: parsed.value,
+      metadata: provided,
     });
     revalidatePath(`/shoots/${shootId}`);
     return { ok: true, message: `Applied to ${updated} ${updated === 1 ? "asset" : "assets"}.` };

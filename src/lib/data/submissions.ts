@@ -59,8 +59,11 @@ function toSubmission(row: SubmissionRow): Submission {
   };
 }
 
-export async function listSubmissions(organizationId: Id): Promise<readonly Submission[]> {
-  const supabase = await createClient();
+export async function listSubmissions(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<readonly Submission[]> {
+  const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("submissions")
     .select(SUBMISSION_COLUMNS)

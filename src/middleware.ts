@@ -12,7 +12,15 @@ import { createServerClient } from "@supabase/ssr";
  * nothing to a caller with no membership.
  */
 
-const PUBLIC_ROUTES = ["/login", "/welcome", "/pricing", "/auth"];
+/**
+ * Routes that do not require a session.
+ *
+ * /api/webhooks is here because an inbound provider callback has no session to
+ * present. It is NOT unauthenticated: the handler verifies an HMAC signature
+ * and refuses outright when no secret is configured. Everything else under
+ * /api stays gated -- /api/export in particular must never be public.
+ */
+const PUBLIC_ROUTES = ["/login", "/welcome", "/pricing", "/auth", "/api/webhooks"];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));

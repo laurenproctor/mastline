@@ -76,3 +76,49 @@ export function serviceClient(): SupabaseClient {
 export function hasLocalSupabase(): boolean {
   return Boolean(ANON && SERVICE);
 }
+
+/**
+ * Remove a shoot and everything that hangs off it.
+ *
+ * Order follows the foreign keys that restrict rather than cascade. Failures
+ * are surfaced instead of swallowed: a test that leaves rows behind pollutes
+ * every later run, and a silent cleanup is exactly how that happens.
+ */
+export async function purgeShoot(shootId: string): Promise<void> {
+  const service = serviceClient();
+
+  const { data: packages } = await service.from("packages").select("id").eq("shoot_id", shootId);
+  const packageIds = (packages ?? []).map((row) => row.id as string);
+
+  if (packageIds.length > 0) {
+    const { data: submissions } = await service
+      .from("submissions")
+      .select("id")
+      .in("package_id", packageIds);
+    const submissionIds = (submissions ?? []).map((row) => row.id as string);
+
+    if (submissionIds.length > 0) {
+      // Delivery attempts are append-only, so a plain delete -- and the
+      // cascade from the submission -- is refused. The purge routine is the one
+      // audited path that can unwind it, and this is what it exists for.
+      await service.from("statement_lines").delete().in("matched_submission_id", submissionIds);
+      for (const submissionId of submissionIds) {
+        const { error } = await service.rpc("purge_submission_admin", {
+          target_submission: submissionId,
+        });
+        if (error) throw new Error(`Could not clean up submission: ${error.message}`);
+      }
+    }
+  }
+
+  const { data: assets } = await service.from("assets").select("id").eq("shoot_id", shootId);
+  for (const asset of assets ?? []) {
+    await service.from("payment_allocations").delete().eq("asset_id", asset.id);
+    const { error } = await service.rpc("purge_asset_admin", { target_asset: asset.id });
+    if (error) throw new Error(`Could not purge asset ${asset.id}: ${error.message}`);
+  }
+
+  await service.from("packages").delete().eq("shoot_id", shootId);
+  const { error } = await service.from("shoots").delete().eq("id", shootId);
+  if (error) throw new Error(`Could not clean up shoot ${shootId}: ${error.message}`);
+}

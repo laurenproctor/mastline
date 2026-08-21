@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Id, Shoot, ShootStatus } from "../domain";
 import type { ShootBriefInput } from "../validation";
 import { createClient } from "../supabase/server";
@@ -65,8 +66,11 @@ function toShoot(row: ShootRow, hasSensitiveNote: boolean): Shoot {
  * returns an empty set and the interface simply does not mention that a note
  * exists. Absence of the flag is not evidence of absence of a note.
  */
-async function sensitiveNoteShootIds(organizationId: Id): Promise<Set<string>> {
-  const supabase = await createClient();
+async function sensitiveNoteShootIds(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<Set<string>> {
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("shoot_sensitive_notes")
     .select("shoot_id")
@@ -74,15 +78,18 @@ async function sensitiveNoteShootIds(organizationId: Id): Promise<Set<string>> {
   return new Set((data ?? []).map((row) => row.shoot_id as string));
 }
 
-export async function listShoots(organizationId: Id): Promise<readonly Shoot[]> {
-  const supabase = await createClient();
+export async function listShoots(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<readonly Shoot[]> {
+  const supabase = client ?? (await createClient());
   const [{ data, error }, noteIds] = await Promise.all([
     supabase
       .from("shoots")
       .select(SHOOT_COLUMNS)
       .eq("organization_id", organizationId)
       .order("updated_at", { ascending: false }),
-    sensitiveNoteShootIds(organizationId),
+    sensitiveNoteShootIds(organizationId, supabase),
   ]);
 
   if (error) throw new Error(`Could not load shoots: ${error.message}`);

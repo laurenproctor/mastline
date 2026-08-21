@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge, Metric, PageHeader, Panel } from "@/components/primitives";
 import { listActivity } from "@/lib/data/activity";
+import { listDeliveryAttempts } from "@/lib/data/delivery";
 import { listAssets } from "@/lib/data/assets";
 import { listLicenses, listPayments } from "@/lib/data/money";
 import { getPackage } from "@/lib/data/packages";
@@ -13,6 +14,7 @@ import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { currentContext } from "@/lib/session-context";
+import { DeliveryPanel } from "../_components/delivery-panel";
 import { OutcomePanel } from "../_components/outcome-panel";
 
 export default async function SubmissionPage({
@@ -27,12 +29,13 @@ export default async function SubmissionPage({
   const submission = await getSubmission(organizationId, submissionId);
   if (!submission) notFound();
 
-  const [pkg, buyers, activity, licenses, payments] = await Promise.all([
+  const [pkg, buyers, activity, licenses, payments, attempts] = await Promise.all([
     getPackage(organizationId, submission.packageId),
     listWorkspaceBuyers(organizationId),
     listActivity(organizationId, { entityId: submissionId }),
     listLicenses(organizationId),
     listPayments(organizationId),
+    listDeliveryAttempts(organizationId, submissionId),
   ]);
 
   const shoot = pkg ? await getShoot(organizationId, pkg.shootId) : null;
@@ -208,6 +211,21 @@ export default async function SubmissionPage({
           </div>
 
           <Panel title="Next action">
+            <DeliveryPanel
+              attempts={attempts.map((attempt) => ({
+                id: attempt.id,
+                attemptNumber: attempt.attemptNumber,
+                status: attempt.status,
+                errorCode: attempt.errorCode,
+                errorDetail: attempt.errorDetail,
+                attemptedAt: attempt.attemptedAt,
+                byPerson: Boolean(attempt.attemptedBy),
+              }))}
+              canRetry={can(role, "submission.send")}
+              status={submission.status}
+              submissionId={submissionId}
+            />
+
             {license && (
               <div className="side-card">
                 <Badge tone="good">Sold</Badge>

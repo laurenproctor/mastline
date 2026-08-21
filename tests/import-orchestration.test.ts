@@ -3,7 +3,7 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { canonicalObjectKey, registerImport, stagingKeyFor } from "../src/lib/data/imports";
-import { ORG_A, clientFor, hasLocalSupabase, serviceClient } from "./helpers/supabase";
+import { ORG_A, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
  * The real import orchestration, not a re-implementation of it in SQL.
@@ -50,14 +50,7 @@ async function stage(content: string): Promise<{ key: string; sha: string; bytes
 }
 
 afterAll(async () => {
-  const service = serviceClient();
-  for (const shootId of shoots) {
-    const { data: assets } = await service.from("assets").select("id").eq("shoot_id", shootId);
-    for (const asset of assets ?? []) {
-      await service.rpc("purge_asset_admin", { target_asset: asset.id });
-    }
-    await service.from("shoots").delete().eq("id", shootId);
-  }
+  for (const shootId of shoots) await purgeShoot(shootId);
 });
 
 describeIf("registerImport", () => {

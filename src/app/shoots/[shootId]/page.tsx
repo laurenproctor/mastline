@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { BuildPackage } from "@/components/build-package";
+import { BulkMetadata } from "@/components/bulk-metadata";
 import { ImportDropzone } from "@/components/import-dropzone";
 import { Badge, PageHeader, Panel, Progress } from "@/components/primitives";
 import { ShootWorkspace } from "@/components/shoot-workspace";
@@ -231,6 +232,19 @@ export default async function ShootWorkspacePage({
                 </div>
               )}
 
+              {can(role, "asset.write") && (
+                <BulkMetadata
+                  defaults={{
+                    creditLine: selected[0]?.creditLine,
+                    copyrightNotice: selected[0]?.copyrightNotice,
+                    locationName: shoot.locationName ?? selected[0]?.locationName,
+                    usageRestrictions: selected[0]?.usageRestrictions,
+                  }}
+                  selectedIds={selected.map((asset) => asset.id)}
+                  shootId={shootId}
+                />
+              )}
+
               {can(role, "package.write") ? (
                 <BuildPackage
                   blockedCount={selectionReport.blocked}
@@ -239,6 +253,7 @@ export default async function ShootWorkspacePage({
                     name: buyer.name,
                     defaultTerms: buyer.defaultTerms,
                     deliveryProfile: buyer.deliveryProfile,
+                    defaultRestrictions: buyer.defaultRestrictions,
                   }))}
                   readyCount={selectionReport.ready}
                   shootId={shootId}

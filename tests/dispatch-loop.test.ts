@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { afterAll, describe, expect, it } from "vitest";
-import { ORG_A, hasLocalSupabase, serviceClient } from "./helpers/supabase";
+import { ORG_A, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
  * The commercial loop, exercised against the database: package, approve,
@@ -120,24 +120,7 @@ afterAll(async () => {
   const service = serviceClient();
   for (const id of created.payments) await service.from("payments").delete().eq("id", id);
   for (const id of created.licenses) await service.from("licenses").delete().eq("id", id);
-  for (const shootId of created.shoots) {
-    await service
-      .from("submissions")
-      .delete()
-      .eq("organization_id", ORG_A)
-      .in(
-        "package_id",
-        ((await service.from("packages").select("id").eq("shoot_id", shootId)).data ?? []).map(
-          (row) => row.id,
-        ),
-      );
-    const { data: assets } = await service.from("assets").select("id").eq("shoot_id", shootId);
-    for (const asset of assets ?? []) {
-      await service.rpc("purge_asset_admin", { target_asset: asset.id });
-    }
-    await service.from("packages").delete().eq("shoot_id", shootId);
-    await service.from("shoots").delete().eq("id", shootId);
-  }
+  for (const shootId of created.shoots) await purgeShoot(shootId);
 });
 
 describeIf("a sent submission freezes what was sent", () => {
@@ -424,13 +407,14 @@ describeIf("payments reconcile through allocations", () => {
 
   it("keeps gross, deductions, platform fee, tax, and net separately inspectable", async () => {
     const service = serviceClient();
+    const reference = `BREAKDOWN-${Date.now()}`;
     const { data: payment } = await service
       .from("payments")
       .insert({
         organization_id: ORG_A,
         status: "received",
         source: "checkout",
-        external_reference: `BREAKDOWN-${Date.now()}`,
+        external_reference: reference,
         gross_minor: 64_000,
         deductions_minor: 0,
         platform_fee_minor: 19_200,
@@ -439,8 +423,9 @@ describeIf("payments reconcile through allocations", () => {
         received_at: new Date().toISOString(),
         created_by: OWNER,
       })
-      .select("gross_minor, deductions_minor, platform_fee_minor, tax_minor, net_minor")
+      .select("id, gross_minor, deductions_minor, platform_fee_minor, tax_minor, net_minor")
       .single();
+    created.payments.push(payment!.id as string);
 
     expect(Number(payment!.gross_minor)).toBe(64_000);
     expect(Number(payment!.platform_fee_minor)).toBe(19_200);
@@ -452,13 +437,6 @@ describeIf("payments reconcile through allocations", () => {
         Number(payment!.tax_minor) +
         Number(payment!.net_minor),
     ).toBe(Number(payment!.gross_minor));
-
-    const { data: row } = await service
-      .from("payments")
-      .select("id")
-      .eq("external_reference", payment ? `BREAKDOWN-${Date.now()}` : "")
-      .maybeSingle();
-    if (row) created.payments.push(row.id as string);
   });
 });
 

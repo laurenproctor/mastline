@@ -89,6 +89,23 @@ export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQue
     }
   }
 
+  // A failed delivery is the single most urgent thing on the board, and it
+  // produces exactly one item however many attempts have been made.
+  for (const submission of submissions) {
+    if (submission.status !== "failed") continue;
+    items.push({
+      id: `wq_failed_${submission.id}`,
+      kind: "Submission",
+      title: `Delivery failed: ${submission.reference}`,
+      detail: "The buyer's system rejected or never received this package",
+      occurredAt: submission.sentAt ?? "",
+      urgent: true,
+      actionLabel: "Retry",
+      href: `/submissions/${submission.id}`,
+      rankingBasis: "An approved package has not reached the buyer",
+    });
+  }
+
   // Submissions with no recorded outcome.
   for (const submission of submissions) {
     if (!["sent", "delivered", "acknowledged"].includes(submission.status)) continue;

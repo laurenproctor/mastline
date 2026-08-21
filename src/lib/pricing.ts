@@ -7,11 +7,10 @@
  * Prices are approved product facts (`docs/DECISIONS.md`). Changing them is a
  * business decision, not an implementation detail.
  *
- * Trial terms as of 2026-08-21: 14 days, no payment method required to start.
- * End-of-trial conversion mechanics and eligibility are still UNRESOLVED.
- * The marketing copy has not yet been authorized to state the duration, so
- * "Start free" stands alone here and the guard tests still forbid trial
- * language in plan copy. Changing that is a founder decision, not a cleanup.
+ * Trial terms are approved product facts too (`docs/DECISIONS.md` #1, resolved
+ * 2026-08-21): 14 days, no payment method required to start. What happens at
+ * the end of the trial - grace period, read-only lock, or anything about the
+ * uploaded work - is still UNRESOLVED, so no copy may imply an answer.
  */
 
 import { type Money, formatMoney, fromMajor } from "./money";
@@ -108,6 +107,24 @@ export const PLANS: readonly Plan[] = [
 ] as const;
 
 export const DEFAULT_BILLING_PERIOD: BillingPeriod = "annual";
+
+/** Approved trial length in days. Do not state any other number anywhere. */
+export const TRIAL_DAYS = 14;
+
+/** A card is not required to start a trial. */
+export const TRIAL_REQUIRES_PAYMENT_METHOD = false;
+
+/**
+ * The trial line shown beneath the call to action on self-serve plans.
+ *
+ * Deliberately says only what has been decided. It makes no claim about
+ * auto-conversion, cancellation, or what a lapsed workspace can still do,
+ * because none of that has been settled.
+ */
+export function trialTermsLabel(): string {
+  const days = `${TRIAL_DAYS} days free`;
+  return TRIAL_REQUIRES_PAYMENT_METHOD ? `${days}.` : `${days}. No card required.`;
+}
 
 export function isCustomPriced(plan: Plan): boolean {
   return plan.annualMonthlyMajor === null || plan.monthlyMajor === null;

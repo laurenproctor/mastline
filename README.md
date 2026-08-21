@@ -76,6 +76,9 @@ Business rules are centralized, not spread across components:
 | `src/lib/permissions.ts` | Role capabilities, kept in step with the RLS policies |
 | `src/lib/metadata-rules.ts` | What "complete enough" means; drives warnings and the dispatch gate |
 | `src/lib/dispatch-rules.ts` | Whether a package is buyer-ready; gates approval |
+| `src/lib/statement-import.ts` | CSV reading and statement matching |
+| `src/lib/export.ts` | Workspace export |
+| `src/lib/webhook.ts` | Signature verification and payload parsing |
 | `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
@@ -173,9 +176,43 @@ sheet. RAW files are imported and hashed identically but have no preview until
 a server-side decoder exists — which RAW formats are supported at launch is
 still an open product decision.
 
+**Phase 3** — operational hardening. Failed deliveries are logged, explained,
+and retryable. Inbound delivery webhooks are signature-verified and idempotent.
+Agency statements import from CSV and reconcile line by line. The whole
+workspace exports as CSV. Bulk metadata, buyer delivery templates.
+
+### Webhooks
+
+`POST /api/webhooks/delivery/<provider>` with an `x-mastline-signature` header
+carrying the HMAC-SHA256 of the raw body. Configure `WEBHOOK_SECRET_DEFAULT` or
+a per-provider `WEBHOOK_SECRET_<PROVIDER>`; with neither set the endpoint
+refuses every request rather than accepting unverified writes.
+
+Each event is claimed by its provider event id before anything is processed, so
+a provider retry answers `duplicate` and changes nothing. This is the only
+route under `/api` that does not require a session, and it is not
+unauthenticated — the signature is the credential.
+
+### Statement import
+
+Drop an agency CSV on the money screen. Common column names are recognised, the
+original row is stored exactly as it arrived, and each line is matched against
+your submissions with a stated basis. Nothing becomes money until a person
+confirms the line. Re-importing the same file is reported as a duplicate rather
+than doubling the revenue.
+
+### Export
+
+`GET /api/export` returns every asset record with its file hashes and object
+keys, caption history, shoots, submissions, licences, payments, allocations,
+and the full activity record as CSV. Money appears twice: integer minor units
+as the authoritative figure, and a decimal for spreadsheets. Confidential source
+notes are deliberately excluded. Owner and finance roles only.
+
 Only News Radar still reads the mock layer, because there is no opportunity
 source to read from yet; the first release uses manually entered stories. That
 goes away in Phase 4.
 
-Not yet built: delivery integrations, webhook retry, statement CSV import, and
-rights triage actions. See `docs/IMPLEMENTATION_PLAN.md`.
+Not yet built: outbound delivery to a buyer's systems (Mastline records a
+dispatch, it does not transmit), and rights triage actions. See
+`docs/IMPLEMENTATION_PLAN.md`.
