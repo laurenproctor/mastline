@@ -45,6 +45,26 @@ describe("Field", () => {
     render(<Field label="Embargo" name="embargo" />);
     expect(screen.getByLabelText("Embargo")).not.toHaveAttribute("aria-describedby");
   });
+
+  it("marks the control invalid and announces the message when there is an error", () => {
+    render(<Field error="Give the shoot a subject." label="Subject" name="title" />);
+    const input = screen.getByLabelText("Subject");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("Give the shoot a subject.");
+    expect(input.getAttribute("aria-describedby")).toContain("field-title-error");
+  });
+
+  it("is not marked invalid when there is no error", () => {
+    render(<Field label="Subject" name="title" />);
+    expect(screen.getByLabelText("Subject")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("points at both the error and the hint when both are present", () => {
+    render(<Field error="Too long." hint="Keep it short." label="Subject" name="title" />);
+    const describedBy = screen.getByLabelText("Subject").getAttribute("aria-describedby") ?? "";
+    expect(describedBy).toContain("field-title-error");
+    expect(describedBy).toContain("field-title-hint");
+  });
 });
 
 describe("PendingButton", () => {

@@ -149,6 +149,7 @@ export function Field({
   control = "input",
   full = false,
   hint,
+  error,
   children,
   ...rest
 }: {
@@ -157,14 +158,20 @@ export function Field({
   control?: FieldControl;
   full?: boolean;
   hint?: string;
+  /** A validation message. Bound to the control and announced when it appears. */
+  error?: string;
   children?: React.ReactNode;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "children" | "name">) {
   const id = `field-${name}`;
   const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
+
   const shared = {
     id,
     name,
-    "aria-describedby": hintId,
+    "aria-describedby": describedBy,
+    "aria-invalid": error ? true : undefined,
     ...(rest as Record<string, unknown>),
   };
 
@@ -177,6 +184,11 @@ export function Field({
         <select {...(shared as React.SelectHTMLAttributes<HTMLSelectElement>)}>{children}</select>
       ) : (
         <input {...(shared as React.InputHTMLAttributes<HTMLInputElement>)} />
+      )}
+      {error && (
+        <small className="field-error" id={errorId} role="alert">
+          {error}
+        </small>
       )}
       {hint && (
         <small className="section-note" id={hintId}>

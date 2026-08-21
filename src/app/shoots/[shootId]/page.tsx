@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Field, PendingButton, PhotoTile, Progress } from "@/components/primitives";
+import { ImportDropzone } from "@/components/import-dropzone";
+import { Badge, PageHeader, Panel, PendingButton, Progress } from "@/components/primitives";
+import { ShootWorkspace } from "@/components/shoot-workspace";
+import type { InspectorAsset } from "@/components/asset-inspector";
+import type { SheetAsset } from "@/components/contact-sheet";
+import { listAssets, listCaptionHistory } from "@/lib/data/assets";
+import { signedUrlsFor } from "@/lib/data/imports";
+import { getSensitiveNote, getShoot } from "@/lib/data/shoots";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
-import { getReviewablePackageForShoot, getShootProgress, listAssets } from "@/lib/mock/queries";
+import { reviewAsset, reviewSelection } from "@/lib/metadata-rules";
+import { can } from "@/lib/permissions";
+import { currentContext } from "@/lib/session-context";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function ShootWorkspacePage({
   params,
@@ -11,166 +21,221 @@ export default async function ShootWorkspacePage({
   params: Promise<{ shootId: string }>;
 }) {
   const { shootId } = await params;
-  const progress = await getShootProgress(shootId);
-  if (!progress) notFound();
+  const { session, organizationId } = await currentContext();
+  const role = session.activeWorkspace.role;
 
-  const [assets, pkg] = await Promise.all([
-    listAssets({ shootId }),
-    getReviewablePackageForShoot(shootId),
-  ]);
-  const { shoot } = progress;
-  const focused = assets.find((asset) => !asset.caption) ?? assets[0];
+  const shoot = await getShoot(organizationId, shootId);
+  if (!shoot) notFound();
+
+  const assets = await listAssets(organizationId, { shootId });
+  const selected = assets.filter((asset) => asset.selected);
+  const selectionReport = reviewSelection(selected);
+
+  // Preview objects for the contact sheet, signed briefly. Nothing is public.
+  const previewKeys = assets
+    .map((asset) => asset.versions.find((version) => version.versionKind === "preview")?.objectKey)
+    .filter((key): key is string => Boolean(key));
+  const previewUrls = await signedUrlsFor(await createClient(), "derivatives", previewKeys, 600);
+
+  const sheetAssets: SheetAsset[] = assets.map((asset) => {
+    const report = reviewAsset(asset);
+    const previewKey = asset.versions.find(
+      (version) => version.versionKind === "preview",
+    )?.objectKey;
+    return {
+      id: asset.id,
+      filename: asset.canonicalFilename,
+      selected: asset.selected,
+      rating: asset.rating,
+      previewUrl: previewKey ? previewUrls.get(previewKey) : undefined,
+      missingRequired: report.missingRequired.map((rule) => rule.label),
+      capturedAt: asset.capturedAt,
+    };
+  });
+
+  const histories = await Promise.all(
+    assets.map((asset) => listCaptionHistory(organizationId, asset.id)),
+  );
+
+  const inspectorAssets: InspectorAsset[] = assets.map((asset, index) => {
+    const report = reviewAsset(asset);
+    return {
+      id: asset.id,
+      filename: asset.canonicalFilename,
+      headline: asset.headline,
+      caption: asset.caption,
+      subjects: asset.subjects,
+      locationName: asset.locationName,
+      keywords: asset.keywords,
+      creditLine: asset.creditLine,
+      copyrightNotice: asset.copyrightNotice,
+      usageRestrictions: asset.usageRestrictions,
+      capturedAt: asset.capturedAt,
+      missingRequired: report.missingRequired.map((rule) => rule.label),
+      missingRecommended: report.missingRecommended.map((rule) => rule.label),
+      revisionCount: histories[index].length,
+    };
+  });
+
+  const sensitiveNote = shoot.hasSensitiveNote
+    ? await getSensitiveNote(organizationId, shootId)
+    : null;
+
+  const mayEdit = can(role, "asset.write");
 
   return (
     <AppShell active="Shoots">
       <div className="page">
-        <div className="workspace-header">
-          <div className="workspace-title">
-            <Badge tone="warn">{humanizeStatus(shoot.status)}</Badge>
-            <h1>{shoot.title}</h1>
-            <p>
-              {shoot.startsAt ? formatDate(shoot.startsAt, { withYear: true }) : "No date set"} ·{" "}
-              {shoot.locationName} · {progress.importedFileCount} files imported
-            </p>
-          </div>
-          <div className="actions">
-            <PendingButton>Share with editor</PendingButton>
-            {pkg && (
-              <Link className="button blue" href={`/dispatch/${shoot.id}`}>
-                Review dispatch
-              </Link>
-            )}
-          </div>
-        </div>
+        <PageHeader
+          description={`${shoot.startsAt ? formatDate(shoot.startsAt, { withYear: true }) : "No date set"}${
+            shoot.locationName ? ` · ${shoot.locationName}` : ""
+          } · ${assets.length} ${assets.length === 1 ? "file" : "files"}`}
+          eyebrow={humanizeStatus(shoot.status)}
+          title={shoot.title}
+        />
 
         <div className="metrics">
           <div className="metric">
             <span>Imported</span>
-            <strong>{progress.importedFileCount}</strong>
+            <strong>{assets.length}</strong>
             <small>Originals preserved</small>
           </div>
           <div className="metric">
             <span>Selected</span>
-            <strong>{progress.selectedCount}</strong>
-            <small>Target: 15–24</small>
+            <strong>{selected.length}</strong>
+            <small>{assets.length - selected.length} not selected</small>
           </div>
           <div className="metric">
-            <span>Captioned</span>
-            <strong>{progress.captionedCount}</strong>
-            <small className={progress.warningCount > 0 ? "danger" : "good"}>
-              {progress.warningCount > 0 ? `${progress.warningCount} incomplete` : "All complete"}
+            <span>Dispatch ready</span>
+            <strong>{selectionReport.ready}</strong>
+            <small className={selectionReport.blocked > 0 ? "danger" : "good"}>
+              {selectionReport.blocked > 0
+                ? `${selectionReport.blocked} need metadata`
+                : "All selected frames complete"}
             </small>
           </div>
           <div className="metric">
-            <span>Package</span>
-            <strong>
-              {progress.packageStatus ? humanizeStatus(progress.packageStatus) : "None"}
-            </strong>
-            <small>{pkg?.assets.length ?? 0} assets</small>
+            <span>Completeness</span>
+            <strong>{selectionReport.completionPercent}%</strong>
+            <small>Across the selection</small>
           </div>
         </div>
 
-        <div className="shoot-layout">
-          <div>
-            <div className="dark-toolbar">
-              <div className="actions">
-                <PendingButton small>All files</PendingButton>
-                <PendingButton small>Selected {progress.selectedCount}</PendingButton>
-                <PendingButton small>Warnings {progress.warningCount}</PendingButton>
+        {assets.length === 0 ? (
+          mayEdit ? (
+            <ImportDropzone shootId={shootId} />
+          ) : (
+            <Panel title="No files yet">
+              <div className="panel-body">
+                <p className="section-note">
+                  This shoot has no files. Your role can view the record but not import.
+                </p>
               </div>
-              <Progress label="Caption progress" value={progress.captionCompletionPercent} />
-            </div>
-
-            <ul className="photo-grid">
-              {assets.slice(0, 15).map((asset, index) => (
-                <li key={asset.id}>
-                  <Link
-                    aria-label={`${asset.canonicalFilename}${asset.caption ? "" : " — caption needed"}`}
-                    className="photo-link"
-                    href={`/assets/${asset.id}`}
-                  >
-                    <PhotoTile
-                      index={index + 1}
-                      selected={asset.selected}
-                      warning={!asset.caption}
-                    />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="dark-toolbar">
-              <span className="muted">Shift-click to compare · Space to toggle select</span>
-              <div className="actions">
-                <PendingButton small>Reject</PendingButton>
-                <PendingButton small>Compare</PendingButton>
-                <PendingButton small>Apply metadata</PendingButton>
-                <PendingButton className="acid" small>
-                  Add to package
-                </PendingButton>
-              </div>
-            </div>
-          </div>
-
-          <aside className="panel">
-            <div className="panel-head">
-              <h2>Asset inspector</h2>
-              {focused?.caption ? (
-                <Badge tone="good">Captioned</Badge>
-              ) : (
-                <Badge tone="warn">Caption needed</Badge>
+            </Panel>
+          )
+        ) : (
+          <>
+            <div className="sheet-header">
+              <Progress label="Selection ready" value={selectionReport.completionPercent} />
+              {mayEdit && (
+                <Link className="button small" href={`/shoots/${shootId}#import`}>
+                  Import more
+                </Link>
               )}
             </div>
-            {focused && (
-              <div className="inspector">
-                <p className="section-note">{focused.canonicalFilename}</p>
-                <Field defaultValue={focused.headline ?? ""} label="Headline" name="headline" />
-                <Field
-                  control="textarea"
-                  defaultValue={focused.caption ?? ""}
-                  label="Caption"
-                  name="caption"
-                />
-                <Field defaultValue={focused.subjects.join(", ")} label="People" name="subjects" />
-                <Field
-                  defaultValue={focused.locationName ?? ""}
-                  label="Location"
-                  name="locationName"
-                />
-                <Field
-                  defaultValue={focused.keywords.join(", ")}
-                  label="Keywords"
-                  name="keywords"
-                />
-                <Field
-                  defaultValue={focused.creditLine ?? ""}
-                  label="Credit / copyright"
-                  name="creditLine"
-                />
-                <Field
-                  control="textarea"
-                  defaultValue={focused.usageRestrictions ?? ""}
-                  label="Usage restrictions"
-                  name="usageRestrictions"
-                />
-                <p className="section-note">
-                  Captured {focused.capturedAt ? formatDateTime(focused.capturedAt) : "unknown"} ·{" "}
-                  {focused.versions.length} versions · original preserved.
-                </p>
-                <Link className="text-link" href={`/assets/${focused.id}`}>
-                  Open full record <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            )}
-          </aside>
-        </div>
+            <ShootWorkspace
+              inspectorAssets={inspectorAssets}
+              sheetAssets={sheetAssets}
+              shootId={shootId}
+            />
+          </>
+        )}
 
-        <p className="section-note">
-          Brief: {shoot.storyAngle ?? "No story angle recorded."}
-          {shoot.hasSensitiveNote &&
-            " A confidential source note exists and is visible only to roles with source access."}
-          {` Last updated ${formatDateTime(shoot.updatedAt)}.`}
-        </p>
+        <div className="spacer" />
+
+        <div className="panel-grid">
+          <Panel title="Brief">
+            <dl>
+              <div className="key-value">
+                <dt>Story angle</dt>
+                <dd>{shoot.storyAngle ?? "—"}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Assignment</dt>
+                <dd>{shoot.assignmentLabel ?? "Direct"}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Priority</dt>
+                <dd>{humanizeStatus(shoot.priority)}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Exclusivity</dt>
+                <dd>{shoot.exclusivity ?? "None"}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Embargo</dt>
+                <dd>{shoot.embargoUntil ? formatDateTime(shoot.embargoUntil) : "None"}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Sensitive content</dt>
+                <dd>{shoot.sensitiveContent ? "Yes" : "No"}</dd>
+              </div>
+              <div className="key-value">
+                <dt>Notes</dt>
+                <dd>{shoot.notes ?? "—"}</dd>
+              </div>
+            </dl>
+          </Panel>
+
+          <div className="stack">
+            {sensitiveNote && (
+              <Panel action={<Badge tone="warn">Restricted</Badge>} title="Confidential source">
+                <div className="panel-body">
+                  <p>{sensitiveNote.sourceNote ?? "—"}</p>
+                  {sensitiveNote.confidentialLocation && (
+                    <p className="section-note">{sensitiveNote.confidentialLocation}</p>
+                  )}
+                  <p className="section-note">
+                    Visible to owners and editors only. Not exposed through search.
+                  </p>
+                </div>
+              </Panel>
+            )}
+
+            <Panel title="Next action">
+              <div className="side-card">
+                {selected.length === 0 ? (
+                  <>
+                    <h3>Select the frames worth sending</h3>
+                    <p>Space selects the focused frame. Shift-click extends a range.</p>
+                  </>
+                ) : selectionReport.blocked > 0 ? (
+                  <>
+                    <h3>
+                      Complete metadata on {selectionReport.blocked}{" "}
+                      {selectionReport.blocked === 1 ? "frame" : "frames"}
+                    </h3>
+                    <p>
+                      A package cannot be approved while a selected frame is missing required
+                      metadata.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3>Ready to package</h3>
+                    <p>
+                      Every selected frame carries a caption, credit, copyright, and capture time.
+                    </p>
+                  </>
+                )}
+                <PendingButton className="blue" small>
+                  Build package
+                </PendingButton>
+                <p className="section-note">Dispatch is built in the next phase.</p>
+              </div>
+            </Panel>
+          </div>
+        </div>
       </div>
     </AppShell>
   );

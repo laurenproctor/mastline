@@ -74,6 +74,8 @@ Business rules are centralized, not spread across components:
 | `src/lib/money.ts` | Integer minor units, arithmetic, formatting |
 | `src/lib/domain.ts` | Entity types and status vocabularies (mirrors the schema enums) |
 | `src/lib/permissions.ts` | Role capabilities, kept in step with the RLS policies |
+| `src/lib/metadata-rules.ts` | What "complete enough" means; drives warnings and the dispatch gate |
+| `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
 
@@ -123,10 +125,30 @@ accessibility fixes, and a typed relational mock layer.
 
 **Phase 1** — the commercial graph as a migration with organization-scoped RLS,
 three private storage buckets, Supabase Auth with SSR sessions, protected
-routes, workspace switching, and the six-role permission matrix. Settings reads
-real workspace data.
+routes, workspace switching, and the six-role permission matrix.
 
-Not yet built: the write paths. Shoots, assets, dispatch, submissions, and money
-still read the mock layer and are replaced in Phase 2. Actions that are not
-wired up are marked `aria-disabled` rather than silently doing nothing. See
+**Phase 2A** — shoot to selected asset. Create Shoot writes real records, files
+import with a browser-computed SHA-256 into private storage, originals are
+immutable, the contact sheet culls by keyboard, and metadata edits preserve
+prior versions in an append-only log.
+
+### How an import works
+
+1. The browser hashes the file with WebCrypto before anything leaves the machine.
+2. The bytes go to `originals/<organization_id>/_staging/<token>`.
+3. `registerImport` creates the asset and its original version row.
+4. Only then are the bytes promoted to their canonical key.
+
+If step 3 fails the staged object is removed and nothing authoritative was
+written. Objects under `_staging/` are the only ones in the originals bucket
+that can be renamed or deleted; once promoted, an original is immutable.
+
+JPEG, PNG, WebP, and AVIF get a browser-generated preview for the contact
+sheet. RAW files are imported and hashed identically but have no preview until
+a server-side decoder exists — which RAW formats are supported at launch is
+still an open product decision.
+
+Not yet built: dispatch, submissions, and money still read the mock layer and
+are replaced in Phase 2B. Actions that are not wired up are marked
+`aria-disabled` rather than silently doing nothing. See
 `docs/IMPLEMENTATION_PLAN.md`.

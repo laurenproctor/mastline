@@ -1,96 +1,89 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Field, PageHeader, Panel, PendingButton } from "@/components/primitives";
-import { listBuyers } from "@/lib/mock/queries";
+import { Badge, PageHeader, Panel } from "@/components/primitives";
+import { listWorkspaceBuyers } from "@/lib/data/workspace";
+import { can } from "@/lib/permissions";
+import { currentContext } from "@/lib/session-context";
+import { CreateShootForm } from "./shoot-form";
 
 export default async function CreateShootPage() {
-  const buyers = await listBuyers();
+  const { session, organizationId } = await currentContext();
+  const role = session.activeWorkspace.role;
+
+  // A role that cannot create a shoot is told so, rather than being shown a
+  // form whose submit will be refused.
+  if (!can(role, "shoot.write")) {
+    return (
+      <AppShell active="Shoots">
+        <div className="page">
+          <PageHeader
+            description="Your role can view shoots but not create them."
+            eyebrow="Not available"
+            title="Create shoot"
+          />
+          <Panel>
+            <div className="panel-body">
+              <p className="section-note">
+                Creating a shoot needs an owner or editor role in this workspace. Ask an owner to
+                change your role, or open an existing shoot.
+              </p>
+              <div className="spacer" />
+              <Link className="button" href="/shoots">
+                Back to shoots
+              </Link>
+            </div>
+          </Panel>
+        </div>
+      </AppShell>
+    );
+  }
+
+  const buyers = await listWorkspaceBuyers(organizationId);
 
   return (
     <AppShell active="Shoots">
       <div className="page">
         <PageHeader
-          description="Start with files or a brief. Facts entered here are inherited by assets, packages, and submissions."
+          description="Start with a brief. Facts entered here are inherited by every asset, package, and submission that follows."
           eyebrow="New record"
           title="Create shoot"
         />
-        <div className="panel-grid">
-          <div className="dropzone">
-            <div>
-              <div aria-hidden="true" className="dropzone-mark">
-                ＋
-              </div>
-              <h2>Bring in the shoot</h2>
-              <p>
-                Drop a folder, card export, JPEGs, RAW files, or video clips. Originals are
-                preserved untouched and delivery derivatives are created separately.
-              </p>
-              <div className="upload-options">
-                <PendingButton>Choose folder</PendingButton>
-                <PendingButton>Mobile upload</PendingButton>
-                <PendingButton>Watch folder</PendingButton>
-              </div>
-              <div className="spacer" />
-              <Badge tone="good">Private by default</Badge>
-            </div>
-          </div>
 
+        <div className="panel-grid">
           <Panel action={<Badge tone="neutral">Draft</Badge>} title="Shoot brief">
             <div className="panel-body">
-              <p className="section-note">
-                A shoot can be created from a brief alone. Files are not required.
-              </p>
-              <div className="spacer" />
-              <div className="form-grid">
-                <Field full label="Subject or event" name="title" required />
-                <Field label="Date and time" name="startsAt" type="datetime-local" />
-                <Field control="select" defaultValue="high" label="Priority" name="priority">
-                  <option value="urgent">Urgent</option>
-                  <option value="high">High</option>
-                  <option value="standard">Standard</option>
-                  <option value="watch">Watch</option>
-                </Field>
-                <Field full label="Location" name="locationName" />
-                <Field label="Photographer" name="photographer" />
-                <Field
-                  label="Assignment / agency"
-                  name="assignmentLabel"
-                  placeholder="Direct, Backgrid, Getty…"
-                />
-                <Field control="textarea" full label="Story angle" name="storyAngle" />
-                <Field
-                  control="select"
-                  hint="Buyers you expect to pitch. Used to pre-fill the dispatch package."
-                  label="Target buyer"
-                  name="targetBuyer"
-                >
-                  {buyers.map((buyer) => (
-                    <option key={buyer.id} value={buyer.id}>
-                      {buyer.name}
-                    </option>
-                  ))}
-                </Field>
-                <Field label="Expected expenses" name="expectedExpenses" placeholder="$0.00" />
-                <Field control="select" label="Exclusivity" name="exclusivity">
-                  <option>None</option>
-                  <option>Agency exclusive</option>
-                  <option>Buyer exclusive</option>
-                </Field>
-                <Field label="Embargo" name="embargoUntil" placeholder="No embargo" />
-                <Field
-                  control="textarea"
-                  full
-                  hint="Stored separately and visible only to roles with source access. Never exposed through global search."
-                  label="Confidential source note"
-                  name="sourceNote"
-                />
-              </div>
-              <div className="spacer" />
-              <div className="actions">
-                <PendingButton className="primary">Create shoot and review</PendingButton>
-                <PendingButton>Save draft</PendingButton>
-              </div>
+              <CreateShootForm
+                buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
+                canSeeSourceNote={can(role, "sensitive_note.read")}
+              />
             </div>
           </Panel>
+
+          <div className="stack">
+            <Panel title="What happens next">
+              <div className="panel-body">
+                <ol className="next-steps">
+                  <li>The shoot is created as a draft.</li>
+                  <li>Import files. Each is hashed before it leaves this machine.</li>
+                  <li>Originals are stored untouched; previews are separate files.</li>
+                  <li>Select frames and complete captions.</li>
+                  <li>Build a package for a buyer and review it before sending.</li>
+                </ol>
+                <p className="section-note">
+                  Nothing is sent to a buyer without an explicit human confirmation.
+                </p>
+              </div>
+            </Panel>
+            <Panel title="Storage">
+              <div className="panel-body">
+                <Badge tone="good">Private by default</Badge>
+                <p className="section-note">
+                  Files go to a private bucket scoped to this workspace. Nothing is publicly
+                  readable, and delivery uses short-lived signed links.
+                </p>
+              </div>
+            </Panel>
+          </div>
         </div>
       </div>
     </AppShell>
