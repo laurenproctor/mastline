@@ -82,6 +82,7 @@ Business rules are centralized, not spread across components:
 | `src/lib/subscription.ts` | Trial state, storage limits, and what a workspace is told |
 | `src/lib/billing.ts` | Subscription lifecycle, grace window, plan-change rules |
 | `src/lib/billing/provider.ts` | The provider contract; Stripe sits behind it |
+| `src/lib/data/archive.ts` | Archive search, paged, executed in the database |
 | `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
@@ -257,6 +258,21 @@ provider is swappable.
 Without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` the endpoints refuse
 every request and the interface says billing is unavailable rather than offering
 a checkout that cannot work.
+
+### Resilience and cost
+
+- Every route has an error boundary and a loading skeleton. A failed query
+  shows what happened, promises the records are unaffected, and offers a retry —
+  rather than Next's default error page.
+- A malformed record id is a **404, not an error**. Someone editing a URL is not
+  a system failure.
+- The work queue issues a **fixed number of queries** whatever the size of the
+  workspace. It used to be roughly `3 + 4N` with N shoots, on the page an
+  operator opens every morning. `tests/work-queue-performance.test.ts` counts
+  the round trips and fails if that regresses.
+- Archive search runs **in the database**, against a generated `tsvector`
+  column, paged, with signed preview URLs minted only for the page being
+  viewed. It used to fetch every asset and filter in JavaScript.
 
 Only News Radar still reads the mock layer, because there is no opportunity
 source to read from yet; the first release uses manually entered stories. That

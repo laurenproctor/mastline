@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Id, Shoot, ShootStatus } from "../domain";
 import type { ShootBriefInput } from "../validation";
 import { createClient } from "../supabase/server";
+import { isRecordId } from "../validation";
 import { recordEvent } from "./activity";
 
 /**
@@ -97,6 +98,9 @@ export async function listShoots(
 }
 
 export async function getShoot(organizationId: Id, shootId: Id): Promise<Shoot | null> {
+  // A malformed id is "no such record", not a database error.
+  if (!isRecordId(shootId)) return null;
+
   const supabase = await createClient();
   const [{ data, error }, noteIds] = await Promise.all([
     supabase

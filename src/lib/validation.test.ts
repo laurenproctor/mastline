@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { slugifyWorkspace } from "./validation";
+import { isRecordId, slugifyWorkspace } from "./validation";
 
 describe("slugifyWorkspace", () => {
   it.each([
@@ -29,5 +29,25 @@ describe("slugifyWorkspace", () => {
     for (const name of ["Marcus Hale Studio", "Studio & Co.", "  Spaced  ", "!!!", "Ünïcödé"]) {
       expect(slugifyWorkspace(name)).toMatch(pattern);
     }
+  });
+});
+
+describe("isRecordId", () => {
+  it("accepts a real id", () => {
+    expect(isRecordId("a0000000-0000-0000-0000-0000000000d1")).toBe(true);
+  });
+
+  it("accepts either case", () => {
+    expect(isRecordId("A0000000-0000-0000-0000-0000000000D1")).toBe(true);
+  });
+
+  it.each([
+    ["a hand-edited URL", "not-a-uuid"],
+    ["an empty string", ""],
+    ["a number", "12345"],
+    ["a truncated id", "a0000000-0000-0000-0000"],
+    ["something SQL-shaped", "'; drop table assets; --"],
+  ])("rejects %s", (_label, value) => {
+    expect(isRecordId(value)).toBe(false);
   });
 });

@@ -653,3 +653,66 @@ a.button { text-decoration: none; }
   .plan-option { grid-template-columns: 1fr; }
   .plan-option-price { text-align: left; }
 }
+
+/* --- Error, loading, and pagination ---------------------------------------- */
+
+.error-state { padding: 60px 40px; max-width: 620px; }
+.error-state h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(30px, 4vw, 44px);
+  letter-spacing: -.035em;
+  margin: 4px 0 12px;
+}
+.error-state p { line-height: 1.6; margin: 0 0 10px; }
+.error-state .actions { margin-top: 20px; }
+.error-digest code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #ecebe4;
+  padding: 1px 5px;
+}
+
+/* A skeleton that matches the real layout, so arriving content settles into
+   place rather than shoving it. */
+.skeleton-page { padding-top: 0; }
+.skeleton {
+  background: linear-gradient(90deg, #e9e7e0 25%, #f2f0ea 50%, #e9e7e0 75%);
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}
+.skeleton-header { height: 108px; margin: 0 -40px 28px; }
+.skeleton-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 18px; }
+.skeleton-metric { height: 96px; }
+.skeleton-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 18px; }
+.skeleton-panel { height: 420px; }
+.skeleton-side { height: 300px; }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.button.disabled { opacity: .45; pointer-events: none; }
+
+@media (max-width: 1000px) {
+  .skeleton-grid { grid-template-columns: 1fr; }
+  .skeleton-metrics { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 680px) {
+  .error-state { padding: 40px 16px; }
+  .skeleton-header { margin: 0 -16px 20px; }
+  .skeleton-metrics { grid-template-columns: 1fr; }
+  .pagination { flex-direction: column; align-items: stretch; text-align: center; }
+}

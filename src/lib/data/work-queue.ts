@@ -1,11 +1,10 @@
-import "server-only";
-
-import type { Id } from "../domain";
-import type { Money } from "../money";
-import { listAssets } from "./assets";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Asset, Id } from "../domain";
+import { type Money, money } from "../money";
 import { getMoneySummary, listPayments } from "./money";
 import { listPackages } from "./packages";
 import { listShoots } from "./shoots";
+import { createClient } from "../supabase/server";
 import { listSubmissions } from "./submissions";
 import { reviewSelection } from "../metadata-rules";
 
@@ -37,43 +36,96 @@ export interface WorkPulse {
   readonly medianDispatchMinutes: number;
 }
 
-export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQueueItem[]> {
-  const [shoots, submissions, payments] = await Promise.all([
-    listShoots(organizationId),
-    listSubmissions(organizationId),
-    listPayments(organizationId),
+/**
+ * Build the queue with a fixed number of queries.
+ *
+ * This used to loop over every shoot asking for its assets and packages, which
+ * meant roughly 3 + 4N round trips on the page an operator opens every morning.
+ * Everything is now fetched once and grouped in memory: five queries, whatever
+ * the size of the workspace.
+ *
+ * The asset query is deliberately narrow. Completeness only needs the metadata
+ * fields the rules read -- not versions, not earnings -- so it does not go
+ * through listAssets.
+ */
+export async function getWorkQueue(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<readonly WorkQueueItem[]> {
+  const supabase = client ?? (await createClient());
+
+  const [shoots, submissions, payments, packages, assetRows] = await Promise.all([
+    listShoots(organizationId, supabase),
+    listSubmissions(organizationId, supabase),
+    listPayments(organizationId, supabase),
+    listPackages(organizationId, {}, supabase),
+    supabase
+      .from("assets")
+      .select(
+        "id, shoot_id, selected, caption, headline, credit_line, copyright_notice, captured_at, location_name, subjects, usage_restrictions, keywords, status",
+      )
+      .eq("organization_id", organizationId)
+      .eq("selected", true)
+      .neq("status", "tombstoned"),
   ]);
+
+  const selectedByShoot = new Map<string, Asset[]>();
+  for (const row of assetRows.data ?? []) {
+    const shootId = row.shoot_id as string | null;
+    if (!shootId) continue;
+    // Only the fields the completeness rules read; the rest are placeholders.
+    const asset: Asset = {
+      id: row.id as string,
+      organizationId,
+      shootId,
+      status: row.status as Asset["status"],
+      canonicalFilename: "",
+      capturedAt: (row.captured_at as string | null) ?? undefined,
+      headline: (row.headline as string | null) ?? undefined,
+      caption: (row.caption as string | null) ?? undefined,
+      subjects: Array.isArray(row.subjects) ? (row.subjects as string[]) : [],
+      locationName: (row.location_name as string | null) ?? undefined,
+      keywords: Array.isArray(row.keywords) ? (row.keywords as string[]) : [],
+      creditLine: (row.credit_line as string | null) ?? undefined,
+      copyrightNotice: (row.copyright_notice as string | null) ?? undefined,
+      usageRestrictions: (row.usage_restrictions as string | null) ?? undefined,
+      selected: Boolean(row.selected),
+      versions: [],
+      captionHistory: [],
+      lifetimeEarnings: money(0),
+    };
+    selectedByShoot.set(shootId, [...(selectedByShoot.get(shootId) ?? []), asset]);
+  }
+
+  const packagesByShoot = new Map<string, typeof packages>();
+  for (const pkg of packages) {
+    packagesByShoot.set(pkg.shootId, [...(packagesByShoot.get(pkg.shootId) ?? []), pkg]);
+  }
 
   const items: WorkQueueItem[] = [];
 
-  // Shoots whose selection is not yet dispatchable.
   for (const shoot of shoots) {
     if (["completed", "archived", "cancelled"].includes(shoot.status)) continue;
 
-    const assets = await listAssets(organizationId, { shootId: shoot.id });
-    const selected = assets.filter((asset) => asset.selected);
-    if (selected.length === 0) continue;
+    const selected = selectedByShoot.get(shoot.id) ?? [];
+    if (selected.length > 0) {
+      const report = reviewSelection(selected);
+      if (report.blocked > 0) {
+        items.push({
+          id: `wq_captions_${shoot.id}`,
+          kind: "Shoot",
+          title: `Finish metadata on ${shoot.title}`,
+          detail: `${report.ready} of ${report.total} frames ready`,
+          occurredAt: shoot.updatedAt,
+          urgent: shoot.priority === "urgent",
+          actionLabel: "Continue",
+          href: `/shoots/${shoot.id}`,
+          rankingBasis: "Blocks dispatch on a shoot that already has selects",
+        });
+      }
+    }
 
-    const report = reviewSelection(selected);
-    if (report.blocked === 0) continue;
-
-    items.push({
-      id: `wq_captions_${shoot.id}`,
-      kind: "Shoot",
-      title: `Finish metadata on ${shoot.title}`,
-      detail: `${report.ready} of ${report.total} frames ready`,
-      occurredAt: shoot.updatedAt,
-      urgent: shoot.priority === "urgent",
-      actionLabel: "Continue",
-      href: `/shoots/${shoot.id}`,
-      rankingBasis: "Blocks dispatch on a shoot that already has selects",
-    });
-  }
-
-  // Packages waiting on a decision.
-  for (const shoot of shoots) {
-    const packages = await listPackages(organizationId, { shootId: shoot.id });
-    for (const pkg of packages) {
+    for (const pkg of packagesByShoot.get(shoot.id) ?? []) {
       if (!["needs_review", "ready", "draft"].includes(pkg.status)) continue;
       items.push({
         id: `wq_dispatch_${pkg.id}`,
@@ -89,8 +141,8 @@ export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQue
     }
   }
 
-  // A failed delivery is the single most urgent thing on the board, and it
-  // produces exactly one item however many attempts have been made.
+  // A failed delivery is the most urgent thing on the board, and produces
+  // exactly one item however many attempts have been made.
   for (const submission of submissions) {
     if (submission.status !== "failed") continue;
     items.push({
@@ -106,7 +158,6 @@ export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQue
     });
   }
 
-  // Submissions with no recorded outcome.
   for (const submission of submissions) {
     if (!["sent", "delivered", "acknowledged"].includes(submission.status)) continue;
     const overdue =
@@ -126,7 +177,6 @@ export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQue
     });
   }
 
-  // Money that has arrived but is not attributed, and anything overdue.
   for (const payment of payments) {
     if (payment.status === "overdue") {
       items.push({
@@ -162,13 +212,17 @@ export async function getWorkQueue(organizationId: Id): Promise<readonly WorkQue
 }
 
 /** Median minutes from the start of a shoot to its first dispatch. */
-export async function getMedianDispatchMinutes(organizationId: Id): Promise<number> {
-  const [submissions, shoots] = await Promise.all([
-    listSubmissions(organizationId),
-    listShoots(organizationId),
+export async function getMedianDispatchMinutes(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<number> {
+  const supabase = client ?? (await createClient());
+  const [submissions, shoots, packages] = await Promise.all([
+    listSubmissions(organizationId, supabase),
+    listShoots(organizationId, supabase),
+    listPackages(organizationId, {}, supabase),
   ]);
   const shootById = new Map(shoots.map((shoot) => [shoot.id, shoot]));
-  const packages = await listPackages(organizationId);
   const packageById = new Map(packages.map((pkg) => [pkg.id, pkg]));
 
   const durations: number[] = [];
@@ -192,10 +246,14 @@ export async function getMedianDispatchMinutes(organizationId: Id): Promise<numb
   );
 }
 
-export async function getWorkPulse(organizationId: Id): Promise<WorkPulse> {
+export async function getWorkPulse(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<WorkPulse> {
+  const supabase = client ?? (await createClient());
   const [summary, medianDispatchMinutes] = await Promise.all([
-    getMoneySummary(organizationId),
-    getMedianDispatchMinutes(organizationId),
+    getMoneySummary(organizationId, supabase),
+    getMedianDispatchMinutes(organizationId, supabase),
   ]);
 
   return {

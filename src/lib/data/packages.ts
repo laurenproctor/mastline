@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DispatchPackage, Id, PackageStatus } from "../domain";
 import { createClient } from "../supabase/server";
+import { isRecordId } from "../validation";
 import { recordEventWith } from "./activity";
 
 const PACKAGE_COLUMNS =
@@ -46,10 +47,10 @@ function toPackage(
   };
 }
 
-async function loadMembers(packageIds: readonly Id[]) {
+async function loadMembers(packageIds: readonly Id[], client?: SupabaseClient) {
   if (packageIds.length === 0)
     return new Map<string, { assetId: string; assetVersionId: string; position: number }[]>();
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("package_assets")
     .select("package_id, asset_id, asset_version_id, position")
@@ -77,8 +78,9 @@ async function loadMembers(packageIds: readonly Id[]) {
 export async function listPackages(
   organizationId: Id,
   filter: { shootId?: Id } = {},
+  client?: SupabaseClient,
 ): Promise<readonly DispatchPackage[]> {
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   let query = supabase
     .from("packages")
     .select(PACKAGE_COLUMNS)
@@ -91,7 +93,10 @@ export async function listPackages(
   if (error) throw new Error(`Could not load packages: ${error.message}`);
 
   const rows = (data ?? []) as unknown as PackageRow[];
-  const members = await loadMembers(rows.map((row) => row.id));
+  const members = await loadMembers(
+    rows.map((row) => row.id),
+    supabase,
+  );
   return rows.map((row) => toPackage(row, members.get(row.id) ?? []));
 }
 
@@ -99,6 +104,9 @@ export async function getPackage(
   organizationId: Id,
   packageId: Id,
 ): Promise<DispatchPackage | null> {
+  // A malformed id is "no such record", not a database error.
+  if (!isRecordId(packageId)) return null;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("packages")

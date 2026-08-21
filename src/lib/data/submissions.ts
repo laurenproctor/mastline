@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Id, PackageAsset, Submission, SubmissionStatus } from "../domain";
 import { createClient } from "../supabase/server";
+import { isRecordId } from "../validation";
 import { recordEventWith } from "./activity";
 
 /**
@@ -79,6 +80,9 @@ export async function getSubmission(
   organizationId: Id,
   submissionId: Id,
 ): Promise<Submission | null> {
+  // A malformed id is "no such record", not a database error.
+  if (!isRecordId(submissionId)) return null;
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("submissions")

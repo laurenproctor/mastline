@@ -5,6 +5,7 @@ import type { Asset, AssetVersion, CaptionRevision, Id } from "../domain";
 import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
 import { createClient } from "../supabase/server";
+import { isRecordId } from "../validation";
 import { recordEvent } from "./activity";
 
 /**
@@ -149,6 +150,9 @@ export async function getAsset(
   assetId: Id,
   client?: SupabaseClient,
 ): Promise<Asset | null> {
+  // A malformed id is "no such record", not a database error.
+  if (!isRecordId(assetId)) return null;
+
   const supabase = client ?? (await createClient());
 
   const { data, error } = await supabase

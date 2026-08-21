@@ -167,6 +167,18 @@ export function parseAssetMetadata(form: FormData): ParseResult<AssetMetadataInp
   };
 }
 
+/**
+ * A record id.
+ *
+ * Every id in the system is a UUID, so a malformed one means "no such record"
+ * rather than "something went wrong". Checking before querying turns a URL
+ * somebody edited by hand into a 404 instead of a database error and an error
+ * page.
+ */
+export function isRecordId(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 /** A SHA-256 hex digest, lowercased. */
 export function isSha256(value: string): boolean {
   return /^[a-f0-9]{64}$/.test(value);
