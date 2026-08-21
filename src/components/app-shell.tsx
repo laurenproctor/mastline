@@ -13,6 +13,7 @@ const NAV = [
   { href: "/news", icon: "◉", label: "News radar" },
   { href: "/shoots", icon: "▣", label: "Shoots" },
   { href: "/submissions", icon: "➤", label: "Submissions" },
+  { href: "/commercial", icon: "◆", label: "Commercial" },
   { href: "/money", icon: "$", label: "Money" },
   { href: "/rights", icon: "©", label: "Rights" },
   { href: "/archive", icon: "□", label: "Archive" },

@@ -37,6 +37,19 @@ Selected detail: story summary, related topics, top archive matches, asset/licen
 
 No automatic buyer contact. First release may use manually entered stories so the archive-matching workflow can be tested before live feeds.
 
+## Commercial Opportunities — `/commercial`
+
+Question answered: **Which assets have credible brand-licensing or commerce potential, and what needs human review next?**
+
+The queue is the full review list. It shows the subject, leading detected item and brand, match class, rights state, opportunity score, workflow stage, and age. Selecting a row updates an adjacent preview; opening it leads to `/commercial/[opportunityId]`.
+
+The single-opportunity review keeps the source asset beside its suggested product matches. A reviewer can correct each match class, confirm products individually or together, and then choose one of two routes:
+
+- Prepare a brand-licensing pitch for human review. Nothing is sent automatically.
+- Generate a disclosed Shop-the-Look draft with tracked-link placeholders.
+
+Editorial clearance does not imply permission for advertising or endorsement. Product recognition remains suggestion-only until a person confirms it, and commercial uses remain use-specific.
+
 ## 3. Create Shoot — `/shoots/new`
 
 Question answered: **What are we pursuing, where, when, and for whom?**
