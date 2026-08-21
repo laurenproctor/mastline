@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 /**
  * The 32-second favicon blink, in a real browser.
@@ -8,15 +8,36 @@ import { expect, test } from "@playwright/test";
  * is driven from JavaScript at all -- and jsdom, where the unit tests run, has
  * no opinion about any of that.
  *
- * page.clock fast-forwards the wait, so nothing here takes 32 seconds.
+ * page.clock fast-forwards the wait, so nothing here takes 32 seconds. What is
+ * asserted is the sequence -- rest, shutter, rest -- rather than the icon at an
+ * exact millisecond: the cycle starts when the page hydrates rather than when
+ * the clock installs, and a fast-forwarded clock collapses timers that come due
+ * inside the same jump. Both are harness artefacts; the frame offsets
+ * themselves are covered in src/lib/favicon-frames.test.ts.
  */
 
 /** The icon a browser would use: the last one it can decode. */
-async function currentIcon(page: import("@playwright/test").Page): Promise<string> {
-  return page.evaluate(() => {
+async function currentIcon(page: Page): Promise<string> {
+  const href = await page.evaluate(() => {
     const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="icon"]'));
     return links.at(-1)?.getAttribute("href") ?? "";
   });
+  return decodeURIComponent(href);
+}
+
+/** Move the clock forward in slices until the icon satisfies `wanted`. */
+async function advanceUntilIcon(
+  page: Page,
+  wanted: (icon: string) => boolean,
+  budgetMs: number,
+  what: string,
+): Promise<string> {
+  for (let elapsed = 0; elapsed < budgetMs; elapsed += 200) {
+    await page.clock.fastForward(200);
+    const icon = await currentIcon(page);
+    if (wanted(icon)) return icon;
+  }
+  throw new Error(`Favicon never ${what} within ${budgetMs}ms`);
 }
 
 test("holds the mark, then blinks the focus square", async ({ page }) => {
@@ -24,25 +45,28 @@ test("holds the mark, then blinks the focus square", async ({ page }) => {
   await page.goto("/welcome");
 
   // Hydration replaces the static icon with the animated one.
-  await expect.poll(() => currentIcon(page)).toContain("data:image/svg+xml,");
+  await expect.poll(() => currentIcon(page)).toContain("<svg");
   const resting = await currentIcon(page);
-  expect(decodeURIComponent(resting)).toContain('opacity="1"');
-  expect(decodeURIComponent(resting)).not.toContain("transform=");
+  expect(resting).toContain('opacity="1"');
+  expect(resting).not.toContain("transform=");
 
-  // Most of the cycle is a hold: nothing should move.
+  // Most of the cycle is a hold. A tab strip that flickers every few seconds is
+  // an irritation, not a signal.
   await page.clock.fastForward(29_000);
   expect(await currentIcon(page)).toBe(resting);
 
-  // Then the shutter.
-  await page.clock.fastForward(920);
-  const blinking = decodeURIComponent(await currentIcon(page));
-  expect(blinking).toContain('opacity="0.28"');
-  expect(blinking).toContain("scale(0.68)");
+  // Then the shutter: the green square is transformed about its own centre.
+  const blinking = await advanceUntilIcon(page, (icon) => icon !== resting, 4_000, "blinked");
+  expect(blinking).toContain("translate(128.5 69.5) scale(");
 
-  // And back to rest, still one icon link rather than one per frame.
-  await page.clock.fastForward(1_376);
-  expect(await currentIcon(page)).toBe(resting);
-  expect(await page.locator('link[rel~="icon"][type="image/svg+xml"]').count()).toBe(1);
+  // And it settles back at rest.
+  await advanceUntilIcon(page, (icon) => icon === resting, 4_000, "returned to rest");
+
+  // One animated link after a full blink, not one per frame. The static links
+  // from the document head stay put: they are the fallback for a browser that
+  // cannot decode SVG, and the animated one is appended after them.
+  await expect(page.locator('link[rel~="icon"][href^="data:"]')).toHaveCount(1);
+  await expect(page.locator('link[rel~="icon"][href="/favicon.svg"]')).toHaveCount(1);
 });
 
 test("the static file a browser falls back to is square", async ({ request }) => {
