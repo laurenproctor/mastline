@@ -9,7 +9,12 @@ import {
   listWorkspaceBuyers,
   listWorkspaceMembers,
 } from "@/lib/data/workspace";
+import { getWorkspaceStatus } from "@/lib/data/subscription";
+import { formatBytes, trialDaysRemaining } from "@/lib/subscription";
+import { findPlan, type PlanId } from "@/lib/pricing";
+import { Progress } from "@/components/primitives";
 import { BuyerTemplate } from "./_components/buyer-template";
+import { InviteMember } from "./_components/invite-member";
 
 const ROLE_DESCRIPTIONS: Record<string, string> = {
   owner: "All workspace control",
@@ -25,11 +30,17 @@ export default async function SettingsPage() {
   const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
   const workspace = session.activeWorkspace;
 
-  const [members, buyers, counts] = await Promise.all([
+  const [members, buyers, counts, status] = await Promise.all([
     listWorkspaceMembers(workspace.id),
     listWorkspaceBuyers(workspace.id),
     getWorkspaceCounts(workspace.id),
+    getWorkspaceStatus(workspace),
   ]);
+
+  const plan = findPlan(workspace.plan as PlanId);
+  const daysLeft = trialDaysRemaining(workspace.trialEndsAt, new Date());
+  const activeMembers = members.filter((person) => person.status !== "suspended").length;
+  const seatsLeft = workspace.seatLimit === undefined ? null : workspace.seatLimit - activeMembers;
 
   const mayInvite = can(workspace.role, "member.invite");
 
@@ -42,13 +53,22 @@ export default async function SettingsPage() {
           title="Settings"
         />
 
-        <div className="three-col">
+        <div className="settings-grid">
           <Panel title="Workspace">
             <div className="panel-body">
               <h3>{workspace.name}</h3>
               <p className="section-note">
                 {workspace.timezone} · {workspace.currency} · you are{" "}
                 {humanizeStatus(workspace.role)}
+              </p>
+              <p className="section-note">
+                <strong>{plan.name}</strong> · {humanizeStatus(workspace.subscriptionStatus)}
+                {daysLeft !== null && daysLeft > 0
+                  ? ` · ${daysLeft} ${daysLeft === 1 ? "day" : "days"} of trial left`
+                  : ""}
+                {workspace.seatLimit !== undefined
+                  ? ` · ${activeMembers} of ${workspace.seatLimit} ${workspace.seatLimit === 1 ? "seat" : "seats"} used`
+                  : ""}
               </p>
               <dl className="pulse-list">
                 <div>
@@ -94,10 +114,44 @@ export default async function SettingsPage() {
               ))}
               <div className="spacer" />
               {mayInvite ? (
-                <PendingButton small>Invite person</PendingButton>
+                <InviteMember seatsLeft={seatsLeft} />
               ) : (
                 <p className="section-note">Only an owner can invite people to this workspace.</p>
               )}
+            </div>
+          </Panel>
+
+          <Panel title="Storage">
+            <div className="panel-body">
+              {status.storage.limitBytes === null ? (
+                <>
+                  <h3>{formatBytes(status.storage.usedBytes)}</h3>
+                  <p className="section-note">
+                    {status.objectCount} stored files. This plan has a negotiated allowance.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3>
+                    {formatBytes(status.storage.usedBytes)} of{" "}
+                    {formatBytes(status.storage.limitBytes)}
+                  </h3>
+                  <Progress label="Used" value={status.storage.percentUsed} />
+                  <p className="section-note">
+                    {status.objectCount} stored files ·{" "}
+                    {formatBytes(status.storage.remainingBytes ?? 0)} left.
+                  </p>
+                  {status.storage.isOverLimit && (
+                    <p className="section-note danger-text">
+                      New imports are paused. Nothing already stored is affected.
+                    </p>
+                  )}
+                </>
+              )}
+              <p className="section-note">
+                Counted across originals and derivatives, derived from the stored files rather than
+                a running total.
+              </p>
             </div>
           </Panel>
 

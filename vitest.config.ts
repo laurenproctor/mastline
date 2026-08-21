@@ -36,6 +36,12 @@ export default defineConfig(({ mode }) => {
     resolve: { alias },
     test: {
       coverage: { provider: "v8", include: ["src/lib/**/*.ts"] },
+      // Root level, not per project: Vitest treats fileParallelism as a runner
+      // option, so setting it inside a project block has no effect. The
+      // database tests share one Postgres and one seeded workspace, and running
+      // their files concurrently produced a rare failure where one file summed
+      // storage while another was writing versions.
+      fileParallelism: false,
       projects: [
         {
           plugins: [react()],
@@ -58,7 +64,6 @@ export default defineConfig(({ mode }) => {
             include: ["tests/**/*.{test,spec}.ts"],
             env: supabaseEnv,
             // One database, one seeded organization: these must not overlap.
-            fileParallelism: false,
             sequence: { concurrent: false },
           },
         },

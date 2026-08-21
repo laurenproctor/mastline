@@ -98,7 +98,7 @@ describe("approved pricing presentation", () => {
     render(<PricingTable />);
     for (const name of ["Solo", "Pro", "Studio"]) {
       expect(
-        within(cardFor(name)).getByText("14 days free. No card required."),
+        within(cardFor(name)).getByText("30 days free. No card required."),
       ).toBeInTheDocument();
     }
   });
@@ -108,10 +108,10 @@ describe("approved pricing presentation", () => {
     expect(within(cardFor("Agency")).queryByText(/days free/i)).not.toBeInTheDocument();
   });
 
-  it("states no trial duration other than the approved 14 days", () => {
+  it("states no trial duration other than the approved 30 days", () => {
     const { container } = render(<PricingTable />);
     const claims = container.textContent?.match(/\d+[- ]?(day|week|month)s?\s+free/gi) ?? [];
-    expect(new Set(claims)).toEqual(new Set(["14 days free"]));
+    expect(new Set(claims)).toEqual(new Set(["30 days free"]));
   });
 
   it("makes no on-page claim about what happens when the trial ends", () => {

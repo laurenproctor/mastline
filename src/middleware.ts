@@ -20,7 +20,15 @@ import { createServerClient } from "@supabase/ssr";
  * and refuses outright when no secret is configured. Everything else under
  * /api stays gated -- /api/export in particular must never be public.
  */
-const PUBLIC_ROUTES = ["/login", "/welcome", "/pricing", "/auth", "/api/webhooks"];
+const PUBLIC_ROUTES = [
+  "/login",
+  "/signup",
+  "/reset-password",
+  "/welcome",
+  "/pricing",
+  "/auth",
+  "/api/webhooks",
+];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -64,7 +72,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && pathname === "/login") {
+  // Somebody already signed in has no use for the sign-in or sign-up screens.
+  if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/work";
     url.search = "";

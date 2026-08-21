@@ -11,6 +11,11 @@
 - Annual pricing: Solo $49/month billed annually; Pro $99; Studio $279; Agency custom
 - Monthly pricing: Solo $59/month; Pro $119; Studio $339; Agency custom
 - Pro is the most popular plan; “Start free” is the CTA for Solo, Pro, and Studio
+- Free trial: 30 days, no payment method required, capped at 25 GB of storage,
+  running on Pro. At the end the workspace becomes read-only with export still
+  available — never locked, because a commercial record is not held hostage.
+  The duration is 30 rather than 14 because sale-to-payment averages 24 days,
+  so a shorter trial cannot show a payment arriving.
 - Storage/scale: Solo 250 GB and 1 photographer; Pro 1 TB; Studio up to 5 people and 5 TB shared; Agency flexible/custom
 - Optional Mastline Sales Engine split: photographer 70%, Mastline 30%, only on licenses generated inside Mastline
 - Human review before outbound or consequential actions
@@ -34,15 +39,32 @@ Item numbers below are permanent. Resolved items keep their number so older note
 
 ## Unresolved product decisions
 
-1. ~~Free-trial duration and payment-method requirement~~ (resolved above); end-of-trial conversion mechanics and eligibility still open
-2. Storage overage economics
-3. When the 30% Sales Engine share is earned: checkout completed, funds cleared, refund window passed, or payout made (calculation resolved above; timing open)
+1. ~~Free-trial duration, payment-method requirement, and end-of-trial behaviour~~
+   (all resolved above). Still open: **conversion mechanics** — how a trialing
+   workspace actually starts paying, and whether trial eligibility is one per
+   person or one per workspace.
+2. Storage overage economics. Today an import is refused once the allowance is
+   full and nothing already stored is affected. Whether overage is billable
+   instead is open.
+3. When the 30% Sales Engine share is earned: checkout completed, funds cleared,
+   refund window passed, or payout made. The calculation is settled and tested;
+   only the timing is open. Blocks Phase 5 checkout, nothing before it.
 4. Direct-license buyer experience and who is merchant of record
 5. Rights-recovery fee percentage and operational/legal partner model
 6. First agency/delivery integrations
 7. Supported RAW/video formats at launch
 8. Retention requirements for originals and evidence
 9. ~~Whether an operator can delete an original or only archive/tombstone it~~ (resolved above)
+
+## Recorded during implementation
+
+- Sales Engine 30% share: computed as round-half-away-from-zero of the sale
+  base, with the photographer taking the exact remainder so the two always
+  reconstitute the base. Refunds reverse proportionally as signed records; an
+  original is never edited. Still open: *when* the share is earned (item 2).
+- Originals are tombstoned, never hard-deleted. A deliberate purge exists for
+  account closure and erasure requests, behind a service-role routine.
+- Mastline records a dispatch; it does not yet transmit to a buyer's systems.
 
 ## Strategic pushback
 

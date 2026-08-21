@@ -563,3 +563,47 @@ a.badge:hover { border-color: var(--ink); }
 
 /* Download links styled as buttons keep the button's focus treatment. */
 a.button { text-decoration: none; }
+
+/* --- Onboarding, subscription, and storage --------------------------------- */
+
+.auth-confirm {
+  max-width: 380px;
+  padding: 18px;
+  border-left: 2px solid var(--blue);
+  background: #fff;
+}
+.auth-confirm h2 { margin: 0 0 8px; font-size: 17px; }
+.auth-aside .check-list { margin: 14px 0; gap: 9px; }
+.auth-aside .check-list li { font-size: 12px; }
+
+/* One notice, and it carries its meaning in words as well as colour. */
+.workspace-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 40px;
+  border-bottom: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  background: #eef1ff;
+}
+.workspace-banner.warn { border-left-color: var(--amber); background: #fff6e2; }
+.workspace-banner.danger { border-left-color: var(--red); background: #fff0ed; }
+.workspace-banner strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.workspace-banner p { margin: 0; font-size: 12px; color: #4a4944; max-width: 900px; }
+.workspace-banner .button { white-space: nowrap; }
+
+.settings-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+
+@media (max-width: 1200px) {
+  .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 680px) {
+  .settings-grid { grid-template-columns: 1fr; }
+  .workspace-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 13px 16px;
+  }
+}

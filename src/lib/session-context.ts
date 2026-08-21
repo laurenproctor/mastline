@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { ACTIVE_WORKSPACE_COOKIE, type Session, requireSession } from "./auth";
+import { ACTIVE_WORKSPACE_COOKIE, type WorkspaceSession, requireSession } from "./auth";
 import { type Capability, assertCan } from "./permissions";
 
 /**
@@ -12,7 +12,7 @@ import { type Capability, assertCan } from "./permissions";
  * to; it can only act inside the one it is currently in.
  */
 export async function currentContext(): Promise<{
-  session: Session;
+  session: WorkspaceSession;
   organizationId: string;
   actorId: string;
 }> {

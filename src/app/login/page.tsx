@@ -22,6 +22,15 @@ export default async function LoginPage({
         </p>
         <div className="spacer" />
         <LoginForm next={next ?? "/work"} />
+        <p className="section-note">
+          <Link className="text-link" href="/reset-password">
+            Forgot your password?
+          </Link>
+          {" · "}
+          <Link className="text-link" href="/signup">
+            Create an account
+          </Link>
+        </p>
       </div>
 
       <aside className="auth-aside">

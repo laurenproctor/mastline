@@ -192,3 +192,25 @@ export function safeFilenameSegment(filename: string): string {
     .slice(0, 120);
   return cleaned || "file";
 }
+
+/**
+ * A URL-safe slug from a workspace name.
+ *
+ * Workspace slugs are unique across every workspace in the system, so a
+ * collision is expected rather than exceptional; the caller retries with a
+ * suffix instead of failing in front of someone on their first screen.
+ */
+export function slugifyWorkspace(name: string): string {
+  const base = name
+    .normalize("NFKD")
+    // NFKD splits an accented letter into a base plus a combining mark. Without
+    // stripping the marks they become separators, and "Ünïcödé" turns into
+    // "u-ni-co-de".
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  return base || "workspace";
+}

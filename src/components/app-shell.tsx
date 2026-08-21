@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
 import { humanizeStatus } from "@/lib/format";
+import { getWorkspaceStatus } from "@/lib/data/subscription";
+import { WorkspaceBanner } from "./workspace-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 /** Primary navigation. The order is the operating loop, not alphabetical. */
@@ -37,6 +39,7 @@ export async function AppShell({
   const cookieStore = await cookies();
   const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
   const { activeWorkspace } = session;
+  const status = await getWorkspaceStatus(activeWorkspace);
 
   return (
     <div className="app-shell">
@@ -110,6 +113,7 @@ export async function AppShell({
       </aside>
 
       <main className="workspace" id="main">
+        <WorkspaceBanner notice={status.notice} />
         {children}
       </main>
     </div>

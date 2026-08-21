@@ -7,10 +7,14 @@
  * Prices are approved product facts (`docs/DECISIONS.md`). Changing them is a
  * business decision, not an implementation detail.
  *
- * Trial terms are approved product facts too (`docs/DECISIONS.md` #1, resolved
- * 2026-08-21): 14 days, no payment method required to start. What happens at
- * the end of the trial - grace period, read-only lock, or anything about the
- * uploaded work - is still UNRESOLVED, so no copy may imply an answer.
+ * Trial terms are approved product facts too (`docs/DECISIONS.md` #1, fully
+ * resolved 2026-08-21): 30 days, no payment method required, a storage cap
+ * during the trial, and a read-only workspace with export still available when
+ * it ends.
+ *
+ * The duration was raised from 14 to 30 because sale-to-payment averages 24
+ * days, so a shorter trial cannot show a payment arriving -- which is the point
+ * at which the product proves itself.
  */
 
 import { type Money, formatMoney, fromMajor } from "./money";
@@ -109,17 +113,58 @@ export const PLANS: readonly Plan[] = [
 export const DEFAULT_BILLING_PERIOD: BillingPeriod = "annual";
 
 /** Approved trial length in days. Do not state any other number anywhere. */
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 30;
 
 /** A card is not required to start a trial. */
 export const TRIAL_REQUIRES_PAYMENT_METHOD = false;
 
+/** The plan a trial runs on: the one carrying the capabilities being sold. */
+export const TRIAL_PLAN: PlanId = "pro";
+
+/**
+ * Storage allowed during a trial.
+ *
+ * A no-card trial is an unfunded liability, and originals are tombstoned rather
+ * than deleted, so trial uploads are never reclaimed by default. The cap is
+ * what keeps that bounded without demanding a card.
+ */
+export const TRIAL_STORAGE_BYTES = 25 * 1024 ** 3;
+
+/**
+ * Storage included with each plan, in bytes.
+ *
+ * Stated on the pricing page as 250 GB, 1 TB, and 5 TB. Binary units, because
+ * that is what a filesystem reports back to a photographer checking a card.
+ */
+export const PLAN_STORAGE_BYTES: Record<PlanId, number | null> = {
+  solo: 250 * 1024 ** 3,
+  pro: 1024 ** 4,
+  studio: 5 * 1024 ** 4,
+  // Agency storage is negotiated, so there is no constant to enforce.
+  agency: null,
+};
+
+/** People included with each plan. Null where the team size is negotiated. */
+export const PLAN_SEATS: Record<PlanId, number | null> = {
+  solo: 1,
+  pro: 1,
+  studio: 5,
+  agency: null,
+};
+
+export function storageLimitFor(plan: PlanId): number | null {
+  return PLAN_STORAGE_BYTES[plan];
+}
+
+export function seatLimitFor(plan: PlanId): number | null {
+  return PLAN_SEATS[plan];
+}
+
 /**
  * The trial line shown beneath the call to action on self-serve plans.
  *
- * Deliberately says only what has been decided. It makes no claim about
- * auto-conversion, cancellation, or what a lapsed workspace can still do,
- * because none of that has been settled.
+ * Says only what has been decided, and now that includes what happens at the
+ * end, so it can say that too.
  */
 export function trialTermsLabel(): string {
   const days = `${TRIAL_DAYS} days free`;

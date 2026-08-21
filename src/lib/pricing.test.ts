@@ -11,7 +11,11 @@ import {
   isCustomPriced,
   maxAnnualSavingsRate,
   monthlyPrice,
+  PLAN_SEATS,
+  PLAN_STORAGE_BYTES,
   TRIAL_DAYS,
+  TRIAL_PLAN,
+  TRIAL_STORAGE_BYTES,
   TRIAL_REQUIRES_PAYMENT_METHOD,
   trialTermsLabel,
   twelveMonthlyPaymentsTotal,
@@ -103,13 +107,13 @@ describe("the savings claim", () => {
 });
 
 describe("approved trial terms", () => {
-  it("is 14 days and needs no payment method", () => {
-    expect(TRIAL_DAYS).toBe(14);
+  it("is 30 days and needs no payment method", () => {
+    expect(TRIAL_DAYS).toBe(30);
     expect(TRIAL_REQUIRES_PAYMENT_METHOD).toBe(false);
   });
 
   it("states the approved duration and the card position", () => {
-    expect(trialTermsLabel()).toBe("14 days free. No card required.");
+    expect(trialTermsLabel()).toBe("30 days free. No card required.");
   });
 
   it("states no duration other than the approved one", () => {
@@ -171,5 +175,51 @@ describe("presentation rules", () => {
   it("rejects an unknown plan id", () => {
     // @ts-expect-error -- guarding the runtime path against a bad id
     expect(() => findPlan("enterprise")).toThrow(RangeError);
+  });
+});
+
+describe("plan limits", () => {
+  it("matches the storage stated on the pricing page", () => {
+    expect(PLAN_STORAGE_BYTES.solo).toBe(250 * 1024 ** 3);
+    expect(PLAN_STORAGE_BYTES.pro).toBe(1024 ** 4);
+    expect(PLAN_STORAGE_BYTES.studio).toBe(5 * 1024 ** 4);
+  });
+
+  it("leaves Agency storage unconstrained, because it is negotiated", () => {
+    expect(PLAN_STORAGE_BYTES.agency).toBeNull();
+    expect(PLAN_SEATS.agency).toBeNull();
+  });
+
+  it("matches the team sizes stated on the pricing page", () => {
+    expect(PLAN_SEATS.solo).toBe(1);
+    expect(PLAN_SEATS.studio).toBe(5);
+  });
+
+  it("increases storage with every paid tier", () => {
+    expect(PLAN_STORAGE_BYTES.pro!).toBeGreaterThan(PLAN_STORAGE_BYTES.solo!);
+    expect(PLAN_STORAGE_BYTES.studio!).toBeGreaterThan(PLAN_STORAGE_BYTES.pro!);
+  });
+
+  it("agrees with the feature copy on each plan card", () => {
+    expect(findPlan("solo").features.join(" ")).toMatch(/250 GB/);
+    expect(findPlan("pro").features.join(" ")).toMatch(/1 TB/);
+    expect(findPlan("studio").features.join(" ")).toMatch(/5 TB/);
+  });
+});
+
+describe("trial limits", () => {
+  it("runs on Pro, the plan whose capabilities are being sold", () => {
+    expect(TRIAL_PLAN).toBe("pro");
+  });
+
+  it("caps trial storage well below the plan it runs on", () => {
+    expect(TRIAL_STORAGE_BYTES).toBe(25 * 1024 ** 3);
+    expect(TRIAL_STORAGE_BYTES).toBeLessThan(PLAN_STORAGE_BYTES[TRIAL_PLAN]!);
+  });
+
+  it("gives a trial long enough to see a payment arrive", () => {
+    // Sale-to-payment averages 24 days; a trial shorter than that cannot show
+    // the moment the product proves itself.
+    expect(TRIAL_DAYS).toBeGreaterThan(24);
   });
 });

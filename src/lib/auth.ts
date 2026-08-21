@@ -4,6 +4,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { AppRole } from "./domain";
 import { type Capability, assertCan } from "./permissions";
+import type { SubscriptionStatus } from "./subscription";
 import { createClient } from "./supabase/server";
 
 /**
@@ -21,6 +22,11 @@ export interface Workspace {
   readonly timezone: string;
   readonly currency: string;
   readonly role: AppRole;
+  readonly plan: string;
+  readonly subscriptionStatus: SubscriptionStatus;
+  readonly trialEndsAt?: string;
+  readonly storageLimitBytes?: number;
+  readonly seatLimit?: number;
 }
 
 export interface Session {
@@ -29,6 +35,12 @@ export interface Session {
   readonly displayName: string;
   readonly initials: string;
   readonly workspaces: readonly Workspace[];
+  /** Undefined for a signed-in person who has not created a workspace yet. */
+  readonly activeWorkspace?: Workspace;
+}
+
+/** A session that definitely has a workspace. What application pages get. */
+export interface WorkspaceSession extends Session {
   readonly activeWorkspace: Workspace;
 }
 
@@ -55,18 +67,25 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   // them and the role is read from whichever row happens to come back first.
   const { data: memberships } = await supabase
     .from("memberships")
-    .select("role, status, user_id, organizations(id, name, slug, timezone, currency)")
+    .select(
+      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit)",
+    )
     .eq("user_id", user.id)
     .eq("status", "active");
 
   const workspaces: Workspace[] = (memberships ?? [])
-    .map((row) => {
+    .map((row): Workspace | null => {
       const org = row.organizations as unknown as {
         id: string;
         name: string;
         slug: string;
         timezone: string;
         currency: string;
+        plan: string;
+        subscription_status: SubscriptionStatus;
+        trial_ends_at: string | null;
+        storage_limit_bytes: number | null;
+        seat_limit: number | null;
       } | null;
       if (!org) return null;
       return {
@@ -76,12 +95,16 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         timezone: org.timezone,
         currency: org.currency,
         role: row.role as AppRole,
+        plan: org.plan,
+        subscriptionStatus: org.subscription_status,
+        trialEndsAt: org.trial_ends_at ?? undefined,
+        storageLimitBytes:
+          org.storage_limit_bytes === null ? undefined : Number(org.storage_limit_bytes),
+        seatLimit: org.seat_limit === null ? undefined : Number(org.seat_limit),
       };
     })
     .filter((workspace): workspace is Workspace => workspace !== null)
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  if (workspaces.length === 0) return null;
 
   const active =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
@@ -100,13 +123,25 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
 });
 
 /**
- * The session, or a redirect to sign in.
+ * The session and its workspace, or a redirect.
+ *
+ * Two different redirects, because these are two different situations: nobody
+ * is signed in, or somebody is signed in and has not created a workspace yet.
+ * Sending a brand new account to the login page would be a dead end.
  *
  * Middleware already guards these routes; this is the second gate, because a
  * route that forgets to be listed in the matcher must still fail closed.
  */
-export async function requireSession(activeWorkspaceId?: string): Promise<Session> {
+export async function requireSession(activeWorkspaceId?: string): Promise<WorkspaceSession> {
   const session = await getSession(activeWorkspaceId);
+  if (!session) redirect("/login");
+  if (!session.activeWorkspace) redirect("/onboarding");
+  return session as WorkspaceSession;
+}
+
+/** The session without requiring a workspace. For the onboarding flow itself. */
+export async function requireUser(): Promise<Session> {
+  const session = await getSession();
   if (!session) redirect("/login");
   return session;
 }
@@ -115,7 +150,7 @@ export async function requireSession(activeWorkspaceId?: string): Promise<Sessio
 export async function requireCapability(
   capability: Capability,
   activeWorkspaceId?: string,
-): Promise<Session> {
+): Promise<WorkspaceSession> {
   const session = await requireSession(activeWorkspaceId);
   assertCan(session.activeWorkspace.role, capability);
   return session;

@@ -60,9 +60,29 @@ on conflict do nothing;
 -- Organizations and memberships
 -- ---------------------------------------------------------------------------
 
-insert into public.organizations (id, name, slug, timezone, currency, created_by) values
-  ('aaaaaaaa-0000-0000-0000-000000000001', 'Marcus Hale Studio', 'marcus-hale-studio', 'America/New_York', 'USD', '11111111-1111-1111-1111-111111111111'),
-  ('bbbbbbbb-0000-0000-0000-000000000002', 'Northline Photo',    'northline-photo',    'America/Chicago',  'USD', '99999999-9999-9999-9999-999999999999');
+-- Marcus Hale Studio is a paying Studio workspace, so local development
+-- exercises the normal path rather than a trial about to lapse.
+--
+-- Northline Photo is deliberately left ON TRIAL, so the trial banner, the
+-- storage cap, and the read-only expiry all have something real to act on
+-- without anyone having to construct it by hand.
+insert into public.organizations (
+  id, name, slug, timezone, currency, created_by,
+  plan, subscription_status, trial_started_at, trial_ends_at,
+  storage_limit_bytes, seat_limit
+) values
+  (
+    'aaaaaaaa-0000-0000-0000-000000000001', 'Marcus Hale Studio', 'marcus-hale-studio',
+    'America/New_York', 'USD', '11111111-1111-1111-1111-111111111111',
+    'studio', 'active', null, null,
+    5 * 1024::bigint ^ 4, 10
+  ),
+  (
+    'bbbbbbbb-0000-0000-0000-000000000002', 'Northline Photo', 'northline-photo',
+    'America/Chicago', 'USD', '99999999-9999-9999-9999-999999999999',
+    'pro', 'trialing', now() - interval '6 days', now() + interval '24 days',
+    25 * 1024::bigint ^ 3, 1
+  );
 
 insert into public.memberships (organization_id, user_id, role, status) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'owner',           'active'),

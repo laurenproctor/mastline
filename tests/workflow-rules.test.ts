@@ -84,6 +84,10 @@ describeIf("originals are immutable", () => {
         name: `Purge Test ${Date.now()}`,
         slug: `purge-test-${Date.now()}`,
         created_by: OWNER,
+        // A workspace has to declare its subscription: the schema refuses a
+        // trialing workspace with no trial end.
+        plan: "studio",
+        subscription_status: "active",
       })
       .select("id")
       .single();

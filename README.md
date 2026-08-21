@@ -79,6 +79,7 @@ Business rules are centralized, not spread across components:
 | `src/lib/statement-import.ts` | CSV reading and statement matching |
 | `src/lib/export.ts` | Workspace export |
 | `src/lib/webhook.ts` | Signature verification and payload parsing |
+| `src/lib/subscription.ts` | Trial state, storage limits, and what a workspace is told |
 | `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
@@ -208,6 +209,27 @@ keys, caption history, shoots, submissions, licences, payments, allocations,
 and the full activity record as CSV. Money appears twice: integer minor units
 as the authoritative figure, and a decimal for spreadsheets. Confidential source
 notes are deliberately excluded. Owner and finance roles only.
+
+**Onboarding** — sign-up, workspace creation, member invites, password reset,
+and the trial with its storage cap and read-only expiry, enforced by the
+database rather than only the interface.
+
+### Getting in
+
+| Route | Who |
+| --- | --- |
+| `/signup` | A new photographer creates an account |
+| `/onboarding` | Signed in with no workspace yet: name your studio |
+| `/reset-password` | Request a link; `/reset-password/update` sets the new password |
+| `/login` | Everyone else |
+
+A new account lands on a 30-day Pro trial with 25 GB of storage and no card.
+When the trial ends the workspace becomes **read-only**: everything stays
+readable and the export keeps working; importing, dispatching, and recording
+stop. That is enforced by a trigger on every table that represents doing work,
+so a Server Action nobody remembered to guard cannot write into a lapsed
+workspace. `past_due` still writes — a card that failed on Tuesday should not
+stop a photographer working a story on Wednesday.
 
 Only News Radar still reads the mock layer, because there is no opportunity
 source to read from yet; the first release uses manually entered stories. That
