@@ -117,6 +117,8 @@ No component hard-codes a price, a rate, or a monetary string.
 | `/submissions` | All submissions |
 | `/submissions/sub_bg_0820_441` | Submission system of record |
 | `/assets/ast_chelsea_472` | Canonical asset record |
+| `/commercial` | Commercial opportunity review queue |
+| `/commercial/julian-cross-soho` | Product matching, brand-pitch, and Shop-the-Look prototype |
 | `/rights` | Possible-use triage and evidence |
 | `/money` | Revenue, receivables, and reconciliation |
 | `/archive` | Commercial archive search |

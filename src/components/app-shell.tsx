@@ -25,6 +25,8 @@ const ICONS = {
     "M9 3v12M11.8 5.6c-.6-.7-1.6-1.1-2.8-1.1-1.7 0-2.8.8-2.8 2s1 1.8 2.8 2.1c1.9.4 3 1 3 2.2s-1.2 2.1-3 2.1c-1.3 0-2.4-.4-3-1.2",
   rights:
     "M9 2.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13M11.2 7.2A2.6 2.6 0 0 0 9 6.1a2.9 2.9 0 0 0 0 5.8 2.6 2.6 0 0 0 2.2-1.1",
+  commercial:
+    "M9.6 2.6H15.4v5.8l-6.6 6.6a1.1 1.1 0 0 1-1.6 0L2.6 10.2a1.1 1.1 0 0 1 0-1.6zM12.8 5.9a.85.85 0 1 1-1.7 0 .85.85 0 0 1 1.7 0",
   archive: "M2.5 4h13v3h-13zM4 7v7.5h10V7M7 10h4",
   settings:
     "M9 6.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8M9 2.5l.5 1.8 1.8.5 1.5-1.1 1.5 1.5-1.1 1.5.5 1.8 1.8.5v2.1l-1.8.5-.5 1.8 1.1 1.5-1.5 1.5-1.5-1.1-1.8.5-.5 1.8H7.9l-.5-1.8-1.8-.5-1.5 1.1-1.5-1.5 1.1-1.5-.5-1.8-1.8-.5V9.6l1.8-.5.5-1.8L2.6 5.8l1.5-1.5 1.5 1.1 1.8-.5.5-1.8z",
@@ -55,6 +57,7 @@ const NAV = [
   { href: "/news", icon: "news", label: "News radar" },
   { href: "/shoots", icon: "shoots", label: "Shoots" },
   { href: "/submissions", icon: "submissions", label: "Submissions" },
+  { href: "/commercial", icon: "commercial", label: "Commercial" },
   { href: "/money", icon: "money", label: "Money" },
   { href: "/rights", icon: "rights", label: "Rights" },
   { href: "/archive", icon: "archive", label: "Archive" },
