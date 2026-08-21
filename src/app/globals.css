@@ -227,3 +227,92 @@ button { cursor: pointer; }
   .source-row { flex-direction: column; gap: 2px; }
   .pulse-list > div { flex-direction: column; gap: 2px; }
 }
+
+/* --- Authentication and workspace ------------------------------------------ */
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  background: var(--paper);
+}
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8vw 6vw;
+  max-width: 620px;
+  margin-left: auto;
+  width: 100%;
+}
+.auth-card img { width: 174px; height: auto; margin-bottom: 34px; }
+.auth-card h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(38px, 5vw, 56px);
+  font-weight: 400;
+  letter-spacing: -.035em;
+  margin: 0 0 10px;
+}
+.auth-card > .section-note { max-width: 420px; }
+.auth-form { max-width: 380px; }
+.auth-submit { width: 100%; min-height: 48px; }
+.auth-submit[disabled] { opacity: .6; cursor: progress; }
+.auth-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--red);
+  background: #fff0ed;
+  color: #8f231c;
+  font-size: 12px;
+}
+.auth-aside {
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  padding: 8vw 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+.auth-aside code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: #ecebe4;
+  padding: 1px 4px;
+}
+
+.workspace-switcher {
+  display: grid;
+  gap: 6px;
+  padding: 0 8px 18px;
+}
+.workspace-switcher select {
+  border: 1px solid var(--line);
+  background: #fff;
+  min-height: 34px;
+  padding: 0 8px;
+  width: 100%;
+}
+.workspace-switcher .button { width: 100%; }
+
+.signout {
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+}
+.signout:hover { color: var(--ink); text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .auth-page { grid-template-columns: 1fr; }
+  .auth-card { padding: 48px 24px 24px; margin-left: 0; }
+  .auth-aside { border-left: 0; border-top: 1px solid var(--line); padding: 24px; }
+}
+@media (max-width: 680px) {
+  .workspace-switcher { padding: 0 0 12px; }
+  .workspace-switcher .eyebrow { display: none; }
+}

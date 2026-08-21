@@ -61,26 +61,6 @@ export async function getCurrentMember(): Promise<Member> {
   return member;
 }
 
-const ROLE_DESCRIPTIONS: Record<string, string> = {
-  owner: "Owner · all workspace control",
-  editor: "Editor · shoots, assets, captions, dispatch preparation",
-  dispatcher: "Dispatcher · package delivery and status",
-  finance: "Finance · revenue, payments, statements, exports",
-  rights_reviewer: "Rights reviewer · evidence, license checks, case routing",
-  viewer: "Viewer · read-only, no sensitive access",
-};
-
-export interface MemberWithRole extends Member {
-  readonly roleDescription: string;
-}
-
-export async function listMembersWithRoles(): Promise<readonly MemberWithRole[]> {
-  return MEMBERS.map((member) => ({
-    ...member,
-    roleDescription: ROLE_DESCRIPTIONS[member.role] ?? member.role,
-  }));
-}
-
 export async function listBuyers(): Promise<readonly Buyer[]> {
   return BUYERS;
 }

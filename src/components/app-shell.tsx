@@ -1,6 +1,9 @@
+import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { getCurrentMember, getOrganization } from "@/lib/mock/queries";
+import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
+import { humanizeStatus } from "@/lib/format";
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 /** Primary navigation. The order is the operating loop, not alphabetical. */
 const NAV = [
@@ -31,13 +34,16 @@ export async function AppShell({
   active?: NavLabel;
   children: React.ReactNode;
 }) {
-  const [member, organization] = await Promise.all([getCurrentMember(), getOrganization()]);
+  const cookieStore = await cookies();
+  const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
+  const { activeWorkspace } = session;
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
+
       <aside className="sidebar">
         <Link className="brand" href="/work">
           <Image
@@ -48,6 +54,9 @@ export async function AppShell({
             width={174}
           />
         </Link>
+
+        <WorkspaceSwitcher activeId={activeWorkspace.id} workspaces={session.workspaces} />
+
         <nav aria-label="Primary">
           {NAV.map((item) => {
             const isActive = active === item.label;
@@ -66,6 +75,7 @@ export async function AppShell({
             );
           })}
         </nav>
+
         <div className="sidebar-foot">
           <Link
             aria-current={active === "Settings" ? "page" : undefined}
@@ -77,19 +87,28 @@ export async function AppShell({
             </span>
             <span>Settings</span>
           </Link>
+
           <div className="profile">
             <span aria-hidden="true" className="avatar">
-              {member.initials}
+              {session.initials}
             </span>
             <span>
-              <strong>{member.displayName}</strong>
+              <strong>{session.displayName}</strong>
               <small>
-                {organization.name} · {ROLE_LABELS[member.role] ?? member.role}
+                {activeWorkspace.name} ·{" "}
+                {ROLE_LABELS[activeWorkspace.role] ?? humanizeStatus(activeWorkspace.role)}
               </small>
             </span>
           </div>
+
+          <form action="/auth/signout" method="post">
+            <button className="signout" type="submit">
+              Sign out
+            </button>
+          </form>
         </div>
       </aside>
+
       <main className="workspace" id="main">
         {children}
       </main>
