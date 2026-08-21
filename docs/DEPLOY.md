@@ -14,62 +14,69 @@ done and what is still needed.
   value, not the local development one. It is stored non-sensitive so it can be
   read back from the dashboard when a delivery provider needs configuring.
 
-## Still needed: the database
+## The database
 
-The Supabase organisation `Mastline` exists but holds no project.
+Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
+Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-1. Create a project in the **Mastline** organisation, region **East US (North
-   Virginia)**. Save the database password in a password manager; Supabase will
-   not show it again.
-2. Send over, or set directly in Vercel, the three values from
-   *Project Settings → API*:
+All 7 migrations are applied: 25 tables, 52 policies, and the three private
+buckets (`originals`, `derivatives`, `evidence`), none public. Production was
+never seeded; the first workspace is made through real sign-up.
 
-   | Variable | Where it comes from | Notes |
-   | --- | --- | --- |
-   | `NEXT_PUBLIC_SUPABASE_URL` | Project URL | Public. Inlined at build time. |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `anon` `public` key | Public by design; RLS is the boundary. |
-   | `SUPABASE_SERVICE_ROLE_KEY` | `service_role` key | **Secret.** Bypasses RLS entirely. Mark sensitive. |
+The Supabase Vercel integration had already populated Production with
+`POSTGRES_*`, `SUPABASE_*`, and `NEXT_PUBLIC_SUPABASE_*`. Those are managed by
+the integration and take precedence over `vercel env add --force`, which fails
+silently against them. Preview was not covered by the integration and is set
+manually.
 
-Setting them non-interactively:
+Two CLI notes that cost time:
 
-```sh
-vercel env add NEXT_PUBLIC_SUPABASE_URL production --value "https://<ref>.supabase.co" --force --yes
-```
+- `vercel env add` ignores piped stdin for non-interactive callers and needs
+  `--value`. Without it you get an empty variable rather than an error, which is
+  how `vercel link` left five variables blank.
+- Vercel stores Production values as sensitive by default, so `vercel env pull`
+  reads them back empty. An empty pull is not proof the write failed.
 
-`--value` is required. Piping to stdin is silently ignored when the CLI detects
-a non-interactive caller, which produces an empty variable rather than an error.
+`NEXT_PUBLIC_*` variables are inlined into the client bundle **at build time**.
+Changing one requires a redeploy, not just a restart.
 
-> `NEXT_PUBLIC_*` variables are inlined into the client bundle **at build time**.
-> Changing one requires a redeploy, not just a restart.
+### Re-running the schema checks
 
-## Applying the schema
-
-```sh
-supabase link --project-ref <ref>
-supabase db push          # all 7 migrations, in order
-```
-
-The three private storage buckets are created inside the first migration, so
-there is nothing to provision by hand. Do **not** run `supabase/seed.sql`
-against production: it creates test accounts with a known password. Production
-starts empty and the first workspace is made through the real sign-up flow,
-which doubles as a smoke test of onboarding.
-
-Afterwards, confirm the security checks still pass against the hosted database:
+The database password is not needed; the CLI provisions a temporary role.
 
 ```sh
-psql "$DATABASE_URL" -f supabase/checks/advisors.sql
+supabase link --project-ref rctvatrdgqnwhldbmgek
+supabase db push
+supabase db advisors --type security --linked
 ```
+
+All 12 project checks in `supabase/checks/advisors.sql` pass against production.
+
+Supabase's own linter reports three WARNs. Two are `create_workspace` and
+`rls_auto_enable` being executable by signed-in users; `create_workspace` is
+deliberate, since creating a workspace is exactly what a new signed-in user must
+do. The third is `rls_auto_enable` being callable by `anon`. That is a Supabase
+platform event trigger present in every project, not ours, and it is not
+reachable: calling it through PostgREST returns `cannot display a value of type
+event_trigger`. Verified directly, along with `anon` being denied on `shoots`
+and `organizations` at the GRANT level, before RLS is consulted.
 
 ## Supabase auth settings
 
-Under *Authentication → URL Configuration*, set:
+Set, via the management API. Site URL is `https://mastline.vercel.app`; the
+allow list keeps the integration's preview wildcards so auth works on preview
+deployments, plus localhost for development:
 
-- **Site URL**: `https://mastline.vercel.app` (or the custom domain once chosen)
-- **Redirect URLs**: add the same origin
+```
+https://mastline.vercel.app/**
+https://mastline-lauren-proctors-projects.vercel.app/**
+https://mastline-*-lauren-proctors-projects.vercel.app/**
+http://localhost:3000/**
+```
 
 Without this, password-reset and confirmation emails link back to `localhost`
-and silently fail for a real user.
+and silently fail for a real user. Update Site URL when a custom domain is
+chosen, and keep the wildcards.
 
 ## Stripe
 

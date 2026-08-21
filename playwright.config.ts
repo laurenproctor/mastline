@@ -43,10 +43,14 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: "npx next start -p 4100",
-    url: "http://127.0.0.1:4100/welcome",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  // Pointing E2E_BASE_URL at a deployment means there is nothing to start
+  // locally; starting one anyway would test the wrong build.
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+        command: "npx next start -p 4100",
+        url: "http://127.0.0.1:4100/welcome",
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });
