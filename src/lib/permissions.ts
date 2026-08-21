@@ -15,6 +15,7 @@ import type { AppRole } from "./domain";
 export const CAPABILITIES = [
   "shoot.read",
   "shoot.write",
+  "shoot.status",
   "sensitive_note.read",
   "asset.read",
   "asset.write",
@@ -51,14 +52,17 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
   editor: [
     ...READ_ONLY,
     "shoot.write",
+    "shoot.status",
     "sensitive_note.read",
     "asset.write",
     "asset.tombstone",
     "package.write",
     "expense.write",
   ],
-  // A dispatcher moves packages and submissions. They do not rewrite briefs.
-  dispatcher: [...READ_ONLY, "package.write", "submission.send"],
+  // A dispatcher moves packages and submissions, and may advance a shoot's
+  // status as part of dispatching. They do not rewrite briefs: shoot.write
+  // covers the brief, and a database trigger enforces that boundary.
+  dispatcher: [...READ_ONLY, "package.write", "submission.send", "shoot.status"],
   finance: [...READ_ONLY, "license.write", "payment.write", "expense.write"],
   // Evidence and triage only. Escalation to a demand is a separate approved
   // workflow, deliberately not a role permission.

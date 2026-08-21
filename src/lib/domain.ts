@@ -239,6 +239,8 @@ export interface DispatchPackage {
   readonly status: PackageStatus;
   readonly deliveryMethod?: string;
   readonly proposedTerms?: string;
+  readonly exclusivity?: string;
+  readonly embargoUntil?: IsoTimestamp;
   readonly restrictions?: string;
   readonly packageNote?: string;
   readonly assets: readonly PackageAsset[];

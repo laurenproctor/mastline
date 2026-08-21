@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge, PageHeader, Panel } from "@/components/primitives";
+import { listLicenses } from "@/lib/data/money";
+import { listSubmissions } from "@/lib/data/submissions";
+import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
-import { getBuyer, listSubmissions } from "@/lib/mock/queries";
+import { formatMoney } from "@/lib/money";
+import { currentContext } from "@/lib/session-context";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue"> = {
   queued: "neutral",
@@ -16,8 +20,19 @@ const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue
 };
 
 export default async function SubmissionsPage() {
-  const submissions = await listSubmissions();
-  const buyers = await Promise.all(submissions.map((submission) => getBuyer(submission.buyerId)));
+  const { organizationId } = await currentContext();
+  const [submissions, buyers, licenses] = await Promise.all([
+    listSubmissions(organizationId),
+    listWorkspaceBuyers(organizationId),
+    listLicenses(organizationId),
+  ]);
+
+  const buyerNames = new Map(buyers.map((buyer) => [buyer.id, buyer.name]));
+  const licenseBySubmission = new Map(
+    licenses
+      .filter((license) => license.submissionId)
+      .map((license) => [license.submissionId, license]),
+  );
 
   return (
     <AppShell active="Submissions">
@@ -27,44 +42,73 @@ export default async function SubmissionsPage() {
           eyebrow="System of record"
           title="Submissions"
         />
+
         <Panel action={<span className="muted">{submissions.length} submissions</span>}>
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Reference</th>
-                  <th scope="col">Buyer</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Assets</th>
-                  <th scope="col">Sent</th>
-                  <th scope="col">Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((submission, index) => (
-                  <tr key={submission.id}>
-                    <td>
-                      <strong>{submission.reference}</strong>
-                      <small>{submission.deliveryMethod}</small>
-                    </td>
-                    <td>{buyers[index]?.name ?? "—"}</td>
-                    <td>
-                      <Badge tone={STATUS_TONE[submission.status] ?? "neutral"}>
-                        {humanizeStatus(submission.status)}
-                      </Badge>
-                    </td>
-                    <td>{submission.manifest.length}</td>
-                    <td>{submission.sentAt ? formatDateTime(submission.sentAt) : "Not sent"}</td>
-                    <td>
-                      <Link className="text-link" href={`/submissions/${submission.id}`}>
-                        Open <span aria-hidden="true">→</span>
-                      </Link>
-                    </td>
+          {submissions.length === 0 ? (
+            <div className="panel-body">
+              <p className="section-note">
+                No submissions yet. A submission is created when a dispatch is approved.
+              </p>
+            </div>
+          ) : (
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Reference</th>
+                    <th scope="col">Buyer</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Assets</th>
+                    <th scope="col">Sent</th>
+                    <th scope="col">Sale</th>
+                    <th scope="col">Open</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {submissions.map((submission) => {
+                    const license = licenseBySubmission.get(submission.id);
+                    return (
+                      <tr key={submission.id}>
+                        <td>
+                          <strong>{submission.reference}</strong>
+                          <small>{submission.deliveryMethod}</small>
+                        </td>
+                        <td>{buyerNames.get(submission.buyerId ?? "") ?? "—"}</td>
+                        <td>
+                          <Badge tone={STATUS_TONE[submission.status] ?? "neutral"}>
+                            {humanizeStatus(submission.status)}
+                          </Badge>
+                        </td>
+                        <td>{submission.manifest.length}</td>
+                        <td>
+                          {submission.sentAt ? formatDateTime(submission.sentAt) : "Not sent"}
+                        </td>
+                        <td>
+                          {license ? (
+                            <>
+                              <strong>{formatMoney(license.saleBase)}</strong>
+                              <small>
+                                {license.origin === "mastline_sales_engine"
+                                  ? "via Mastline"
+                                  : "own relationship"}
+                              </small>
+                            </>
+                          ) : (
+                            <span className="muted">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <Link className="text-link" href={`/submissions/${submission.id}`}>
+                            Open <span aria-hidden="true">→</span>
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
       </div>
     </AppShell>

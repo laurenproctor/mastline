@@ -75,6 +75,7 @@ Business rules are centralized, not spread across components:
 | `src/lib/domain.ts` | Entity types and status vocabularies (mirrors the schema enums) |
 | `src/lib/permissions.ts` | Role capabilities, kept in step with the RLS policies |
 | `src/lib/metadata-rules.ts` | What "complete enough" means; drives warnings and the dispatch gate |
+| `src/lib/dispatch-rules.ts` | Whether a package is buyer-ready; gates approval |
 | `src/lib/validation.ts` | Server Action input parsing |
 | `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
 | `src/lib/data/` | Real, database-backed queries |
@@ -132,6 +133,30 @@ import with a browser-computed SHA-256 into private storage, originals are
 immutable, the contact sheet culls by keyboard, and metadata edits preserve
 prior versions in an append-only log.
 
+**Phase 2B** — dispatch to payment. Packages are built from a selection,
+validated against the same metadata rules the contact sheet uses, and approved
+behind a two-step human confirmation. Approval writes an immutable submission
+holding exactly which asset versions went out and under which terms. Sales,
+payments, and allocations connect back to the frame that earned them.
+
+### The loop
+
+`shoot → selects → package → dispatch review → submission → licence → payment → allocation`
+
+Every step is a real database write and every one is covered by
+`tests/full-loop.test.ts`, which carries a single frame from selection to
+recorded earnings, each step performed as the role that would really do it.
+
+Two things the database enforces rather than the application:
+
+- A package cannot reach a shipped status without a recorded approval.
+- A licence's two shares must reconstitute the sale base, and an externally
+  generated licence may not carry a Mastline fee.
+
+Mastline **records** a dispatch. It does not yet transmit to a buyer's SFTP or
+portal — delivery integrations are Phase 3. The submission is still the
+authoritative account of what was sent.
+
 ### How an import works
 
 1. The browser hashes the file with WebCrypto before anything leaves the machine.
@@ -148,7 +173,9 @@ sheet. RAW files are imported and hashed identically but have no preview until
 a server-side decoder exists — which RAW formats are supported at launch is
 still an open product decision.
 
-Not yet built: dispatch, submissions, and money still read the mock layer and
-are replaced in Phase 2B. Actions that are not wired up are marked
-`aria-disabled` rather than silently doing nothing. See
-`docs/IMPLEMENTATION_PLAN.md`.
+Only News Radar still reads the mock layer, because there is no opportunity
+source to read from yet; the first release uses manually entered stories. That
+goes away in Phase 4.
+
+Not yet built: delivery integrations, webhook retry, statement CSV import, and
+rights triage actions. See `docs/IMPLEMENTATION_PLAN.md`.

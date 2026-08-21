@@ -24,17 +24,25 @@
 - The light editorial command-center direction is primary; the dark version may become an optional field/night theme
 - News Radar and Rights Matches begin as triage tools, not autonomous agents
 
+## Resolved since first draft
+
+Item numbers below are permanent. Resolved items keep their number so older notes and commit messages stay readable.
+
+- **#1 Free trial — resolved 2026-08-21.** 14 days. No payment method required to start. Eligibility and end-of-trial mechanics (what a lapsed trial workspace can still do, and how trial-uploaded originals are treated) remain open; see the trial-storage note in item 2.
+- **#3 Sales Engine split mechanics — partially resolved 2026-08-21.** The *calculation* is settled: Mastline share = round-half-up(fee_base x 0.30), photographer takes the exact remainder, refunds reverse both shares proportionally as a new signed record, and the fee base is a stored input column. *When* the share is earned is still open.
+- **#9 Deleting an original — resolved 2026-08-21.** An operator cannot hard-delete an original. Originals are tombstoned only (`asset_status = 'tombstoned'`); bytes are retained.
+
 ## Unresolved product decisions
 
-1. Free-trial duration, payment-method requirement, eligibility, and conversion mechanics
+1. ~~Free-trial duration and payment-method requirement~~ (resolved above); end-of-trial conversion mechanics and eligibility still open
 2. Storage overage economics
-3. When the 30% Sales Engine share is earned: checkout completed, funds cleared, refund window passed, or payout made
+3. When the 30% Sales Engine share is earned: checkout completed, funds cleared, refund window passed, or payout made (calculation resolved above; timing open)
 4. Direct-license buyer experience and who is merchant of record
 5. Rights-recovery fee percentage and operational/legal partner model
 6. First agency/delivery integrations
 7. Supported RAW/video formats at launch
 8. Retention requirements for originals and evidence
-9. Whether an operator can delete an original or only archive/tombstone it
+9. ~~Whether an operator can delete an original or only archive/tombstone it~~ (resolved above)
 
 ## Strategic pushback
 

@@ -99,6 +99,7 @@ insert into public.assets (id, organization_id, shoot_id, status, canonical_file
 insert into public.asset_versions (id, organization_id, asset_id, version_kind, storage_bucket, object_key, sha256, bytes, mime_type, width, height, created_by) values
   ('a0000000-0000-0000-0000-0000000000e1', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'original', 'originals',   'aaaaaaaa-0000-0000-0000-000000000001/a0000000-0000-0000-0000-0000000000c1/MH_0819_0472.arw', repeat('a',64), 52428800, 'image/x-sony-arw', 8640, 5760, '11111111-1111-1111-1111-111111111111'),
   ('a0000000-0000-0000-0000-0000000000e2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'delivery', 'derivatives', 'aaaaaaaa-0000-0000-0000-000000000001/a0000000-0000-0000-0000-0000000000c1/MH_0819_0472_delivery.jpg', repeat('b',64), 6291456, 'image/jpeg', 5760, 3840, '11111111-1111-1111-1111-111111111111'),
+  ('a0000000-0000-0000-0000-0000000000e5', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d2', 'original', 'originals',   'aaaaaaaa-0000-0000-0000-000000000001/a0000000-0000-0000-0000-0000000000c1/MH_0819_0473.arw', repeat('f',64), 51500000, 'image/x-sony-arw', 8640, 5760, '11111111-1111-1111-1111-111111111111'),
   ('a0000000-0000-0000-0000-0000000000e3', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d3', 'original', 'originals',   'aaaaaaaa-0000-0000-0000-000000000001/a0000000-0000-0000-0000-0000000000c2/MH_0818_0221.arw', repeat('c',64), 51000000, 'image/x-sony-arw', 8640, 5760, '11111111-1111-1111-1111-111111111111'),
   ('a0000000-0000-0000-0000-0000000000e4', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d3', 'delivery', 'derivatives', 'aaaaaaaa-0000-0000-0000-000000000001/a0000000-0000-0000-0000-0000000000c2/MH_0818_0221_delivery.jpg', repeat('d',64), 6000000, 'image/jpeg', 5760, 3840, '11111111-1111-1111-1111-111111111111');
 
@@ -113,12 +114,15 @@ insert into public.packages (id, organization_id, shoot_id, buyer_id, name, stat
 
 insert into public.package_assets (package_id, organization_id, asset_id, asset_version_id, position) values
   ('a0000000-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-0000000000e2', 0),
-  ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-0000000000e2', 0);
+  -- Package 02 also carries the uncaptioned frame, so the dispatch gate has a
+  -- genuine reason to block in the seeded workspace.
+  ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-0000000000e2', 0),
+  ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d2', 'a0000000-0000-0000-0000-0000000000e5', 1);
 
 insert into public.submissions (id, organization_id, package_id, buyer_id, status, recipient_snapshot, terms_snapshot, restrictions_snapshot, delivery_manifest, delivery_method, external_reference, sent_at, delivered_at, follow_up_at, created_by) values
   ('a0000000-0000-0000-0000-00000000a001', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000b1', 'delivered',
    '{"desk":"New York picture desk"}', 'Standard agency distribution; non-exclusive; photographer retains copyright.', 'Editorial use only. No commercial use.',
-   '{"versions":["a0000000-0000-0000-0000-0000000000e2"]}', 'SFTP', 'BG-0819-441', '2026-08-19T18:52:00Z', '2026-08-19T18:53:00Z', '2026-08-22T14:00:00Z', '11111111-1111-1111-1111-111111111111');
+   '{"assets":[{"assetId":"a0000000-0000-0000-0000-0000000000d1","assetVersionId":"a0000000-0000-0000-0000-0000000000e2","position":0}],"asset_count":1}', 'SFTP', 'BG-0819-441', '2026-08-19T18:52:00Z', '2026-08-19T18:53:00Z', '2026-08-22T14:00:00Z', '11111111-1111-1111-1111-111111111111');
 
 -- One Mastline-generated license (30% share applies) and one external (no share).
 insert into public.licenses (id, organization_id, submission_id, buyer_id, status, licensee_name, media, territory, starts_at, ends_at, origin, sale_base_minor, sales_engine_share_minor, photographer_share_minor, created_by) values

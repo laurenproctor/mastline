@@ -3,38 +3,59 @@ import react from "@vitejs/plugin-react";
 import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
 
+const alias = { "@": fileURLToPath(new URL("./src", import.meta.url)) };
+
 /**
- * Unit and component tests run in jsdom and need nothing external.
+ * Two kinds of test, run differently.
  *
- * The tests under tests/ talk to a real local Supabase stack. They read
- * .env.local, and skip themselves cleanly when it is absent so that a
- * checkout without Docker still passes `npm run test`.
+ * Unit and component tests are pure and run in parallel in jsdom.
+ *
+ * The tests under tests/ share one local Postgres and one seeded organization,
+ * so they run serially: parallel files were interfering through workspace-wide
+ * totals. They skip themselves cleanly when .env.local is absent, so a checkout
+ * without Docker still passes `npm run test`.
  */
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const supabaseEnv = {
+    NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+    SUPABASE_TEST_PASSWORD: env.SUPABASE_TEST_PASSWORD ?? "mastline-dev-password",
+  };
 
   return {
     plugins: [react()],
-    resolve: {
-      alias: {
-        "@": fileURLToPath(new URL("./src", import.meta.url)),
-      },
-    },
+    resolve: { alias },
     test: {
-      environment: "jsdom",
-      globals: true,
-      setupFiles: ["./vitest.setup.ts"],
-      include: ["src/**/*.{test,spec}.{ts,tsx}", "tests/**/*.{test,spec}.ts"],
-      env: {
-        NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-        SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-        SUPABASE_TEST_PASSWORD: env.SUPABASE_TEST_PASSWORD ?? "mastline-dev-password",
-      },
-      coverage: {
-        provider: "v8",
-        include: ["src/lib/**/*.ts"],
-      },
+      coverage: { provider: "v8", include: ["src/lib/**/*.ts"] },
+      projects: [
+        {
+          plugins: [react()],
+          resolve: { alias },
+          test: {
+            name: "unit",
+            environment: "jsdom",
+            globals: true,
+            setupFiles: ["./vitest.setup.ts"],
+            include: ["src/**/*.{test,spec}.{ts,tsx}"],
+            env: supabaseEnv,
+          },
+        },
+        {
+          resolve: { alias },
+          test: {
+            name: "database",
+            environment: "node",
+            globals: true,
+            include: ["tests/**/*.{test,spec}.ts"],
+            env: supabaseEnv,
+            // One database, one seeded organization: these must not overlap.
+            fileParallelism: false,
+            sequence: { concurrent: false },
+          },
+        },
+      ],
     },
   };
 });

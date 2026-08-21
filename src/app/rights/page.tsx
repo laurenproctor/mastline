@@ -3,7 +3,10 @@ import { AppShell } from "@/components/app-shell";
 import { Badge, Metric, PageHeader, Panel, PendingButton } from "@/components/primitives";
 import { formatConfidence, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { getAsset, listPayments, listRightsMatches } from "@/lib/mock/queries";
+import { getAsset } from "@/lib/data/assets";
+import { listPayments } from "@/lib/data/money";
+import { listRightsMatches } from "@/lib/data/rights";
+import { currentContext } from "@/lib/session-context";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue"> = {
   new: "danger",
@@ -16,9 +19,10 @@ const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue
 };
 
 export default async function RightsPage() {
-  const matches = await listRightsMatches();
-  const assets = await Promise.all(matches.map((match) => getAsset(match.assetId)));
-  const payments = await listPayments();
+  const { organizationId } = await currentContext();
+  const matches = await listRightsMatches(organizationId);
+  const assets = await Promise.all(matches.map((match) => getAsset(organizationId, match.assetId)));
+  const payments = await listPayments(organizationId);
 
   const recovered = payments
     .filter((payment) => payment.source === "recovery")
@@ -26,6 +30,7 @@ export default async function RightsPage() {
 
   const selected = matches[0];
   const selectedAsset = assets[0];
+  const hasMatches = matches.length > 0;
 
   const counts = {
     needsReview: matches.filter((match) => match.status === "new").length,
@@ -71,6 +76,13 @@ export default async function RightsPage() {
             action={<span className="muted">Grouped by asset and publisher</span>}
             title="Match queue"
           >
+            {!hasMatches && (
+              <div className="panel-body">
+                <p className="section-note">
+                  No observed uses recorded. Monitoring sources are connected in a later phase.
+                </p>
+              </div>
+            )}
             <div className="table-scroll">
               <table className="data-table">
                 <thead>

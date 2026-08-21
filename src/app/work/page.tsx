@@ -1,72 +1,84 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge, Metric, PageHeader, Panel, Progress } from "@/components/primitives";
+import { listActivity } from "@/lib/data/activity";
+import { listAssets } from "@/lib/data/assets";
+import { listShoots } from "@/lib/data/shoots";
+import { getWorkPulse, getWorkQueue } from "@/lib/data/work-queue";
 import { formatElapsed, formatLongDate } from "@/lib/format";
+import { reviewSelection } from "@/lib/metadata-rules";
 import { formatMoney } from "@/lib/money";
-import { DEMO_NOW } from "@/lib/mock/fixtures";
-import {
-  getArchiveRevenue,
-  getMedianSubmissionMinutes,
-  getMoneySummary,
-  getShootProgress,
-  getWorkQueue,
-  listActivity,
-} from "@/lib/mock/queries";
+import { can } from "@/lib/permissions";
+import { currentContext } from "@/lib/session-context";
 
 const KIND_TONE = {
   Shoot: "warn",
-  Delivery: "danger",
+  Dispatch: "blue",
+  Submission: "blue",
   Money: "warn",
-  Rights: "blue",
 } as const;
 
+const ACTIVE_STATUSES = new Set([
+  "draft",
+  "scheduled",
+  "active",
+  "ingesting",
+  "preparing",
+  "ready",
+]);
+
 export default async function WorkQueuePage() {
-  const [queue, summary, archiveRevenue, medianMinutes, onDeck, activity] = await Promise.all([
-    getWorkQueue(),
-    getMoneySummary(),
-    getArchiveRevenue(),
-    getMedianSubmissionMinutes(),
-    getShootProgress("sht_chelsea"),
-    listActivity(),
+  const { session, organizationId } = await currentContext();
+  const now = new Date();
+
+  const [queue, pulse, shoots, activity] = await Promise.all([
+    getWorkQueue(organizationId),
+    getWorkPulse(organizationId),
+    listShoots(organizationId),
+    listActivity(organizationId, { limit: 6 }),
   ]);
 
-  const archiveShare = Math.round(
-    (archiveRevenue.minor / Math.max(1, summary.netReceived.minor)) * 100,
-  );
+  const onDeck = shoots.find((shoot) => ACTIVE_STATUSES.has(shoot.status)) ?? null;
+  const onDeckAssets = onDeck ? await listAssets(organizationId, { shootId: onDeck.id }) : [];
+  const onDeckReport = reviewSelection(onDeckAssets.filter((asset) => asset.selected));
 
   return (
     <AppShell active="Work">
       <div className="page">
         <PageHeader
-          action="Import a shoot"
-          description={`${queue.length} items need action. The next best move is visible.`}
-          eyebrow={formatLongDate(DEMO_NOW.toISOString())}
+          action={can(session.activeWorkspace.role, "shoot.write") ? "Create shoot" : undefined}
+          description={
+            queue.length === 0
+              ? "Nothing needs attention. Every shoot, submission, and payment is up to date."
+              : `${queue.length} ${queue.length === 1 ? "item needs" : "items need"} action. The next best move is visible.`
+          }
+          eyebrow={formatLongDate(now.toISOString())}
           href="/shoots/new"
           title="Work queue"
         />
 
         <div className="metrics">
           <Metric
-            detail="Received this period"
-            label="Net received"
+            detail="Net that arrived"
+            label="Received"
             tone="good"
-            value={formatMoney(summary.netReceived)}
+            value={formatMoney(pulse.netReceived)}
           />
           <Metric
-            detail={`${summary.overdueCount} overdue`}
+            detail={`${pulse.overdueCount} overdue`}
             label="Outstanding"
-            tone={summary.overdueCount > 0 ? "danger" : undefined}
-            value={formatMoney(summary.outstanding)}
+            tone={pulse.overdueCount > 0 ? "danger" : undefined}
+            value={formatMoney(pulse.outstanding)}
           />
           <Metric
-            detail="Capture to first dispatch"
-            label="Median submission time"
-            value={`${medianMinutes} min`}
+            detail="Shoot start to first dispatch"
+            label="Median dispatch"
+            value={pulse.medianDispatchMinutes > 0 ? `${pulse.medianDispatchMinutes} min` : "—"}
           />
           <Metric
-            detail={`${archiveShare}% of received`}
-            label="Archive revenue"
-            value={formatMoney(archiveRevenue)}
+            detail="Statement value not attributed"
+            label="Unmatched"
+            value={formatMoney(pulse.unmatched)}
           />
         </div>
 
@@ -76,82 +88,108 @@ export default async function WorkQueuePage() {
               action={<span className="muted">Now · {queue.length}</span>}
               title="Needs attention"
             >
-              <ul className="list">
-                {queue.map((item) => (
-                  <li className={`list-row${item.urgent ? " danger" : ""}`} key={item.id}>
-                    <Badge tone={KIND_TONE[item.kind]}>{item.kind}</Badge>
-                    <div>
-                      <h3>{item.title}</h3>
-                      <p>
-                        {item.detail} · <span className="muted">{item.rankingBasis}</span>
-                      </p>
-                    </div>
-                    <span className="age">
-                      {item.urgent ? "Urgent" : formatElapsed(item.occurredAt, DEMO_NOW)}
-                    </span>
-                    <Link className="row-action" href={item.href}>
-                      {item.actionLabel} <span aria-hidden="true">→</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              {queue.length === 0 ? (
+                <div className="panel-body">
+                  <p className="section-note">
+                    Nothing is blocked. Import a shoot, or record an outcome when a buyer replies.
+                  </p>
+                </div>
+              ) : (
+                <ul className="list">
+                  {queue.map((item) => (
+                    <li className={`list-row${item.urgent ? " danger" : ""}`} key={item.id}>
+                      <Badge tone={KIND_TONE[item.kind]}>{item.kind}</Badge>
+                      <div>
+                        <h3>{item.title}</h3>
+                        <p>
+                          {item.detail} · <span className="muted">{item.rankingBasis}</span>
+                        </p>
+                      </div>
+                      <span className="age">
+                        {item.urgent
+                          ? "Urgent"
+                          : item.occurredAt
+                            ? formatElapsed(item.occurredAt, now)
+                            : "—"}
+                      </span>
+                      <Link className="row-action" href={item.href}>
+                        {item.actionLabel} <span aria-hidden="true">→</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Panel>
 
             <Panel
               action={
                 <Link className="text-link" href="/archive">
-                  View all
+                  View archive
                 </Link>
               }
               title="Recent activity"
             >
-              <ul className="list">
-                {activity.slice(0, 4).map((event) => (
-                  <li className="list-row" key={event.id}>
-                    <Badge tone="neutral">{event.entityType}</Badge>
-                    <div>
-                      <h3>{event.summary}</h3>
-                      <p>{event.action}</p>
-                    </div>
-                    <span className="age">{formatElapsed(event.createdAt, DEMO_NOW)}</span>
-                    <span className="row-action muted">Logged</span>
-                  </li>
-                ))}
-              </ul>
+              {activity.length === 0 ? (
+                <div className="panel-body">
+                  <p className="section-note">Nothing recorded yet.</p>
+                </div>
+              ) : (
+                <ul className="list">
+                  {activity.map((event) => (
+                    <li className="list-row" key={event.id}>
+                      <Badge tone="neutral">{event.entityType}</Badge>
+                      <div>
+                        <h3>{event.summary}</h3>
+                        <p>{event.action}</p>
+                      </div>
+                      <span className="age">{formatElapsed(event.createdAt, now)}</span>
+                      <span className="row-action muted">Logged</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Panel>
           </div>
 
           <Panel title="On deck">
-            {onDeck && (
+            {onDeck ? (
               <div className="side-card">
-                <Badge tone="warn">{onDeck.shoot.status}</Badge>
-                <h3>{onDeck.shoot.title}</h3>
+                <Badge tone="warn">{onDeck.status}</Badge>
+                <h3>{onDeck.title}</h3>
                 <p>
-                  {onDeck.importedFileCount} files · {onDeck.selectedCount} selected ·{" "}
-                  {onDeck.shoot.locationName}
+                  {onDeckAssets.length} files · {onDeckReport.total} selected
+                  {onDeck.locationName ? ` · ${onDeck.locationName}` : ""}
                 </p>
-                <div aria-hidden="true" className="mini-photo" />
-                <Progress label="Captions" value={onDeck.captionCompletionPercent} />
+                <Progress label="Ready to dispatch" value={onDeckReport.completionPercent} />
                 <div className="spacer" />
-                <Link className="button small" href={`/shoots/${onDeck.shoot.id}`}>
+                <Link className="button small" href={`/shoots/${onDeck.id}`}>
                   Open shoot
                 </Link>
               </div>
+            ) : (
+              <div className="side-card">
+                <h3>No shoot in progress</h3>
+                <p>Create a shoot from a brief, before there are any files.</p>
+                <Link className="button small" href="/shoots/new">
+                  Create shoot
+                </Link>
+              </div>
             )}
+
             <div className="side-card">
               <h3>This period</h3>
               <dl className="pulse-list">
                 <div>
                   <dt>Received</dt>
-                  <dd>{formatMoney(summary.netReceived)}</dd>
+                  <dd>{formatMoney(pulse.netReceived)}</dd>
                 </div>
                 <div>
                   <dt>Outstanding</dt>
-                  <dd>{formatMoney(summary.outstanding)}</dd>
+                  <dd>{formatMoney(pulse.outstanding)}</dd>
                 </div>
                 <div>
-                  <dt>Unmatched statement lines</dt>
-                  <dd>{formatMoney(summary.unmatchedStatementTotal)}</dd>
+                  <dt>Unmatched</dt>
+                  <dd>{formatMoney(pulse.unmatched)}</dd>
                 </div>
               </dl>
               <Link className="text-link" href="/money">

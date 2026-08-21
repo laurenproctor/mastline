@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { BuildPackage } from "@/components/build-package";
 import { ImportDropzone } from "@/components/import-dropzone";
-import { Badge, PageHeader, Panel, PendingButton, Progress } from "@/components/primitives";
+import { Badge, PageHeader, Panel, Progress } from "@/components/primitives";
 import { ShootWorkspace } from "@/components/shoot-workspace";
 import type { InspectorAsset } from "@/components/asset-inspector";
 import type { SheetAsset } from "@/components/contact-sheet";
 import { listAssets, listCaptionHistory } from "@/lib/data/assets";
+import { listPackages } from "@/lib/data/packages";
+import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { getSensitiveNote, getShoot } from "@/lib/data/shoots";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
@@ -80,6 +83,11 @@ export default async function ShootWorkspacePage({
   const sensitiveNote = shoot.hasSensitiveNote
     ? await getSensitiveNote(organizationId, shootId)
     : null;
+
+  const [packages, buyers] = await Promise.all([
+    listPackages(organizationId, { shootId }),
+    listWorkspaceBuyers(organizationId),
+  ]);
 
   const mayEdit = can(role, "asset.write");
 
@@ -203,36 +211,49 @@ export default async function ShootWorkspacePage({
             )}
 
             <Panel title="Next action">
-              <div className="side-card">
-                {selected.length === 0 ? (
-                  <>
-                    <h3>Select the frames worth sending</h3>
-                    <p>Space selects the focused frame. Shift-click extends a range.</p>
-                  </>
-                ) : selectionReport.blocked > 0 ? (
-                  <>
-                    <h3>
-                      Complete metadata on {selectionReport.blocked}{" "}
-                      {selectionReport.blocked === 1 ? "frame" : "frames"}
-                    </h3>
-                    <p>
-                      A package cannot be approved while a selected frame is missing required
-                      metadata.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3>Ready to package</h3>
-                    <p>
-                      Every selected frame carries a caption, credit, copyright, and capture time.
-                    </p>
-                  </>
-                )}
-                <PendingButton className="blue" small>
-                  Build package
-                </PendingButton>
-                <p className="section-note">Dispatch is built in the next phase.</p>
-              </div>
+              {packages.length > 0 && (
+                <div className="side-card">
+                  <h3>
+                    {packages.length === 1 ? "A package exists" : `${packages.length} packages`}
+                  </h3>
+                  <ul className="package-list">
+                    {packages.map((pkg) => (
+                      <li key={pkg.id}>
+                        <Link className="text-link" href={`/dispatch/${shootId}?package=${pkg.id}`}>
+                          {pkg.name}
+                        </Link>
+                        <small>
+                          {humanizeStatus(pkg.status)} · {pkg.assets.length} assets
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {can(role, "package.write") ? (
+                <BuildPackage
+                  blockedCount={selectionReport.blocked}
+                  buyers={buyers.map((buyer) => ({
+                    id: buyer.id,
+                    name: buyer.name,
+                    defaultTerms: buyer.defaultTerms,
+                    deliveryProfile: buyer.deliveryProfile,
+                  }))}
+                  readyCount={selectionReport.ready}
+                  shootId={shootId}
+                  shootTitle={shoot.title}
+                  suggestedBuyerId={shoot.targetBuyerIds[0]}
+                />
+              ) : (
+                <div className="side-card">
+                  <h3>Selection</h3>
+                  <p>
+                    {selected.length} selected, {selectionReport.blocked} still missing required
+                    metadata. Building a package needs an editor or dispatcher role.
+                  </p>
+                </div>
+              )}
             </Panel>
           </div>
         </div>

@@ -7,8 +7,11 @@
  * Prices are approved product facts (`docs/DECISIONS.md`). Changing them is a
  * business decision, not an implementation detail.
  *
- * Trial duration, payment-method requirement, and conversion mechanics are
- * UNRESOLVED. "Start free" is approved copy; do not append a duration to it.
+ * Trial terms as of 2026-08-21: 14 days, no payment method required to start.
+ * End-of-trial conversion mechanics and eligibility are still UNRESOLVED.
+ * The marketing copy has not yet been authorized to state the duration, so
+ * "Start free" stands alone here and the guard tests still forbid trial
+ * language in plan copy. Changing that is a founder decision, not a cleanup.
  */
 
 import { type Money, formatMoney, fromMajor } from "./money";
