@@ -12,6 +12,28 @@ import { createServerClient } from "@supabase/ssr";
  * nothing to a caller with no membership.
  */
 
+const MARKETING_ROUTES = [
+  "/",
+  "/welcome",
+  "/pricing",
+  "/product",
+  "/how-it-works",
+  "/trust",
+  "/company",
+  "/early-access",
+  "/teams",
+  "/commercial",
+  "/editors",
+  "/press",
+  "/copyright",
+  "/subjects",
+  "/acceptable-use",
+  "/privacy",
+  "/terms",
+  "/security",
+  "/accessibility",
+];
+
 /**
  * Routes that do not require a session.
  *
@@ -24,10 +46,10 @@ const PUBLIC_ROUTES = [
   "/login",
   "/signup",
   "/reset-password",
-  "/welcome",
-  "/pricing",
   "/auth",
   "/api/webhooks",
+  // Every marketing page is public by definition.
+  ...MARKETING_ROUTES,
 ];
 
 function isPublic(pathname: string): boolean {
@@ -35,7 +57,7 @@ function isPublic(pathname: string): boolean {
 }
 
 /**
- * Marketing pages that never vary by who is looking.
+ * The public marketing site: pages that never vary by who is looking.
  *
  * These are served before a Supabase client is built, so the public site does
  * not depend on the database being reachable or the environment being
@@ -46,7 +68,6 @@ function isPublic(pathname: string): boolean {
  * /login and /signup are deliberately NOT here: they redirect an already
  * signed-in visitor onward, which needs the session.
  */
-const MARKETING_ROUTES = ["/welcome", "/pricing"];
 
 function isMarketing(pathname: string): boolean {
   return MARKETING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));

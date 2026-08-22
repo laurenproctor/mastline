@@ -41,11 +41,21 @@ export async function overflowingElements(page: Page): Promise<string[]> {
     for (const element of Array.from(document.body.querySelectorAll<HTMLElement>("*"))) {
       const box = element.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) continue;
-      // Ignore anything that scrolls on purpose, and anything inside it: a
-      // wide table within a scroller is the point, not a failure.
-      const style = getComputedStyle(element);
-      if (style.overflowX === "auto" || style.overflowX === "scroll") continue;
-      if (element.closest("[data-scrolls], .table-scroll")) continue;
+      // Ignore anything that clips or scrolls on purpose, and anything inside
+      // it. A wide table inside a scroller is the point, not a failure, and so
+      // is a marquee that is deliberately wider than the window it runs in.
+      // What matters is whether the page itself scrolls sideways, which
+      // hasHorizontalOverflow answers.
+      const clipped = (node: HTMLElement | null): boolean => {
+        for (let el = node; el && el !== document.body; el = el.parentElement) {
+          const overflowX = getComputedStyle(el).overflowX;
+          if (overflowX === "auto" || overflowX === "scroll" || overflowX === "hidden" || overflowX === "clip") {
+            return true;
+          }
+        }
+        return false;
+      };
+      if (clipped(element)) continue;
       if (box.right > width + 1) {
         const id = element.id ? `#${element.id}` : "";
         const cls = element.className && typeof element.className === "string"

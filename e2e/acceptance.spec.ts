@@ -152,8 +152,12 @@ test.describe("pricing states the approved facts", () => {
   test("marks Pro most popular and never invents a trial duration", async ({ page }) => {
     await page.goto("/pricing");
     await expect(page.getByText("Most popular")).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "Start free" })).toHaveCount(3);
-    await expect(page.getByRole("button", { name: "Talk to us" })).toHaveCount(1);
+
+    // Scoped to the plan grid: the header and the mobile menu also offer to
+    // start free, and this is a claim about what the four plans say.
+    const plans = page.locator(".plans");
+    await expect(plans.getByRole("link", { name: "Start free" })).toHaveCount(3);
+    await expect(plans.getByRole("link", { name: "Talk to us" })).toHaveCount(1);
 
     const body = (await page.locator("body").innerText()).toLowerCase();
     const durations = [...body.matchAll(/(\d+)\s+days?\s+free/g)].map((match) => match[1]);
@@ -413,3 +417,87 @@ test.describe("a save is reflected on the screen that made it", () => {
     }
   });
 });
+
+test.describe("the marketing site", () => {
+  const MARKETING_ROUTES = [
+    "/",
+    "/product",
+    "/how-it-works",
+    "/pricing",
+    "/trust",
+    "/company",
+    "/early-access",
+    "/teams",
+    "/commercial",
+    "/editors",
+    "/press",
+    "/copyright",
+    "/subjects",
+    "/acceptable-use",
+    "/privacy",
+    "/terms",
+    "/security",
+    "/accessibility",
+  ];
+
+  test("every page renders, to a stranger, without a console error", async ({ page }) => {
+    const errors = collectPageErrors(page);
+
+    for (const route of MARKETING_ROUTES) {
+      const response = await page.goto(route);
+      expect(response?.status(), `${route} did not load`).toBeLessThan(400);
+      // No session anywhere in this test: the marketing site must never send a
+      // visitor who has not signed in to the sign-in screen.
+      expect(page.url(), `${route} redirected`).toContain(route === "/" ? "/" : route);
+      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+      // The shared chrome is the proof the marketing layout wrapped the page.
+      await expect(page.locator("header.nav")).toBeVisible();
+      await expect(page.locator("footer")).toBeAttached();
+    }
+    expect(errors).toEqual([]);
+  });
+
+  test("no page scrolls sideways", async ({ page }) => {
+    for (const route of ["/", "/pricing", "/product", "/commercial", "/press", "/terms"]) {
+      await page.goto(route);
+      expect(await hasHorizontalOverflow(page), `${route} scrolls sideways`).toBe(false);
+      const overflowing = await overflowingElements(page);
+      expect(overflowing, `${route} overflows: ${overflowing.join(", ")}`).toEqual([]);
+    }
+  });
+
+  test("/welcome keeps working, and lands on the home page", async ({ page }) => {
+    await page.goto("/welcome");
+    await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("the header marks where you are", async ({ page }) => {
+    await page.goto("/pricing");
+    const current = page.locator(".nav ul a[aria-current='page']");
+    await expect(current).toHaveCount(2); // the header and the mobile menu
+    await expect(current.first()).toHaveText("Pricing");
+  });
+
+  test("the archive demonstration resolves rather than staying blank", async ({ page }) => {
+    // Its pitch card is hidden until a script finishes. If that never runs, a
+    // whole panel of the home page is invisible and nothing says so.
+    await page.goto("/");
+    await page.locator("#rw").scrollIntoViewIfNeeded();
+    await expect(page.locator(".rw-pitch")).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator("#rw")).toHaveClass(/done/);
+  });
+
+  test("the split calculator divides a sale the way the product does", async ({ page }) => {
+    await page.goto("/pricing");
+    const range = page.locator("#pr-range");
+    await range.evaluate((el: HTMLInputElement) => {
+      el.value = "1000";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // 70/30, from the same module that splits a real licence.
+    await expect(page.locator("#pr-you")).toHaveText("$700");
+    await expect(page.locator("#pr-us")).toHaveText("$300");
+  });
+});
+
