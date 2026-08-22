@@ -426,7 +426,6 @@ test.describe("the marketing site", () => {
     "/pricing",
     "/trust",
     "/company",
-    "/early-access",
     "/teams",
     "/commercial",
     "/editors",
@@ -469,6 +468,45 @@ test.describe("the marketing site", () => {
   test("/welcome keeps working, and lands on the home page", async ({ page }) => {
     await page.goto("/welcome");
     await expect(page).toHaveURL(/\/$/);
+  });
+
+  test("every way in reaches real sign-up, not a mail client", async ({ page }) => {
+    // The design captured this as a mailto: form. Sign-up exists and works, so
+    // every "Start free" has to land on it.
+    await page.goto("/");
+    await page.getByRole("link", { name: "Start free" }).first().click();
+    await expect(page).toHaveURL(/\/signup$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Start free" })).toBeVisible();
+
+    // The old address still resolves rather than dead-ending.
+    await page.goto("/early-access");
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+
+  test("sign in reaches the sign-in screen", async ({ page }) => {
+    await page.goto("/");
+
+    // The header keeps only the primary call to action on a phone; sign in
+    // moves into the menu. Exercising both paths means this also proves the
+    // burger works.
+    const inHeader = page.locator(".nav .cta").getByRole("link", { name: "Sign in" });
+    if (await inHeader.isVisible()) {
+      await inHeader.click();
+    } else {
+      await page.getByRole("button", { name: /open menu/i }).click();
+      await page.locator(".mobilemenu").getByRole("link", { name: "Sign in" }).click();
+    }
+
+    await expect(page).toHaveURL(/\/login/);
+    await expect(page.getByLabel("Email")).toBeVisible();
+  });
+
+  test("no marketing link points at a mailto sign-up", async ({ page }) => {
+    for (const route of ["/", "/pricing", "/product"]) {
+      await page.goto(route);
+      const mailtoCtas = page.locator('a[href^="mailto:"]', { hasText: /start free|sign up/i });
+      await expect(mailtoCtas, `${route} still offers a mailto sign-up`).toHaveCount(0);
+    }
   });
 
   test("the header marks where you are", async ({ page }) => {

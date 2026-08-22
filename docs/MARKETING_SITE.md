@@ -18,7 +18,7 @@ and can be linked to and indexed.
 | `/how-it-works` | `/editors` | `/security` |
 | `/pricing` | `/press` | `/accessibility` |
 | `/trust` | `/copyright` | `/acceptable-use` |
-| `/company` | `/subjects` | `/early-access` |
+| `/company` | `/subjects` | `/early-access` → `/signup` |
 
 `/` used to redirect to `/work`, which sent anyone who was not signed in
 straight to a sign-in screen. It is now the home page. `/welcome` permanently
@@ -84,11 +84,22 @@ Nine addresses are linked and need to exist as real mailboxes: `hello@`,
 company", the Prince Street address, and "Founded 2026". `/pricing` compares
 against a "typical agency 40–60%", which is a claim about third parties.
 
+## The way in
+
+Every "Start free" -- in the header, the mobile menu, the plan cards, the
+footer, and each page's closing call to action -- goes to `/signup`, which
+creates the account and hands over to `/onboarding`. "Sign in" goes to
+`/login`. On a phone the header keeps only the primary call to action and sign
+in moves into the menu.
+
+`/early-access` permanently redirects to `/signup`. The design captured it as a
+form posting to a `mailto:` address, which would have sent a conversion into a
+mail client instead of creating a workspace. The qualifying questions it asked
+-- market, how you work, what slows you down -- are not captured anywhere yet;
+they belong in onboarding, where there is an account to attach them to.
+
 ## Things worth a second look
 
-- **"Start free" goes to `/early-access`**, whose form posts to `mailto:`. Real
-  onboarding exists at `/signup` and works. As it stands the main conversion
-  path opens a mail client instead of creating a workspace.
 - **`/commercial` names real brands** with prices in a product mockup.
 - The three founder quotes on `/company` are attributed to you by name.
 

@@ -23,7 +23,7 @@ export default function Page() {
               photographers, and small crews. Stills and video.
             </p>
             <div className="actions">
-              <Link className="btn primary" href="/early-access">
+              <Link className="btn primary" href="/signup">
                 Start your 30-day trial{" "}
                 <svg
                   viewBox="0 0 24 24"
@@ -750,7 +750,7 @@ export default function Page() {
             </p>
           </div>
           <div className="actions">
-            <Link className="btn light" href="/early-access">
+            <Link className="btn light" href="/signup">
               Start your 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">

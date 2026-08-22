@@ -56,7 +56,7 @@ export function SiteNav() {
           <Link className="btn ghost" href="/login">
             Sign in
           </Link>
-          <Link className="btn primary" href="/early-access">
+          <Link className="btn primary" href="/signup">
             Start free
           </Link>
         </div>
@@ -95,7 +95,7 @@ export function SiteNav() {
           <Link className="btn ghost" href="/login">
             Sign in
           </Link>
-          <Link className="btn primary" href="/early-access">
+          <Link className="btn primary" href="/signup">
             Start free
           </Link>
         </div>

@@ -551,7 +551,7 @@ export default function Page() {
               </p>
             </div>
             <div className="stores">
-              <Link className="btn primary" href="/early-access">
+              <Link className="btn primary" href="/signup">
                 Start your 30-day trial
               </Link>
             </div>
@@ -627,7 +627,7 @@ export default function Page() {
             </p>
           </div>
           <div className="actions">
-            <Link className="btn light" href="/early-access">
+            <Link className="btn light" href="/signup">
               Start your 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">

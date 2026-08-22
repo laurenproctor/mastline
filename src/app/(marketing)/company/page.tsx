@@ -243,7 +243,7 @@ export default function Page() {
             </p>
           </div>
           <div className="actions" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <Link className="btn primary" href="/early-access">
+            <Link className="btn primary" href="/signup">
               Start free
             </Link>
             <a className="btn ghost" href="mailto:hello@mastline.co">

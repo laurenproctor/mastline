@@ -21,7 +21,7 @@ export default function Page() {
             to the brand, or publish it as shoppable content and collect on every sale it drives.
           </p>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "24px" }}>
-            <Link className="btn primary" href="/early-access">
+            <Link className="btn primary" href="/signup">
               Start your 30-day trial
             </Link>
             <a className="btn ghost" href="#co-flow">
@@ -584,7 +584,7 @@ export default function Page() {
             <p>Thirty days free on Pro. Upload a set and see what&apos;s inside it.</p>
           </div>
           <div className="actions">
-            <Link className="btn light" href="/early-access">
+            <Link className="btn light" href="/signup">
               Start your 30-day trial
             </Link>
             <Link className="btn outline" href="/product">
