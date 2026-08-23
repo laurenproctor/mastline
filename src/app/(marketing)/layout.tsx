@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Source_Serif_4 } from "next/font/google";
+import { Inter, Newsreader } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { SiteNav } from "./_components/site-nav";
@@ -18,13 +18,28 @@ import "./marketing.css";
  * a Supabase client.
  */
 /**
- * The artifact linked Newsreader but its CSS asked for Source Serif 4, so
- * neither ever loaded and every headline fell back to Georgia. These are the
- * faces the design actually names, self-hosted by next/font so there is no
- * render-blocking request to a third party and no layout shift when they land.
+ * Newsreader is the editorial direction's headline face, and the reason the
+ * approved artifact is a separate direction at all. Its own CSS still asked for
+ * Source Serif 4, so neither face ever loaded there and every headline fell
+ * back to Georgia; the design it names is the one that ships.
+ *
+ * The opsz axis has to be requested explicitly -- next/font ships only the
+ * weight axis of a variable font otherwise -- because the direction sets
+ * font-variation-settings: "opsz" per element, 72 for display headlines down to
+ * 18 for the asset record. Italic is a real cut here, not a slant: the emphasis
+ * inside every headline is set in it.
+ *
+ * Both faces are self-hosted by next/font, so there is no render-blocking
+ * request to a third party and no layout shift when they land.
  */
 const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
+const serif = Newsreader({
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "Mastline", template: "%s — Mastline" },

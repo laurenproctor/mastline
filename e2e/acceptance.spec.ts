@@ -652,3 +652,30 @@ test.describe("two-factor authentication", () => {
   });
 });
 
+test.describe("signing up asks for a name in two fields", () => {
+  /**
+   * One box forces a split later, and splitting on whitespace gets "van der
+   * Berg" and "Ana Maria" wrong in opposite directions. Asking for the parts
+   * means they are known rather than inferred.
+   */
+  test("offers first and last name, not one box", async ({ page }) => {
+    await page.goto("/signup");
+
+    await expect(page.getByLabel("First name")).toBeVisible();
+    await expect(page.getByLabel("Last name")).toBeVisible();
+    await expect(page.getByLabel("Your name")).toHaveCount(0);
+
+    // The browser can fill these only if they say which half they are.
+    await expect(page.getByLabel("First name")).toHaveAttribute("autocomplete", "given-name");
+    await expect(page.getByLabel("Last name")).toHaveAttribute("autocomplete", "family-name");
+  });
+
+  test("neither part is required, so a name never blocks an account", async ({ page }) => {
+    await page.goto("/signup");
+    await expect(page.getByLabel("First name")).not.toHaveAttribute("required", "");
+    await expect(page.getByLabel("Last name")).not.toHaveAttribute("required", "");
+    // Email and password still are.
+    await expect(page.getByLabel("Email")).toHaveAttribute("required", "");
+  });
+});
+

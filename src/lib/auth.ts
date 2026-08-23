@@ -3,6 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { mfaBlocksAccess, mfaStanding } from "./mfa";
+import { displayNameFrom, initialsFrom } from "./person-name";
 import type { AppRole } from "./domain";
 import { type Capability, assertCan } from "./permissions";
 import type { SubscriptionStatus } from "./subscription";
@@ -59,12 +60,7 @@ export interface WorkspaceSession extends Session {
 
 export const ACTIVE_WORKSPACE_COOKIE = "mastline-workspace";
 
-function initialsFrom(name: string, email: string): string {
-  const source = name.trim() || email;
-  const parts = source.split(/[\s@._-]+/).filter(Boolean);
-  const letters = parts.slice(0, 2).map((part) => part[0] ?? "");
-  return (letters.join("") || source.slice(0, 2)).toUpperCase();
-}
+
 
 /** The signed-in user's workspaces, or null when not signed in. */
 export const getSession = cache(async (activeWorkspaceId?: string): Promise<Session | null> => {
@@ -138,15 +134,23 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   const active =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
 
-  const displayName =
-    (user.user_metadata?.full_name as string | undefined) ?? user.email?.split("@")[0] ?? "Member";
+  // The name is collected as two fields, so the parts are read rather than
+  // guessed at. full_name is still honoured for accounts created before that.
+  const metadata = user.user_metadata ?? {};
+  const nameSource = {
+    firstName: metadata.first_name as string | undefined,
+    lastName: metadata.last_name as string | undefined,
+    fullName: metadata.full_name as string | undefined,
+    email: user.email,
+  };
+  const displayName = displayNameFrom(nameSource);
 
   return {
     userId: user.id,
     email: user.email ?? "",
     hasVerifiedFactor,
     displayName,
-    initials: initialsFrom(displayName, user.email ?? ""),
+    initials: initialsFrom(nameSource),
     workspaces,
     activeWorkspace: active,
   };

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { fullNameFrom, parsePersonName } from "@/lib/person-name";
 import { createClient } from "@/lib/supabase/server";
 
 export interface SignUpState {
@@ -30,7 +31,11 @@ export async function signUpAction(
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const fullName = String(formData.get("fullName") ?? "").trim();
+  const parsed = parsePersonName(
+    String(formData.get("firstName") ?? ""),
+    String(formData.get("lastName") ?? ""),
+  );
+  if ("error" in parsed) return { error: parsed.error };
 
   if (!email || !email.includes("@")) return { error: "Enter a valid email address." };
   if (password.length < MIN_PASSWORD) {
@@ -41,7 +46,16 @@ export async function signUpAction(
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: fullName ? { full_name: fullName } : {} },
+    // Both parts are stored, and the joined form alongside them, so anything
+    // reading full_name -- an invitation email, an export -- keeps working
+    // without having to know how the name was collected.
+    options: {
+      data: {
+        first_name: parsed.name.firstName,
+        last_name: parsed.name.lastName,
+        full_name: fullNameFrom(parsed.name),
+      },
+    },
   });
 
   if (error) {

@@ -27,7 +27,10 @@ export function SignUpForm() {
 
   return (
     <form action={formAction} className="auth-form">
-      <Field autoComplete="name" label="Your name" name="fullName" />
+      <div className="name-fields">
+        <Field autoComplete="given-name" label="First name" name="firstName" />
+        <Field autoComplete="family-name" label="Last name" name="lastName" />
+      </div>
       <div className="spacer" />
       <Field autoComplete="email" label="Email" name="email" required type="email" />
       <div className="spacer" />

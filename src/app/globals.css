@@ -725,3 +725,7 @@ a.button { text-decoration: none; }
 /* The enrolment key, shown as text because a phone cannot scan its own screen. */
 .mfa-secret{margin:10px 0;padding:12px 14px;background:var(--paper-2);border:1px solid var(--rule);border-radius:6px}
 .mfa-secret code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;letter-spacing:.08em;word-break:break-all}
+
+/* First and last name sit side by side, and stack on a narrow screen. */
+.name-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.name-fields{grid-template-columns:1fr}}
