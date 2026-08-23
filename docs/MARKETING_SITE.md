@@ -60,8 +60,11 @@ today:
 - The **News Radar** and **Commercial Opportunities** screenshots show Phase 4
   work that has not been built
 
-`main` deploys to mastline.co automatically, so merging publishes these claims.
-That is why this landed on a branch.
+**These are live.** On 2026-08-23 the founder chose to publish the site as
+written rather than wait, with the consequence stated: the three remaining
+claims are public on mastline.co before the features exist. They should be built
+or the sentences amended. Two-factor authentication was built first and is no
+longer among them.
 
 ## What still needs filling in
 

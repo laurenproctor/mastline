@@ -8,6 +8,9 @@ done and what is still needed.
 
 - Vercel project `mastline` exists in `lauren-proctors-projects`, on Node 24.x,
   serving <https://mastline.co>.
+- **`/` is the marketing home.** It used to redirect to `/work`, so a stranger
+  arriving at mastline.co was sent to the sign-in screen. `/welcome` now
+  permanently redirects to `/`, and sign-in stays at `/login`.
 - **The apex is canonical.** `mastline.co` serves the site and
   `www.mastline.co` returns a 308 to it, preserving the path. Vercel had it the
   other way round when the domain was added, which is the default. If it ever
