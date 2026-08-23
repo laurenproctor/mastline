@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   SEEDED,
+  clearMfaFactors,
+  freshTotp,
+  setWorkspaceMfaPolicy,
   SEEDED_SHOOT,
   collectPageErrors,
   hasHorizontalOverflow,
@@ -536,6 +539,116 @@ test.describe("the marketing site", () => {
     // 70/30, from the same module that splits a real licence.
     await expect(page.locator("#pr-you")).toHaveText("$700");
     await expect(page.locator("#pr-us")).toHaveText("$300");
+  });
+});
+
+test.describe("two-factor authentication", () => {
+  // Both sides: a previous interrupted run must not leak into this one, and
+  // this one must not leak into anything that signs in afterwards.
+  test.beforeEach(async () => clearMfaFactors(SEEDED.owner));
+  test.afterEach(async () => clearMfaFactors(SEEDED.owner));
+
+  /**
+   * The whole round trip against real TOTP: enrol, sign out, sign in with the
+   * password, get stopped, fail to walk around it, then get through with a code.
+   *
+   * It runs against the seeded owner and turns the factor back off in a finally,
+   * because leaving it on would challenge every other test that signs in.
+   */
+  test("protects an account, and cannot be walked around", async ({ page }, testInfo) => {
+    // Desktop only. A used code cannot be replayed, so this waits out two
+    // 30-second windows, and what it proves -- that the challenge cannot be
+    // skipped -- is the same at every width. The panel's layout at 390px is
+    // covered by the layout tests.
+    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+    test.setTimeout(180_000);
+
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+
+    await page.getByRole("button", { name: "Set up two-factor" }).click();
+    const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
+    expect(secret.length).toBeGreaterThan(15);
+
+    let lastCode = await freshTotp(secret);
+    await page.getByLabel("Code from your app").fill(lastCode);
+    await page.getByRole("button", { name: "Confirm and turn on" }).click();
+    await expect(page.getByText("Two-factor authentication is on.")).toBeVisible();
+
+    try {
+      await page.getByRole("button", { name: "Sign out" }).click();
+      await page.waitForURL(/\/login/);
+
+      // The password alone now stops at the challenge.
+      await page.getByLabel("Email").fill(SEEDED.owner);
+      await page.getByLabel("Password").fill(SEEDED.password);
+      await page.getByRole("button", { name: /sign in/i }).click();
+      await page.waitForURL(/\/login\/verify/);
+
+      // A second factor that could be skipped by typing an address would not be
+      // one. This is the assertion the feature exists for.
+      await page.goto("/work");
+      await expect(page).toHaveURL(/\/login\/verify/);
+      await page.goto("/money");
+      await expect(page).toHaveURL(/\/login\/verify/);
+
+      lastCode = await freshTotp(secret, lastCode);
+      await page.getByLabel("Six-digit code").fill(lastCode);
+      await page.getByRole("button", { name: "Continue" }).click();
+      await page.waitForURL(/\/(work|money)/);
+      await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+    } finally {
+      // Put the account back, whatever happened above.
+      await page.goto("/settings");
+      await page.getByRole("button", { name: "Turn off two-factor" }).click();
+      const off = await freshTotp(secret, lastCode);
+      await page.getByLabel("Current code").fill(off);
+      await page.getByRole("button", { name: "Turn it off" }).click();
+      await expect(page.getByText("Two-factor authentication is off.")).toBeVisible();
+    }
+  });
+
+  test("a required policy stops work until a factor exists", async ({ page }) => {
+    await setWorkspaceMfaPolicy(true);
+    try {
+      await page.goto("/login");
+      await page.getByLabel("Email").fill(SEEDED.owner);
+      await page.getByLabel("Password").fill(SEEDED.password);
+      await page.getByRole("button", { name: /sign in/i }).click();
+
+      // The owner has no factor, so nothing behind the gate opens.
+      await expect(page).toHaveURL(/secure-your-account/);
+      await expect(page.getByRole("heading", { name: "Secure your account" })).toBeVisible();
+
+      for (const route of ["/work", "/money", "/settings"]) {
+        await page.goto(route);
+        await expect(page, `${route} was reachable without a factor`).toHaveURL(
+          /secure-your-account/,
+        );
+      }
+
+      // An editor is outside the policy and works as normal. Signing out is
+      // POST-only by design, so becoming a different visitor means dropping the
+      // cookies rather than asking the server to do it.
+      await page.context().clearCookies();
+      await signIn(page, SEEDED.editor);
+      await expect(page).toHaveURL(/\/work/);
+    } finally {
+      await setWorkspaceMfaPolicy(false);
+    }
+  });
+
+  test("a wrong code changes nothing", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Set up two-factor" }).click();
+    await page.getByLabel("Code from your app").fill("000000");
+    await page.getByRole("button", { name: "Confirm and turn on" }).click();
+
+    await expect(page.getByText(/That code was not right/)).toBeVisible();
+    // Nothing was turned on, so the account is exactly as it was.
+    await page.goto("/settings");
+    await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
   });
 });
 

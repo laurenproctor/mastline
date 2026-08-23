@@ -4,6 +4,7 @@ import { Badge, PageHeader, Panel, PendingButton } from "@/components/primitives
 import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
 import { humanizeStatus } from "@/lib/format";
 import { can } from "@/lib/permissions";
+import { mfaStanding } from "@/lib/mfa";
 import {
   getWorkspaceCounts,
   listWorkspaceBuyers,
@@ -15,6 +16,7 @@ import { findPlan, type PlanId } from "@/lib/pricing";
 import { Progress } from "@/components/primitives";
 import { BuyerTemplate } from "./_components/buyer-template";
 import { EditWorkspace } from "./_components/edit-workspace";
+import { MfaPolicy, TwoFactor } from "./_components/two-factor";
 import { InviteMember } from "./_components/invite-member";
 import { BillingPanel, type PlanOption } from "./_components/billing-panel";
 import { billingSummary, type BillingState } from "@/lib/billing";
@@ -226,6 +228,41 @@ export default async function SettingsPage({
                 a running total.
               </p>
             </div>
+          </Panel>
+
+          <Panel title="Two-factor authentication">
+            {saved === "mfa-on" && (
+              <p className="inspector-saved" role="status">
+                Two-factor authentication is on.
+              </p>
+            )}
+            {saved === "mfa-off" && (
+              <p className="inspector-saved" role="status">
+                Two-factor authentication is off.
+              </p>
+            )}
+            {saved === "mfa-required" && (
+              <p className="inspector-saved" role="status">
+                Two-factor is now required for owners and finance.
+              </p>
+            )}
+            {saved === "mfa-optional" && (
+              <p className="inspector-saved" role="status">
+                Two-factor is no longer required.
+              </p>
+            )}
+            <TwoFactor
+              email={session.email}
+              standing={mfaStanding({
+                role: workspace.role,
+                hasVerifiedFactor: session.hasVerifiedFactor,
+                enforced: workspace.requireMfa,
+              })}
+            />
+            <MfaPolicy
+              canEnforce={can(workspace.role, "workspace.settings")}
+              required={workspace.requireMfa}
+            />
           </Panel>
 
           <Panel title="Security">

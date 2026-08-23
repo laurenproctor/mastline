@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { mfaBlocksAccess, mfaStanding } from "./mfa";
 import type { AppRole } from "./domain";
 import { type Capability, assertCan } from "./permissions";
 import type { SubscriptionStatus } from "./subscription";
@@ -27,6 +28,8 @@ export interface Workspace {
   readonly trialEndsAt?: string;
   readonly storageLimitBytes?: number;
   readonly seatLimit?: number;
+  /** Whether this workspace insists on a second factor for owners and finance. */
+  readonly requireMfa: boolean;
   readonly billingPeriod?: "annual" | "monthly";
   readonly paymentMethodAttachedAt?: string;
   readonly pastDueSince?: string;
@@ -39,6 +42,9 @@ export interface Workspace {
 export interface Session {
   readonly userId: string;
   readonly email: string;
+  /** Whether this account holds a verified second factor. Read from the user
+   *  the auth server already returned, so it costs no extra call. */
+  readonly hasVerifiedFactor: boolean;
   readonly displayName: string;
   readonly initials: string;
   readonly workspaces: readonly Workspace[];
@@ -69,13 +75,15 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  const hasVerifiedFactor = (user.factors ?? []).some((factor) => factor.status === "verified");
+
   // Filter to THIS user's rows. Row level security lets a member see every
   // membership in their workspace, so without this the query returns all of
   // them and the role is read from whichever row happens to come back first.
   const { data: memberships } = await supabase
     .from("memberships")
     .select(
-      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit, billing_period, payment_method_attached_at, past_due_since, current_period_end, cancel_at_period_end, stripe_customer_id)",
+      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit, billing_period, payment_method_attached_at, past_due_since, current_period_end, cancel_at_period_end, stripe_customer_id, require_mfa)",
     )
     .eq("user_id", user.id)
     .eq("status", "active");
@@ -93,6 +101,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         trial_ends_at: string | null;
         storage_limit_bytes: number | null;
         seat_limit: number | null;
+        require_mfa: boolean | null;
         billing_period: "annual" | "monthly" | null;
         payment_method_attached_at: string | null;
         past_due_since: string | null;
@@ -114,6 +123,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         storageLimitBytes:
           org.storage_limit_bytes === null ? undefined : Number(org.storage_limit_bytes),
         seatLimit: org.seat_limit === null ? undefined : Number(org.seat_limit),
+        requireMfa: org.require_mfa ?? false,
         billingPeriod: org.billing_period ?? undefined,
         paymentMethodAttachedAt: org.payment_method_attached_at ?? undefined,
         pastDueSince: org.past_due_since ?? undefined,
@@ -134,6 +144,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   return {
     userId: user.id,
     email: user.email ?? "",
+    hasVerifiedFactor,
     displayName,
     initials: initialsFrom(displayName, user.email ?? ""),
     workspaces,
@@ -155,6 +166,17 @@ export async function requireSession(activeWorkspaceId?: string): Promise<Worksp
   const session = await getSession(activeWorkspaceId);
   if (!session) redirect("/login");
   if (!session.activeWorkspace) redirect("/onboarding");
+
+  // A workspace that requires a second factor requires it to be there before
+  // the work is, not as a suggestion on a settings screen. The enrolment page
+  // deliberately does not call this, or it would send itself in a circle.
+  const standing = mfaStanding({
+    role: session.activeWorkspace.role,
+    hasVerifiedFactor: session.hasVerifiedFactor,
+    enforced: session.activeWorkspace.requireMfa,
+  });
+  if (mfaBlocksAccess(standing)) redirect("/secure-your-account");
+
   return session as WorkspaceSession;
 }
 

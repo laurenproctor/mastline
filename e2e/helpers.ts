@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 
 export const SEEDED = {
@@ -101,4 +103,132 @@ export function collectPageErrors(page: Page): string[] {
     errors.push(error.message);
   });
   return errors;
+}
+
+/**
+ * A working TOTP code, so the two-factor tests exercise the real thing.
+ *
+ * RFC 6238 over RFC 4226: HMAC-SHA1 of the 30-second counter, dynamically
+ * truncated to six digits. Written out rather than pulled in, because a
+ * dependency for fifteen lines of well-specified arithmetic is a dependency to
+ * keep patched for ever.
+ */
+function base32Decode(input: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = input.replace(/=+$/, "").replace(/\s/g, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const out: number[] = [];
+  for (const character of clean) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) throw new Error(`Not base32: ${character}`);
+    value = (value << 5) | index;
+    bits += 5;
+    if (bits >= 8) {
+      out.push((value >>> (bits - 8)) & 0xff);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(out);
+}
+
+export function totp(secret: string, atMs: number = Date.now()): string {
+  const counter = Math.floor(atMs / 1000 / 30);
+  const buffer = Buffer.alloc(8);
+  buffer.writeUInt32BE(Math.floor(counter / 2 ** 32), 0);
+  buffer.writeUInt32BE(counter >>> 0, 4);
+
+  const digest = createHmac("sha1", base32Decode(secret)).update(buffer).digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const binary =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff);
+
+  return String(binary % 1_000_000).padStart(6, "0");
+}
+
+/**
+ * A code that has not been used yet.
+ *
+ * A verified code cannot be presented twice, so when the previous one is still
+ * showing this waits for the next 30-second window rather than failing.
+ */
+export async function freshTotp(secret: string, previous?: string): Promise<string> {
+  let code = totp(secret);
+  while (previous && code === previous) {
+    const msIntoWindow = Date.now() % 30_000;
+    await new Promise((resolve) => setTimeout(resolve, 30_000 - msIntoWindow + 500));
+    code = totp(secret);
+  }
+  return code;
+}
+
+/**
+ * Remove every enrolled factor from an account.
+ *
+ * The two-factor test enrols against a shared seeded account. If its own
+ * cleanup does not run -- a failed assertion, an interrupted run -- that account
+ * is left demanding a code whose secret nothing knows, and every other test that
+ * signs in is locked out for good. This is the way back, and it runs before the
+ * test as well as after it.
+ *
+ * Service role, so it works regardless of what the account can currently do.
+ * Reads .env.local directly because Playwright does not load it.
+ */
+function localEnv(name: string): string | undefined {
+  try {
+    const file = readFileSync(".env.local", "utf8");
+    return file.match(new RegExp(`^${name}=(.*)$`, "m"))?.[1]?.trim().replace(/^"|"$/g, "");
+  } catch {
+    return undefined;
+  }
+}
+
+export async function clearMfaFactors(email: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot reset two-factor state.");
+
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const listed = await fetch(`${url}/auth/v1/admin/users?per_page=200`, { headers });
+  const { users } = (await listed.json()) as { users: { id: string; email?: string }[] };
+  const user = users.find((candidate) => candidate.email?.toLowerCase() === email.toLowerCase());
+  if (!user) return;
+
+  const detail = await fetch(`${url}/auth/v1/admin/users/${user.id}`, { headers });
+  const { factors } = (await detail.json()) as { factors?: { id: string }[] };
+  for (const factor of factors ?? []) {
+    await fetch(`${url}/auth/v1/admin/users/${user.id}/factors/${factor.id}`, {
+      method: "DELETE",
+      headers,
+    });
+  }
+}
+
+/**
+ * Put the seeded workspace's two-factor policy back to optional.
+ *
+ * Turning the policy on with no factor enrolled deliberately locks an owner out
+ * of everything except the enrolment page -- that is the feature. It also means
+ * a test that switches it on and then fails would lock every later test out of
+ * the workspace, so this is the way back, and it runs on both sides.
+ */
+export async function setWorkspaceMfaPolicy(required: boolean): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot reset the two-factor policy.");
+
+  const response = await fetch(`${url}/rest/v1/organizations?slug=like.marcus*`, {
+    method: "PATCH",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ require_mfa: required }),
+  });
+  if (!response.ok) throw new Error(`Could not set the policy: ${await response.text()}`);
 }

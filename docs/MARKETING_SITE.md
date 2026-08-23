@@ -50,8 +50,10 @@ You chose to keep these and build the features before launch. They are stated
 in the present tense on the live pages, and none of them exists in the codebase
 today:
 
-- **Two-factor authentication**, "available for every account and required for
-  team owners and finance roles" (`/security`)
+- ~~**Two-factor authentication**~~ — **built**. Available to every account, and
+  a workspace can require it of owners and finance. See `docs/TWO_FACTOR.md`.
+  The claim's second half is true only where a workspace has switched it on; it
+  defaults to off, because turning it on locks out an owner who has not enrolled.
 - **Watermarked previews** for buyers (`/security`, `/editors`)
 - **Download logging** with recipient, time and IP address (`/security`)
 - **Independent penetration testing** at least annually (`/security`)

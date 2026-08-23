@@ -115,6 +115,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // A second factor that could be walked around by typing an address would not
+  // be a second factor. The assurance level comes from the token itself, so
+  // this costs no round trip: aal1 with aal2 expected means the password was
+  // accepted and the code has not been.
+  if (user && !isPublic(pathname)) {
+    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login/verify";
+      url.search = "";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Somebody already signed in has no use for the sign-in or sign-up screens.
   if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
