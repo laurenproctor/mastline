@@ -5191,16 +5191,29 @@ footer ul a {
   border-top: 0 !important;
 }
 
-/* "See pricing" in the closing band is an underlined text link, but .btn makes
-   it a flex row, so the underline broke into two runs with a 10px flex gap
-   between the word and the arrow. Laying it out inline puts the label, the
-   space and the arrow in one inline box, and the underline runs the whole way.
-   The arrow loses its hover nudge, which needs a transform and so needs a box
-   the underline would break against again. */
+/* This direction renders its secondary calls to action as underlined text with
+   a trailing arrow -- "See how it works" in the hero, "See pricing" in the
+   closing band, the download links on /press -- but they are all still .btn
+   underneath, so each laid out as a flex row: a 10px gap between the label and
+   the ::after arrow, and an underline broken into two runs either side of it.
+   Laid out inline, the label, the space and the arrow are one inline box and
+   the underline runs the whole way. The arrow loses its hover nudge, which
+   needs a transform, which needs a box the underline would break against
+   again. */
+.btn.ghost,
 .cta-band .btn.outline {
   display: inline;
   gap: 0;
 }
+.btn.ghost::after,
 .cta-band .btn.outline::after {
   display: inline;
+}
+/* The two in the navigation are the exception: they are not underlined, and
+   they sit in flex rows that centre them and, on a phone, share the width with
+   the primary action. They keep their box. */
+.nav .cta .btn.ghost,
+.mobilemenu .mactions .btn.ghost {
+  display: inline-flex;
+  gap: 10px;
 }
