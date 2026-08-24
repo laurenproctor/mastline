@@ -72,7 +72,11 @@ Item numbers below are permanent. Resolved items keep their number so older note
   original is never edited. Still open: *when* the share is earned (item 2).
 - Originals are tombstoned, never hard-deleted. A deliberate purge exists for
   account closure and erasure requests, behind a service-role routine.
-- Mastline records a dispatch; it does not yet transmit to a buyer's systems.
+- ~~Mastline records a dispatch; it does not yet transmit to a buyer's systems.~~
+  Closed on 2026-08-23 by delivery links: a signed, expiring, withdrawable page a
+  picture desk opens without an account, with every open and download recorded.
+  See `docs/DELIVERY_LINKS.md`. Watermarking and an explicit acceptance are still
+  missing.
 - No route-level `loading.tsx`. It wraps its subtree in an implicit Suspense
   boundary, and with one present a Server Action that revalidated the route it
   was invoked from left its promise unresolved on the client: the write landed,

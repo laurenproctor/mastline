@@ -48,6 +48,10 @@ const PUBLIC_ROUTES = [
   "/reset-password",
   "/auth",
   "/api/webhooks",
+  // A delivery link is held by a picture desk with no account. The token is the
+  // credential, and the security-definer functions behind the page check it
+  // before returning anything.
+  "/d",
   // Every marketing page is public by definition.
   ...MARKETING_ROUTES,
 ];

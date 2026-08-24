@@ -232,3 +232,68 @@ export async function setWorkspaceMfaPolicy(required: boolean): Promise<void> {
   });
   if (!response.ok) throw new Error(`Could not set the policy: ${await response.text()}`);
 }
+
+/**
+ * Put a real file behind an asset version, and take it away again.
+ *
+ * The seed creates version rows but uploads no bytes, so a download is
+ * correctly a 404 until something is actually stored. The delivery test needs
+ * one real file to prove the whole path rather than most of it.
+ */
+export async function putDeliveryFixture(): Promise<string> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot place the delivery fixture.");
+
+  // Ask where the file belongs rather than assuming the path. The layout is the
+  // seed's business, and guessing it once already cost a confusing 404.
+  const lookup = await fetch(
+    `${url}/rest/v1/asset_versions?version_kind=eq.delivery&select=object_key&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  );
+  const rows = (await lookup.json()) as { object_key: string }[];
+  const objectKey = rows[0]?.object_key;
+  if (!objectKey) throw new Error("The seed has no delivery version to stand a fixture behind.");
+
+  // A 1x1 JPEG: genuinely decodable, so the content type is not a fiction.
+  const jpeg = Buffer.from(
+    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
+    "base64",
+  );
+
+  const response = await fetch(`${url}/storage/v1/object/derivatives/${objectKey}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "image/jpeg" },
+    body: jpeg,
+  });
+  // 409 means it is already there from an earlier run, which is fine.
+  if (!response.ok && response.status !== 409) {
+    throw new Error(`Could not place the fixture: ${await response.text()}`);
+  }
+  return objectKey;
+}
+
+export async function removeDeliveryFixture(objectKey: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return;
+  await fetch(`${url}/storage/v1/object/derivatives/${objectKey}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${key}` },
+  });
+}
+
+/** Withdraw and delete every delivery link, so a run starts and ends clean. */
+export async function clearDeliveryLinks(): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot reset delivery links.");
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
+  // Events first: they reference the links, and they are append-only, so this
+  // needs the purge flag the database exposes for exactly this.
+  await fetch(`${url}/rest/v1/rpc/purge_delivery_links`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: "{}",
+  });
+}

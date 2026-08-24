@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 import {
   SEEDED,
+  clearDeliveryLinks,
   clearMfaFactors,
   freshTotp,
+  putDeliveryFixture,
+  removeDeliveryFixture,
   setWorkspaceMfaPolicy,
   SEEDED_SHOOT,
   collectPageErrors,
@@ -676,6 +679,113 @@ test.describe("signing up asks for a name in two fields", () => {
     await expect(page.getByLabel("Last name")).not.toHaveAttribute("required", "");
     // Email and password still are.
     await expect(page.getByLabel("Email")).toHaveAttribute("required", "");
+  });
+});
+
+test.describe("sending a package to a picture desk", () => {
+  /**
+   * docs/DECISIONS.md recorded the gap: "Mastline records a dispatch; it does
+   * not yet transmit to a buyer's systems." This is the transmission, and the
+   * point of it is that the recipient needs no account and the photographer can
+   * see what they did.
+   *
+   * The seed creates a delivery version row without uploading any bytes, so a
+   * download is correctly a 404 until the fixture stands a real file behind it.
+   */
+  const SEEDED_SUBMISSION = "a0000000-0000-0000-0000-00000000a001";
+
+  test.beforeEach(async () => clearDeliveryLinks());
+  test.afterEach(async () => clearDeliveryLinks());
+
+  test("a desk with no account opens it, and the record shows what they did", async ({
+    page,
+    browser,
+  }) => {
+    const fixtureKey = await putDeliveryFixture();
+    try {
+      await signIn(page, SEEDED.owner);
+      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+
+      await page.getByRole("button", { name: "Create a delivery link" }).click();
+      await page.getByLabel("Recipient").fill("New York picture desk");
+      await page.getByRole("button", { name: "Create the link" }).click();
+      await expect(page.locator(".delivery-link-url code")).toBeVisible();
+
+      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const path = new URL(url).pathname;
+
+      // A different browser context: no cookies, no session, nothing but the link.
+      const desk = await browser.newContext();
+      const deskPage = await desk.newPage();
+      try {
+        await deskPage.goto(path);
+        await expect(deskPage.getByRole("heading", { level: 1 })).toContainText("Package");
+        // No application shell: this is not the product, it is one page.
+        await expect(deskPage.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
+
+        const download = deskPage.getByRole("link", { name: /Download full resolution/ }).first();
+        const target = await download.getAttribute("href");
+        const response = await deskPage.request.get(target ?? "");
+        expect(response.status()).toBe(200);
+        expect(response.headers()["content-type"]).toContain("image");
+        expect((await response.body()).length).toBeGreaterThan(100);
+      } finally {
+        await desk.close();
+      }
+
+      // Back to the photographer: the record, which is the promise on /security.
+      await page.reload();
+      await expect(page.getByRole("cell", { name: "Opened" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Downloaded a frame" })).toBeVisible();
+    } finally {
+      await removeDeliveryFixture(fixtureKey);
+    }
+  });
+
+  test("a withdrawn link stops opening, and the attempt is recorded", async ({ page, browser }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+    await page.getByRole("button", { name: "Create a delivery link" }).click();
+    await page.getByLabel("Recipient").fill("A desk that changed its mind");
+    await page.getByRole("button", { name: "Create the link" }).click();
+
+    const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+    const path = new URL(url).pathname;
+
+    await page.getByRole("button", { name: "Withdraw this link" }).click();
+    // Scoped to the link's own badge: the activity feed also says "withdrawn".
+    await expect(page.locator(".delivery-link .badge")).toHaveText("Withdrawn");
+
+    const desk = await browser.newContext();
+    const deskPage = await desk.newPage();
+    try {
+      await deskPage.goto(path);
+      await expect(deskPage.getByRole("heading", { level: 1 })).toContainText("not open");
+      const withdrawnText = await deskPage.locator("main").innerText();
+
+      // The property that matters: a withdrawn link and a token that was never
+      // issued are indistinguishable. The page names both possibilities without
+      // saying which, so a stranger learns nothing about a link they do not
+      // hold.
+      await deskPage.goto(`/d/${"q".repeat(43)}`);
+      expect(await deskPage.locator("main").innerText()).toBe(withdrawnText);
+    } finally {
+      await desk.close();
+    }
+
+    await page.reload();
+    await expect(page.getByRole("cell", { name: /Refused/ })).toBeVisible();
+  });
+
+  test("a token that was never issued reveals nothing", async ({ browser }) => {
+    const desk = await browser.newContext();
+    const deskPage = await desk.newPage();
+    try {
+      await deskPage.goto(`/d/${"z".repeat(43)}`);
+      await expect(deskPage.getByRole("heading", { level: 1 })).toContainText("not open");
+    } finally {
+      await desk.close();
+    }
   });
 });
 

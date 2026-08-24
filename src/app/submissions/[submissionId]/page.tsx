@@ -15,6 +15,9 @@ import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { currentContext } from "@/lib/session-context";
 import { DeliveryPanel } from "../_components/delivery-panel";
+import { DeliveryLinks } from "../_components/delivery-links-panel";
+import { listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
+import { headers } from "next/headers";
 import { OutcomePanel } from "../_components/outcome-panel";
 
 export default async function SubmissionPage({
@@ -37,6 +40,17 @@ export default async function SubmissionPage({
     listPayments(organizationId),
     listDeliveryAttempts(organizationId, submissionId),
   ]);
+
+  // The link a picture desk opens, and what they did with it.
+  const deliveries = await listDeliveries(organizationId, submissionId);
+  const accessEvents = await listAccessEvents(
+    organizationId,
+    deliveries.map((delivery) => delivery.id),
+  );
+  // Built from the request so a link copied from a preview deployment points at
+  // that deployment rather than at production.
+  const requestHeaders = await headers();
+  const origin = `https://${requestHeaders.get("host") ?? "mastline.co"}`;
 
   const shoot = pkg ? await getShoot(organizationId, pkg.shootId) : null;
   const assets = shoot ? await listAssets(organizationId, { shootId: shoot.id }) : [];
@@ -209,6 +223,16 @@ export default async function SubmissionPage({
               </p>
             </Panel>
           </div>
+
+          <Panel title="Delivery link">
+            <DeliveryLinks
+              canSend={can(role, "submission.send")}
+              events={accessEvents}
+              links={deliveries}
+              origin={origin}
+              submissionId={submissionId}
+            />
+          </Panel>
 
           <Panel title="Next action">
             <DeliveryPanel
