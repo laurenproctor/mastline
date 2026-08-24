@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   SEEDED,
+  SEEDED_ASSET,
   clearDeliveryLinks,
   clearMfaFactors,
   freshTotp,
@@ -791,6 +792,53 @@ test.describe("sending a package to a picture desk", () => {
       await page.reload();
       await expect(page.getByRole("cell", { name: "Opened" })).toBeVisible();
       await expect(page.getByRole("cell", { name: "Downloaded a frame" })).toBeVisible();
+    } finally {
+      await removeDeliveryFixture(fixtureKey);
+    }
+  });
+
+  test("what a desk sees is marked with their own name", async ({ page, browser }) => {
+    const fixtureKey = await putDeliveryFixture();
+    try {
+      await signIn(page, SEEDED.owner);
+      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+      await page.getByRole("button", { name: "Create a delivery link" }).click();
+      await page.getByLabel("Recipient").fill("O'Brien Picture Desk");
+      await page.getByRole("button", { name: "Create the link" }).click();
+
+      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const path = new URL(url).pathname;
+
+      const desk = await browser.newContext();
+      const deskPage = await desk.newPage();
+      try {
+        await deskPage.goto(path);
+        const image = deskPage.locator(".delivery-frame img").first();
+        const source = await image.getAttribute("src");
+
+        // The property that matters: the recipient is never handed a URL to the
+        // stored file. Everything goes through the route that marks it.
+        expect(source).toMatch(/^\/d\/[A-Za-z0-9_-]+\/preview\//);
+        expect(source).not.toContain("supabase");
+        expect(source).not.toContain("token=");
+
+        const response = await deskPage.request.get(source ?? "");
+        expect(response.status()).toBe(200);
+        expect(response.headers()["content-type"]).toBe("image/jpeg");
+        // Marking makes it bigger than the 1x1 fixture it came from, which is
+        // the cheapest proof that something was actually composited.
+        expect((await response.body()).length).toBeGreaterThan(300);
+      } finally {
+        await desk.close();
+      }
+
+      // Withdrawn: the marked preview stops being served too, not just the
+      // page. Waiting for the badge first, or the request races the withdrawal.
+      await page.getByRole("button", { name: "Withdraw this link" }).click();
+      await expect(page.locator(".delivery-link .badge")).toHaveText("Withdrawn");
+
+      const after = await page.request.get(`${path}/preview/${SEEDED_ASSET}`);
+      expect(after.status()).toBe(404);
     } finally {
       await removeDeliveryFixture(fixtureKey);
     }

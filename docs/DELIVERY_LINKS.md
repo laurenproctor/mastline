@@ -50,16 +50,50 @@ hold. A browser test asserts the two pages are byte-identical.
 not evidence. `purge_delivery_links()` is the audited exception, service-role
 only, and it exists because the test suite creates links on every run.
 
+## The mark on a preview
+
+Every frame a recipient sees is marked with **their own name and the date the
+link was made**. That is the point of it: a watermark does not stop a
+screenshot, it makes the screenshot attributable, so a frame that turns up
+somewhere it should not traces back to the desk it went to.
+
+The buyer page used to hand out a signed URL straight to the stored preview,
+which put the clean file one right-click away. Previews go through
+`/d/<token>/preview/<assetId>` now, validated by the same token check as
+everything else here, so the only version a recipient can reach carries their
+name. A browser test asserts the image source is that route and never a storage
+URL.
+
+Marked once per delivery and cached in the private bucket, because the mark
+names the recipient and cannot be shared between links, but a desk scrolling the
+page should not re-render it each time. Withdrawing a link stops the marked
+preview being served too, not just the page.
+
+The overlay is diagonal repeated text plus a bar along the bottom carrying the
+credit and the terms, at an opacity chosen so a picture editor can still judge
+the frame — a preview nobody can assess does not get bought. Text is escaped:
+"O'Brien Picture Desk" would otherwise produce invalid SVG and fail the whole
+render.
+
+Previews fall back to the delivery derivative when no preview version exists,
+which is the common case for a RAW file the browser could not decode at import.
+The route scales to 1400px on the long edge before marking, so falling back
+never means quietly handing over the full file.
+
+`sharp` is a direct dependency now, at 0.35.3 rather than the 0.34.5 Next
+bundles: everything below 0.35.0 carries four high-severity libvips CVEs.
+
 ## What is not built
 
-- **No watermark.** `/security` says buyers see watermarked previews; they see
-  unwatermarked previews at preview resolution. Doing it properly means
-  compositing server-side, which needs `sharp` declared as a direct dependency —
-  it is currently only present because Next bundles it. That is a dependency
-  decision, so it is not taken here.
 - **No acceptance.** The marketing copy describes "one button to accept". A
   recipient can look and download; recording an acceptance against the
-  submission is the obvious next step.
+  submission is the obvious next step. Until it exists, the second half of the
+  `/security` sentence -- full resolution released "only through a time-limited
+  link tied to an accepted license" -- is not true: the download is gated by the
+  link, not by acceptance.
+- **The full-resolution download is not marked**, deliberately. A desk that
+  licenses a frame needs a clean file; the gate there is acceptance, not a
+  watermark.
 - **No email.** By design for now: the operator passes the link on.
 - **Nothing expires the signed file URL early.** The redirect is good for five
   minutes; a recipient who saves it has it for those five minutes.

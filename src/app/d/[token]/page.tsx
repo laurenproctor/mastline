@@ -3,8 +3,6 @@ import { notFound } from "next/navigation";
 import { isDeliveryToken } from "@/lib/delivery";
 import { openDelivery } from "@/lib/data/delivery-links";
 import { formatDateTime } from "@/lib/format";
-import { createClient } from "@/lib/supabase/server";
-import { signedUrlsFor } from "@/lib/data/imports";
 
 export const metadata = { title: "A package from Mastline" };
 export const dynamic = "force-dynamic";
@@ -43,11 +41,6 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
     );
   }
 
-  const previewKeys = delivery.assets
-    .map((asset) => asset.previewKey)
-    .filter((key): key is string => Boolean(key));
-  const previews = await signedUrlsFor(await createClient(), "derivatives", previewKeys, 900);
-
   return (
     <main className="delivery-page">
       <header className="delivery-head">
@@ -76,12 +69,16 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
       <section className="delivery-frames">
         {delivery.assets.map((asset) => (
           <article className="delivery-frame" key={asset.assetId}>
-            {asset.previewKey && previews.get(asset.previewKey) ? (
-              /* A signed, short-lived URL from private storage. next/image
-                 would proxy and cache a file that is deliberately neither
-                 public nor durable. */
+            {asset.previewKey ? (
+              /* Served through the route so the only version a recipient can
+                 reach carries their name. A signed URL here would hand over the
+                 clean file. next/image would proxy and cache something that is
+                 deliberately neither public nor durable. */
               // eslint-disable-next-line @next/next/no-img-element
-              <img alt={asset.headline ?? asset.filename} src={previews.get(asset.previewKey)} />
+              <img
+                alt={asset.headline ?? asset.filename}
+                src={`/d/${token}/preview/${asset.assetId}`}
+              />
             ) : (
               <div className="delivery-frame-blank">No preview</div>
             )}

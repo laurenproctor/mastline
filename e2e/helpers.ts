@@ -286,13 +286,15 @@ export async function putDeliveryFixture(): Promise<string> {
     "base64",
   );
 
+  // Upsert rather than insert: an earlier run may have left one, and the
+  // storage API reports that as an HTTP 400 carrying a 409 in its body, which
+  // is easy to mistake for a real failure.
   const response = await fetch(`${url}/storage/v1/object/derivatives/${objectKey}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "image/jpeg" },
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "image/jpeg", "x-upsert": "true" },
     body: jpeg,
   });
-  // 409 means it is already there from an earlier run, which is fine.
-  if (!response.ok && response.status !== 409) {
+  if (!response.ok) {
     throw new Error(`Could not place the fixture: ${await response.text()}`);
   }
   return objectKey;
