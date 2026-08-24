@@ -1,0 +1,319 @@
+/*
+ * The sign-up screen.
+ *
+ * It runs on the editorial direction imported from marketing.css -- paper,
+ * black ink, acid green for the action, Newsreader for the display line,
+ * hairlines instead of boxes -- and adds only what that sheet has no opinion
+ * about: a two-column screen with the argument on the left and the form on the
+ * right, and the form controls themselves, which come from the application's
+ * .field primitive and would otherwise arrive in the operating language.
+ *
+ * The grid is written as areas rather than DOM order so the reading order is
+ * the same on a phone as on a desktop: the case for starting, then the form,
+ * then the supporting detail. Nothing is reordered visually behind a keyboard
+ * user's back.
+ */
+
+.su-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* Header --------------------------------------------------------------- */
+
+.su-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 68px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--ink);
+}
+.su-logo img {
+  height: 24px;
+  width: auto;
+}
+.su-alt {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.su-alt a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* The screen ------------------------------------------------------------ */
+
+.su-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-areas:
+    "lead form"
+    "support form";
+  align-content: start;
+}
+.su-lead {
+  grid-area: lead;
+  padding: 64px 56px 40px 24px;
+}
+.su-support {
+  grid-area: support;
+  padding: 0 56px 64px 24px;
+}
+.su-panel {
+  grid-area: form;
+  border-left: 1px solid var(--ink);
+  background: #fff;
+  padding: 64px 56px;
+}
+/* The reasons column is taller than the form, so the form follows rather than
+   scrolling away from someone who reads them before deciding. */
+.su-form,
+.su-sent {
+  position: sticky;
+  top: 40px;
+}
+@media (max-width: 900px) {
+  .su-main {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "lead"
+      "form"
+      "support";
+  }
+  .su-lead {
+    padding: 40px 24px 28px;
+  }
+  .su-panel {
+    border-left: 0;
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    padding: 36px 24px 40px;
+  }
+  .su-support {
+    padding: 36px 24px 56px;
+  }
+  /* Nothing to follow on a phone: the form is a section of the page. */
+  .su-form,
+  .su-sent {
+    position: static;
+  }
+}
+@media (max-width: 520px) {
+  /* The wordmark needs the room more than the question does. */
+  .su-alt span {
+    display: none;
+  }
+}
+
+/* The case -------------------------------------------------------------- */
+
+.su-lead h1 {
+  font-size: clamp(44px, 6vw, 84px);
+  max-width: 11ch;
+  margin-top: 14px;
+}
+.su-lead .lede {
+  margin-top: 20px;
+  max-width: 46ch;
+}
+.su-terms {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ink);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* Three reasons, ruled rather than boxed, numbered the way the site numbers
+   a sequence: serif figures in the blue it keeps for machinery. */
+.su-reasons {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  counter-reset: reason;
+}
+.su-reasons li {
+  counter-increment: reason;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  padding: 22px 0;
+  border-top: 1px solid var(--rule);
+}
+.su-reasons li::before {
+  content: counter(reason, decimal-leading-zero);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--eblue);
+  padding-top: 4px;
+}
+.su-reasons b {
+  display: block;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+  font-variation-settings: "opsz" 36;
+  margin-bottom: 4px;
+}
+.su-reasons p {
+  font-size: 14.5px;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+/* The one commercial fact worth putting in a box on this screen. */
+.su-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 32px;
+  border: 1px solid var(--ink);
+}
+.su-split div {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.su-split div + div {
+  border-left: 1px solid var(--ink);
+}
+.su-split b {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(34px, 4vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.su-split span {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.su-split .keep {
+  background: var(--ink);
+  color: var(--bg);
+}
+.su-split .keep b {
+  color: var(--green);
+}
+.su-split .keep span {
+  color: #cfcbc0;
+}
+
+/* The form -------------------------------------------------------------- */
+
+.su-panel h2 {
+  font-size: 30px;
+  margin-bottom: 24px;
+}
+.su-panel .field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.su-panel .field label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.su-panel .field input {
+  height: 52px;
+  width: 100%;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--rule-2);
+}
+.su-panel .field input:focus-visible {
+  outline: 2px solid var(--eblue);
+  outline-offset: 1px;
+  border-color: var(--eblue);
+}
+.su-panel .field small {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.su-panel .field-error {
+  color: #b3261e;
+}
+.su-names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 420px) {
+  .su-names {
+    grid-template-columns: 1fr;
+  }
+}
+.su-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.su-form .btn.primary {
+  width: 100%;
+  height: 56px;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.su-error {
+  border-left: 3px solid #b3261e;
+  padding: 10px 0 10px 14px;
+  font-size: 14.5px;
+  color: #b3261e;
+}
+.su-fine {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  max-width: 44ch;
+}
+.su-fine a {
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.su-fine a:hover {
+  color: var(--ink);
+}
+
+/* The state after the form is sent. */
+.su-sent {
+  border-top: 1px solid var(--ink);
+  padding-top: 26px;
+}
+.su-sent h2 {
+  margin-bottom: 12px;
+}
+.su-sent p {
+  font-size: 15px;
+  color: var(--ink-2);
+  max-width: 44ch;
+  margin-bottom: 16px;
+}
+
+/* Somebody who wants Solo or Studio rather than the trial plan needs a way out
+   that is not the browser's back button. */
+.su-plans {
+  margin-top: 28px;
+}

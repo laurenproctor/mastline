@@ -12,13 +12,13 @@ export function SignUpForm() {
 
   if (state.checkEmail) {
     return (
-      <div className="auth-confirm" role="status">
+      <div className="su-sent" role="status">
         <h2>Check your email</h2>
-        <p className="section-note">
-          We sent a confirmation link to <strong>{state.email}</strong>. Open it to finish setting
-          up your account.
+        <p>
+          A confirmation link is on its way to <strong>{state.email}</strong>. Open it and the
+          workspace is waiting.
         </p>
-        <Link className="text-link" href="/login">
+        <Link className="btn ghost" href="/login">
           Back to sign in
         </Link>
       </div>
@@ -26,14 +26,16 @@ export function SignUpForm() {
   }
 
   return (
-    <form action={formAction} className="auth-form">
-      <div className="name-fields">
+    <form action={formAction} className="su-form">
+      <h2>Create your account</h2>
+
+      <div className="su-names">
         <Field autoComplete="given-name" label="First name" name="firstName" />
         <Field autoComplete="family-name" label="Last name" name="lastName" />
       </div>
-      <div className="spacer" />
+
       <Field autoComplete="email" label="Email" name="email" required type="email" />
-      <div className="spacer" />
+
       <Field
         autoComplete="new-password"
         hint="At least 10 characters."
@@ -45,21 +47,28 @@ export function SignUpForm() {
       />
 
       {state.error && (
-        <p className="auth-error" role="alert">
+        <p className="su-error" role="alert">
           {state.error}
         </p>
       )}
 
-      <div className="spacer" />
-      <button className="button primary auth-submit" disabled={pending} type="submit">
+      <button className="btn primary" disabled={pending} type="submit">
         {pending ? "Creating your account…" : "Create account"}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M5 12h14M13 6l6 6-6 6" />
+        </svg>
       </button>
 
-      <p className="section-note">
-        Already have an account?{" "}
-        <Link className="text-link" href="/login">
-          Sign in
-        </Link>
+      <p className="su-fine">
+        By creating an account you agree to the <Link href="/terms">Terms of Service</Link> and the{" "}
+        <Link href="/privacy">Privacy Policy</Link>.
       </p>
     </form>
   );

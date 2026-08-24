@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Newsreader } from "next/font/google";
+import { brandSans, brandSerif } from "@/lib/brand-fonts";
 import Image from "next/image";
 import Link from "next/link";
 import { SiteNav } from "./_components/site-nav";
@@ -9,37 +9,15 @@ import "./marketing.css";
  * The public marketing site.
  *
  * Its own layout, and its own stylesheet, because it is a different design
- * language from the signed-in application. marketing.css is imported here and
- * nowhere else, so it never reaches the operating screens.
+ * language from the signed-in application. marketing.css reaches only this
+ * layout and the sign-up screen the site hands over to, never the operating
+ * screens, which keep their own language in globals.css.
  *
  * Nothing under this layout reads the database. That is deliberate: the front
  * door should stay up when the environment is misconfigured or Supabase is
  * unreachable, which is also why middleware serves these paths before it builds
  * a Supabase client.
  */
-/**
- * Newsreader is the editorial direction's headline face, and the reason the
- * approved artifact is a separate direction at all. Its own CSS still asked for
- * Source Serif 4, so neither face ever loaded there and every headline fell
- * back to Georgia; the design it names is the one that ships.
- *
- * The opsz axis has to be requested explicitly -- next/font ships only the
- * weight axis of a variable font otherwise -- because the direction sets
- * font-variation-settings: "opsz" per element, 72 for display headlines down to
- * 18 for the asset record. Italic is a real cut here, not a slant: the emphasis
- * inside every headline is set in it.
- *
- * Both faces are self-hosted by next/font, so there is no render-blocking
- * request to a third party and no layout shift when they land.
- */
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
-const serif = Newsreader({
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  axes: ["opsz"],
-  variable: "--font-serif",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: { default: "Mastline", template: "%s — Mastline" },
@@ -49,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`mkt ${sans.variable} ${serif.variable}`}>
+    <div className={`mkt ${brandSans.variable} ${brandSerif.variable}`}>
       <a className="skip" href="#main">
         Skip to main content
       </a>
