@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Badge, Field } from "@/components/primitives";
 import { DELIVERY_WINDOWS_DAYS, DEFAULT_DELIVERY_WINDOW, deliveryStanding } from "@/lib/delivery";
-import type { AccessEvent, DeliveryLink } from "@/lib/data/delivery-links";
+import type { AcceptanceRecord, AccessEvent, DeliveryLink } from "@/lib/data/delivery-links";
 import {
   type DeliveryState,
   createDeliveryAction,
@@ -24,12 +24,14 @@ export function DeliveryLinks({
   origin,
   links,
   events,
+  acceptances,
   canSend,
 }: {
   submissionId: string;
   origin: string;
   links: readonly DeliveryLink[];
   events: readonly AccessEvent[];
+  acceptances: readonly AcceptanceRecord[];
   canSend: boolean;
 }) {
   const [createState, createAction, creating] = useActionState(createDeliveryAction, INITIAL);
@@ -83,6 +85,22 @@ export function DeliveryLinks({
         </p>
       )}
 
+      {acceptances.map((acceptance) => (
+        <div className="delivery-acceptance" key={acceptance.acceptedAt}>
+          <Badge tone="good">Terms accepted</Badge>
+          <p className="section-note">
+            <strong>{acceptance.acceptedBy}</strong> accepted on{" "}
+            {new Date(acceptance.acceptedAt).toLocaleString()}
+            {acceptance.ipAddress ? ` from ${acceptance.ipAddress}` : ""}.
+          </p>
+          {acceptance.termsSnapshot && (
+            <p className="section-note">
+              What they agreed to: <q>{acceptance.termsSnapshot}</q>
+            </p>
+          )}
+        </div>
+      ))}
+
       {events.length > 0 && (
         <div className="table-scroll">
           <table className="data-table">
@@ -99,6 +117,7 @@ export function DeliveryLinks({
                 <tr key={`${event.occurredAt}-${index}`}>
                   <td>
                     {event.kind === "opened" && "Opened"}
+                    {event.kind === "accepted" && `Accepted the terms — ${event.detail ?? ""}`}
                     {event.kind === "downloaded" && "Downloaded a frame"}
                     {event.kind === "refused" && `Refused — ${event.detail ?? "closed link"}`}
                   </td>
@@ -152,9 +171,7 @@ export function DeliveryLinks({
                 Cancel
               </button>
             </div>
-            <p className="section-note">
-              Nothing is sent. You get a link and pass it on yourself.
-            </p>
+            <p className="section-note">Nothing is sent. You get a link and pass it on yourself.</p>
           </form>
         ))}
     </div>

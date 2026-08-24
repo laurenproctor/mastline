@@ -83,17 +83,32 @@ never means quietly handing over the full file.
 `sharp` is a direct dependency now, at 0.35.3 rather than the 0.34.5 Next
 bundles: everything below 0.35.0 carries four high-severity libvips CVEs.
 
+## Accepting the terms
+
+The full file follows the yes, not the link. A recipient sees the frames and the
+terms, types their name, and accepts; only then do the downloads appear. Trying
+before that is refused and recorded, so a desk that went looking is visible
+rather than silent.
+
+Acceptance is not a new state. `submission_status` already had `acknowledged`
+and submissions already carried `acknowledged_at`; until now only an operator
+could set them, from their side of the conversation. This lets the person who
+actually accepted do it, and it only moves forward — a package already sold is
+not walked back by someone opening an old link.
+
+What is kept is the whole of what they agreed to, copied at the moment they
+agreed: a later disagreement is about the words on the screen that day, not the
+words in the package today. One acceptance per link, because accepting twice is
+the same yes.
+
+This is the hinge the commercial record was missing. A package went out and the
+next event was a photographer typing a licence in by hand; now there is a dated,
+attributed, evidenced moment to attach that licence and its payment to.
+
 ## What is not built
 
-- **No acceptance.** The marketing copy describes "one button to accept". A
-  recipient can look and download; recording an acceptance against the
-  submission is the obvious next step. Until it exists, the second half of the
-  `/security` sentence -- full resolution released "only through a time-limited
-  link tied to an accepted license" -- is not true: the download is gated by the
-  link, not by acceptance.
 - **The full-resolution download is not marked**, deliberately. A desk that
-  licenses a frame needs a clean file; the gate there is acceptance, not a
-  watermark.
+  licenses a frame needs a clean file; the gate there is acceptance.
 - **No email.** By design for now: the operator passes the link on.
 - **Nothing expires the signed file URL early.** The redirect is good for five
   minutes; a recipient who saves it has it for those five minutes.

@@ -20,7 +20,7 @@ export interface DeliveryLink {
 }
 
 export interface AccessEvent {
-  readonly kind: "opened" | "downloaded" | "refused";
+  readonly kind: "opened" | "downloaded" | "refused" | "accepted";
   readonly assetId?: string;
   readonly ipAddress?: string;
   readonly userAgent?: string;
@@ -180,6 +180,9 @@ export interface DeliveryFrame {
 }
 
 export interface OpenedDelivery {
+  /** Set once a recipient has agreed to the terms as they were shown. */
+  readonly acceptedAt?: string;
+  readonly acceptedBy?: string;
   readonly submissionId: string;
   readonly packageName: string;
   readonly headline?: string;
@@ -217,6 +220,8 @@ export async function openDelivery(
     restrictions: (row.restrictions as string | null) ?? undefined,
     embargoUntil: (row.embargo_until as string | null) ?? undefined,
     expiresAt: row.expires_at as string,
+    acceptedAt: (row.accepted_at as string | null) ?? undefined,
+    acceptedBy: (row.accepted_by as string | null) ?? undefined,
     assets: (assets.data ?? []).map((asset: Record<string, unknown>) => ({
       assetId: asset.asset_id as string,
       filename: asset.canonical_filename as string,
@@ -226,4 +231,59 @@ export async function openDelivery(
       previewKey: (asset.preview_key as string | null) ?? undefined,
     })),
   };
+}
+
+/**
+ * A recipient agreeing to the terms.
+ *
+ * Anonymous, like everything else on this surface, and the same deliberate
+ * vagueness on failure: a name too short, a withdrawn link, and a token that
+ * never existed all come back as "not accepted", because the person holding a
+ * bad link should not learn which kind of bad it is.
+ */
+export async function acceptDelivery(
+  token: string,
+  name: string,
+  headers: Headers,
+): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("accept_delivery", {
+    delivery_token: token,
+    accepted_by_name: name,
+    caller_ip: callerAddress(headers),
+    caller_agent: callerAgent(headers),
+  });
+
+  if (error) throw new Error(`Could not record the acceptance: ${error.message}`);
+  return ((data ?? [])[0]?.accepted_at as string | undefined) ?? null;
+}
+
+export interface AcceptanceRecord {
+  readonly acceptedBy: string;
+  readonly acceptedAt: string;
+  readonly ipAddress?: string;
+  readonly termsSnapshot?: string;
+}
+
+/** What the photographer sees: who said yes, when, and to what. */
+export async function listAcceptances(
+  organizationId: Id,
+  submissionId: Id,
+  client?: SupabaseClient,
+): Promise<readonly AcceptanceRecord[]> {
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("delivery_acceptances")
+    .select("accepted_by, accepted_at, ip_address, terms_snapshot")
+    .eq("organization_id", organizationId)
+    .eq("submission_id", submissionId)
+    .order("accepted_at", { ascending: false });
+
+  if (error) throw new Error(`Could not load the acceptance: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    acceptedBy: row.accepted_by as string,
+    acceptedAt: row.accepted_at as string,
+    ipAddress: (row.ip_address as string | null) ?? undefined,
+    termsSnapshot: (row.terms_snapshot as string | null) ?? undefined,
+  }));
 }

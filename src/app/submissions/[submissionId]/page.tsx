@@ -16,7 +16,7 @@ import { can } from "@/lib/permissions";
 import { currentContext } from "@/lib/session-context";
 import { DeliveryPanel } from "../_components/delivery-panel";
 import { DeliveryLinks } from "../_components/delivery-links-panel";
-import { listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
+import { listAcceptances, listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
 import { headers } from "next/headers";
 import { OutcomePanel } from "../_components/outcome-panel";
 
@@ -47,6 +47,7 @@ export default async function SubmissionPage({
     organizationId,
     deliveries.map((delivery) => delivery.id),
   );
+  const acceptances = await listAcceptances(organizationId, submissionId);
   // Built from the request so a link copied from a preview deployment points at
   // that deployment rather than at production.
   const requestHeaders = await headers();
@@ -226,6 +227,7 @@ export default async function SubmissionPage({
 
           <Panel title="Delivery link">
             <DeliveryLinks
+              acceptances={acceptances}
               canSend={can(role, "submission.send")}
               events={accessEvents}
               links={deliveries}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { isDeliveryToken } from "@/lib/delivery";
 import { openDelivery } from "@/lib/data/delivery-links";
 import { formatDateTime } from "@/lib/format";
+import { AcceptTerms } from "./_components/accept-terms";
 
 export const metadata = { title: "A package from Mastline" };
 export const dynamic = "force-dynamic";
@@ -63,6 +64,14 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
           )}
           {delivery.terms && <p className="section-note">{delivery.terms}</p>}
           {delivery.restrictions && <p className="section-note">{delivery.restrictions}</p>}
+
+          {delivery.acceptedAt ? (
+            <p className="delivery-accepted" role="status">
+              Accepted by {delivery.acceptedBy} on {formatDateTime(delivery.acceptedAt)}.
+            </p>
+          ) : (
+            <AcceptTerms token={token} />
+          )}
         </section>
       )}
 
@@ -88,9 +97,15 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
               {asset.capturedAt && (
                 <p className="section-note">{formatDateTime(asset.capturedAt)}</p>
               )}
-              <a className="button small blue" href={`/d/${token}/frame/${asset.assetId}`}>
-                Download full resolution
-              </a>
+              {delivery.acceptedAt ? (
+                <a className="button small blue" href={`/d/${token}/frame/${asset.assetId}`}>
+                  Download full resolution
+                </a>
+              ) : (
+                <p className="section-note">
+                  Accept the terms above to download the full-resolution file.
+                </p>
+              )}
             </div>
           </article>
         ))}
@@ -98,8 +113,8 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
 
       <footer className="delivery-foot">
         <p className="section-note">
-          Downloads from this link are recorded, with the time and the address they came from, and
-          shown to the photographer.
+          Opens, downloads, and the acceptance itself are recorded, with the time and the address
+          they came from, and shown to the photographer.
         </p>
       </footer>
     </main>

@@ -778,6 +778,11 @@ test.describe("sending a package to a picture desk", () => {
         // No application shell: this is not the product, it is one page.
         await expect(deskPage.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
 
+        // The file follows the yes, so the terms are accepted first.
+        await deskPage.getByLabel("Your name").fill("Dana Whitfield");
+        await deskPage.getByRole("button", { name: "Accept these terms" }).click();
+        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
+
         const download = deskPage.getByRole("link", { name: /Download full resolution/ }).first();
         const target = await download.getAttribute("href");
         const response = await deskPage.request.get(target ?? "");
@@ -790,8 +795,61 @@ test.describe("sending a package to a picture desk", () => {
 
       // Back to the photographer: the record, which is the promise on /security.
       await page.reload();
-      await expect(page.getByRole("cell", { name: "Opened" })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "Opened" }).first()).toBeVisible();
+      await expect(page.getByRole("cell", { name: /Accepted the terms/ })).toBeVisible();
       await expect(page.getByRole("cell", { name: "Downloaded a frame" })).toBeVisible();
+    } finally {
+      await removeDeliveryFixture(fixtureKey);
+    }
+  });
+
+  test("the full file follows the yes, not the link", async ({ page, browser }) => {
+    const fixtureKey = await putDeliveryFixture();
+    try {
+      await signIn(page, SEEDED.owner);
+      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+      await page.getByRole("button", { name: "Create a delivery link" }).click();
+      await page.getByLabel("Recipient").fill("New York picture desk");
+      await page.getByRole("button", { name: "Create the link" }).click();
+      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const path = new URL(url).pathname;
+
+      const desk = await browser.newContext();
+      const deskPage = await desk.newPage();
+      try {
+        await deskPage.goto(path);
+
+        // Before accepting: the frame can be judged, but not taken.
+        await expect(deskPage.locator(".delivery-frame img").first()).toBeVisible();
+        await expect(
+          deskPage.getByRole("link", { name: /Download full resolution/ }),
+        ).toHaveCount(0);
+
+        const refused = await deskPage.request.get(`${path}/frame/${SEEDED_ASSET}`);
+        expect(refused.status()).toBe(404);
+
+        // Accepting is the hinge, and it asks who is doing it.
+        await deskPage.getByLabel("Your name").fill("Dana Whitfield");
+        await deskPage.getByRole("button", { name: "Accept these terms" }).click();
+        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
+
+        // After: the file is released.
+        const allowed = await deskPage.request.get(`${path}/frame/${SEEDED_ASSET}`);
+        expect(allowed.status()).toBe(200);
+        expect(allowed.headers()["content-type"]).toContain("image");
+      } finally {
+        await desk.close();
+      }
+
+      // The photographer sees who said yes, and the refusal that came before it.
+      await page.reload();
+      await expect(page.getByText(/Dana Whitfield.*accepted on/)).toBeVisible();
+      await expect(
+        page.getByRole("cell", { name: /download before accepting the terms/ }),
+      ).toBeVisible();
+
+      // And the submission has reached the state it already had a name for.
+      await expect(page.getByText("Acknowledged").first()).toBeVisible();
     } finally {
       await removeDeliveryFixture(fixtureKey);
     }
