@@ -1,8 +1,48 @@
 # The marketing site
 
-Ported from the approved design artifact "Mastline Editorial Direction". This
-records what changed on the way in, what still needs a decision from you, and
-how to do it again if the design is revised.
+Ported from the approved design artifact
+[Mastline Editorial Direction](https://claude.ai/code/artifact/d847006a-b6ec-463f-82e0-6e8f2a8b5c7c).
+This records what changed on the way in, what still needs a decision from you,
+and how to do it again if the design is revised.
+
+## The two directions
+
+The editorial artifact is the "Mastline" artifact plus a font link and four
+appended stylesheets. Its base stylesheet is byte-identical to the other one,
+which is why the first port could take the whole file and still land on the
+wrong design: it read the base sheet, saw `--serif: "Source Serif 4"`, treated
+the unused Newsreader link as a mistake, and dropped the override layer with the
+rest of the artifact's shell.
+
+The layer is the direction. Without it the site is the main artifact -- white,
+electric blue, rounded, boxed, Source Serif 4. With it the site is what was
+approved:
+
+| | Main | Editorial |
+| --- | --- | --- |
+| Surface | `#FFFFFF` white | `#F6F4EF` paper |
+| Action | `#1E5BFF` electric blue | `#89FF0A` acid green |
+| Headline | Source Serif 4, 700 | Newsreader, 400, optical sizes |
+| Structure | Bordered cards, radii, shadows | Hairline rules, square, flat |
+| Blue | Everywhere | Money and machinery only -- calculator, asset record, running total, footer |
+
+It is appended to `marketing.css` under its own heading rather than merged into
+the rules above it, because that is its shape in the artifact. Re-porting a
+revised design means replacing that section.
+
+Two of its quirks are inherited on purpose. The blanket
+`* { border-radius: 0 !important; box-shadow: none !important }` in the first
+override block outranks the rounded corners and hover lifts the later blocks
+ask for, so cards render square and flat; that is how the approved artifact
+renders, and matching it is the point rather than a bug to fix. And `--green`,
+which the base sheet referenced in `.friction` without anyone ever defining it,
+is finally a colour.
+
+Newsreader is self-hosted through `next/font` with its optical-size axis
+requested explicitly -- `next/font` ships only the weight axis of a variable
+font otherwise -- because the direction sets `font-variation-settings: "opsz"`
+per element, 72 on display headlines down to 18 in the asset record. Its italic
+is a real cut, and every headline's emphasis is set in it.
 
 ## What it is
 
@@ -123,9 +163,10 @@ Three deviations from the artifact, all deliberate:
 - **`.eyebrow` and `.metrics` renamed** `.mk-eyebrow` and `.mk-metrics`, for the
   same collision reason. They are the only two class names the two stylesheets
   shared.
-- **Fonts fixed.** The artifact linked Newsreader but its CSS asked for Source
-  Serif 4, so neither ever loaded and every headline fell back to Georgia. Both
-  faces are now self-hosted through `next/font`.
+- **The palette is declared on `.mkt` as well as `:root`.** `next/font` puts
+  `--font-sans` and `--font-serif` on that wrapper, and a variable set on a
+  descendant beats the same variable inherited from `:root` however late in the
+  file it is written.
 
 `marketing.css` is imported only by the marketing layout, so it never reaches
 the signed-in application, which keeps its own design language.

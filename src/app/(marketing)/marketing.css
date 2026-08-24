@@ -5153,3 +5153,54 @@ footer ul a {
     transform: none;
   }
 }
+
+/* On a phone the base sheet stretches every hero action to the full column and
+   centres its label, which is right for the green button and wrong for the one
+   beside it: this direction turns .ghost into an underlined text link, and a
+   centred link floats away from the eyebrow, headline, lede and button that all
+   start at the column edge. Left-align it with them. */
+@media (max-width: 420px) {
+  .hero .actions .btn.ghost,
+  .pagehead .btn.ghost {
+    width: auto;
+    justify-content: flex-start;
+    padding-left: 0;
+  }
+}
+
+/* The chip on each step of "One night, in dollars" lights up as that step is
+   reached, so the right-hand column reads as the same event as the number
+   climbing on the left. MoneyCounter adds .on to every step up to the one you
+   have scrolled to, which is the same class the opacity already rides on. */
+.mstep.on .mchip {
+  background: var(--green);
+  border-color: var(--green);
+}
+/* "Paid in full" is green in the artifact whether or not the night has got
+   there yet, which lights the end of the story before the beginning. Hold it
+   with the rest until its own step is reached. */
+.mstep:not(.on) .mchip.paid {
+  background: transparent;
+  border-color: var(--ink);
+}
+
+/* The editorial layer rules a line above the first step of the editor
+   walkthrough. The box already has a border; the extra rule reads as a divider
+   above nothing. */
+.edsteps > div:first-child {
+  border-top: 0 !important;
+}
+
+/* "See pricing" in the closing band is an underlined text link, but .btn makes
+   it a flex row, so the underline broke into two runs with a 10px flex gap
+   between the word and the arrow. Laying it out inline puts the label, the
+   space and the arrow in one inline box, and the underline runs the whole way.
+   The arrow loses its hover nudge, which needs a transform and so needs a box
+   the underline would break against again. */
+.cta-band .btn.outline {
+  display: inline;
+  gap: 0;
+}
+.cta-band .btn.outline::after {
+  display: inline;
+}

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { ArchiveReawakening, MoneyCounter } from "./_components/behaviors";
+import {
+  ArchiveReawakening,
+  HeroStage,
+  MoneyCounter,
+  RelativeDates,
+} from "./_components/behaviors";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,6 +15,8 @@ export default function Page() {
     <>
       <ArchiveReawakening />
       <MoneyCounter />
+      <RelativeDates />
+      <HeroStage />
       <section className="hero">
         <div className="wrap">
           <span className="mk-eyebrow">The business operating system for paparazzi</span>
@@ -130,7 +137,7 @@ export default function Page() {
                   <em>08:15 AM</em>Rights match · 3 unlicensed uses · evidence saved
                 </span>
                 <span className="hot">
-                  <em data-tomorrow="upper">SEP 17</em>Paid · $1,800 · you keep 70%
+                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · you keep 70%
                 </span>
               </div>
               <div className="ticker-row" aria-hidden="true">
@@ -174,7 +181,7 @@ export default function Page() {
                   <em>08:15 AM</em>Rights match · 3 unlicensed uses · evidence saved
                 </span>
                 <span className="hot">
-                  <em data-tomorrow="upper">SEP 17</em>Paid · $1,800 · you keep 70%
+                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · you keep 70%
                 </span>
               </div>
             </div>
@@ -214,7 +221,7 @@ export default function Page() {
               <span>
                 Licensed $1,800 · paid{" "}
                 <em data-tomorrow="" data-days="3">
-                  Aug 24
+                  Sep 17
                 </em>{" "}
                 · lifetime $1,800
               </span>
@@ -241,8 +248,8 @@ export default function Page() {
             <p className="lede">
               Every part of the job, from the tip to the bank, in one place that remembers
               everything. Here are three of the tools you&apos;ll use every night, plus a{" "}
-              <Link href="/commercial">second market</Link> for what&apos;s inside every frame: the
-              brands and products your subjects wear.
+              <Link href="/commercial">second market</Link>
+              {" for what's inside every frame: the brands and products your subjects wear."}
             </p>
           </div>
           <div className="teaser">
@@ -330,8 +337,8 @@ export default function Page() {
         <div className="wrap">
           <div className="editors">
             <div>
-              <span className="mk-eyebrow">What your editors see</span>
-              <h2 style={{ marginTop: "14px" }}>Your buyers never have to sign up for anything.</h2>
+              <span className="mk-eyebrow">Editor experience</span>
+              <h2 style={{ marginTop: "14px" }}>Buyers don&apos;t have to sign up.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Editors don&apos;t adopt new software. They open links. Every pitch you send is a
                 single page that works on a phone: watermarked previews, your caption, your price, a
@@ -582,8 +589,8 @@ export default function Page() {
                 <div>
                   <b>The shot.</b>
                   <p>
-                    Two subjects at the valet. You upload from the sidewalk; previews and watermarks
-                    render before you reach the car.
+                    Two subjects at the valet. The set uploads from the sidewalk; previews and
+                    watermarks render before the car pulls away.
                   </p>
                 </div>
               </li>
@@ -597,8 +604,8 @@ export default function Page() {
                 <div>
                   <b>The pitch.</b>
                   <p>
-                    Mastline suggests $1,200–1,800 from your past sales and drafts pitches to the
-                    six desks most likely to buy.
+                    Mastline suggests $1,200–1,800 from past sales and drafts pitches to the six
+                    desks most likely to buy.
                   </p>
                   <span className="mchip">6 pitches · 2 exclusive</span>
                 </div>
@@ -607,14 +614,14 @@ export default function Page() {
                 className="mstep"
                 data-value="1800"
                 data-label="Licensed"
-                data-note="Daily Mail countered for a 48-hour exclusive. You accepted in one tap."
+                data-note="Daily Mail countered for a 48-hour exclusive. Accepted in one tap."
               >
                 <span className="mt">11:24 PM</span>
                 <div>
                   <b>The sale.</b>
                   <p>
-                    An editor opens the link on her phone and counters. You accept. The license
-                    generates, she accepts it, the full-res files release.
+                    An editor opens the link on her phone and counters. One tap accepts it. The
+                    license generates, she signs, and the full-res files release.
                   </p>
                   <span className="mchip">+ $1,800</span>
                 </div>
@@ -623,14 +630,14 @@ export default function Page() {
                 className="mstep"
                 data-value="3200"
                 data-label="Archive repitched"
-                data-note="A casting story broke at midnight. Four desks bought file sets you shot years ago."
+                data-note="A casting story broke at midnight. Four desks bought file sets shot years ago."
               >
                 <span className="mt">12:02 AM</span>
                 <div>
                   <b>The archive wakes up.</b>
                   <p>
-                    A name in your archive is back in the news. Mastline lines up three old sets and
-                    eight buyers; you approve over coffee. Four of them buy.
+                    A name in the archive is back in the news. Mastline lines up three old sets and
+                    eight buyers; one approval over coffee sends them. Four buy.
                   </p>
                   <span className="mchip">+ $1,400</span>
                 </div>
@@ -646,7 +653,7 @@ export default function Page() {
                   <b>The pictures nobody paid for.</b>
                   <p>
                     Rights Matches finds three unlicensed uses from last month, with the evidence
-                    attached. You send invoices from the same screen.
+                    attached. Invoices go out from the same screen.
                   </p>
                   <span className="mchip">+ $600</span>
                 </div>
@@ -655,7 +662,7 @@ export default function Page() {
                 className="mstep"
                 data-value="3800"
                 data-label="Paid"
-                data-note="Collected without a single follow-up email. You keep 100% of sales you made yourself and 70% of the ones Mastline made."
+                data-note="Collected without a single follow-up email. 100% of the sales made directly, 70% of the ones Mastline made."
               >
                 <span className="mt" data-tomorrow="" data-days="3">
                   Sep 17
