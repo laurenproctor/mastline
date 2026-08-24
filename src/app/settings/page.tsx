@@ -5,6 +5,8 @@ import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
 import { humanizeStatus } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { mfaStanding } from "@/lib/mfa";
+import { remainingLabel } from "@/lib/recovery-codes";
+import { countRecoveryCodes } from "@/lib/data/recovery-codes";
 import {
   getWorkspaceCounts,
   listWorkspaceBuyers,
@@ -253,6 +255,7 @@ export default async function SettingsPage({
             )}
             <TwoFactor
               email={session.email}
+              remainingCodes={remainingLabel(await countRecoveryCodes())}
               standing={mfaStanding({
                 role: workspace.role,
                 hasVerifiedFactor: session.hasVerifiedFactor,

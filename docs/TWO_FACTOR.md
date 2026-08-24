@@ -39,11 +39,34 @@ could would be a way around the feature rather than an administrator. Recovery
 for a genuinely lost device is a support path that does not exist yet, and needs
 one before this is required of real customers.
 
+## Recovery codes
+
+Ten are issued the moment a factor is confirmed, because that is the moment a
+way back from losing the device is needed. They are shown once and never again;
+only a scrypt hash with a per-code salt is stored.
+
+**A code cannot raise a session to `aal2`** — only a real TOTP verification does
+that. So a code does the honest thing instead: it proves who is asking, the
+factor comes off, and they are back in and asked to enrol again on the new
+device. The screen says so before the code is used rather than after.
+
+Each code works once, and is spent whether or not the rest succeeds — a code
+that could be retried is not single use. Issuing a new set invalidates the old
+one, because a code written down two years ago is a credential nobody is
+tracking.
+
+The alphabet is Crockford base32 without I, L, O, or U, so nothing can be
+misread when copied off a screen by hand; the reader folds those confusions back
+in anyway, and accepts lower case, spaces, and the hyphen it is shown with.
+
+Removing the factor needs more than the session has at that point, so it runs
+through the admin API. The session is then refreshed: assurance is baked into
+the token, and deleting a factor server-side does not reach back into a session
+already issued — without the refresh the next request is bounced straight to the
+challenge that was just recovered from.
+
 ## Still missing
 
-- **Recovery codes.** Supabase does not issue them, and a lost phone currently
-  means an administrator with service-role access. This should exist before the
-  policy is required of anyone.
 - **More than one factor per account**, so a second device can be a backup.
 - **WebAuthn**, which is stronger than TOTP and already supported by the
   platform.

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { normalizeTotpCode } from "@/lib/mfa";
+import { hashRecoveryCode, newRecoveryCodes } from "@/lib/recovery-codes.server";
 import { requireSession } from "@/lib/auth";
 import { requireContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +31,8 @@ export interface EnrollState {
 export interface ConfirmState {
   readonly ok?: boolean;
   readonly error?: string;
+  /** Shown once, at the moment they are made. Never retrievable afterwards. */
+  readonly codes?: readonly string[];
 }
 
 /**
@@ -91,7 +94,13 @@ export async function confirmEnrollmentAction(
     return { error: "That code was not right. Codes change every 30 seconds; try the current one." };
   }
 
-  redirect("/settings?saved=mfa-on");
+  // Recovery codes are issued here rather than offered later, because the
+  // moment someone has just locked their account to a device is the moment they
+  // need a way back from losing it. Returned rather than redirected to, since
+  // this is the only time they can be read.
+  const issued = await generateRecoveryCodesAction();
+  if (issued.error) return { ok: true, error: issued.error };
+  return { ok: true, codes: issued.codes };
 }
 
 /**
@@ -168,4 +177,41 @@ export async function setMfaPolicyAction(
   });
 
   redirect(required ? "/settings?saved=mfa-required" : "/settings?saved=mfa-optional");
+}
+
+export interface RecoveryCodesState {
+  readonly codes?: readonly string[];
+  readonly error?: string;
+}
+
+/**
+ * Issue a fresh set of recovery codes.
+ *
+ * Any earlier set stops working, because a code someone wrote down two years
+ * ago is a credential nobody is tracking. The plaintext is returned once, to be
+ * shown once; only hashes are stored, each with a salt of its own.
+ */
+export async function generateRecoveryCodesAction(): Promise<RecoveryCodesState> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const codes = newRecoveryCodes();
+  const rows = await Promise.all(
+    codes.map(async (code) => {
+      const { hash, salt } = await hashRecoveryCode(code);
+      return { user_id: session.userId, code_hash: hash, salt };
+    }),
+  );
+
+  // Replace rather than add: a set is a set.
+  const { error: clearError } = await supabase
+    .from("mfa_recovery_codes")
+    .delete()
+    .eq("user_id", session.userId);
+  if (clearError) return { error: `Could not replace the old codes: ${clearError.message}` };
+
+  const { error } = await supabase.from("mfa_recovery_codes").insert(rows);
+  if (error) return { error: `Could not create recovery codes: ${error.message}` };
+
+  return { codes };
 }

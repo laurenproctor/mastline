@@ -745,3 +745,9 @@ a.button { text-decoration: none; }
 .delivery-frame-body h3{margin:0 0 6px}
 .delivery-foot{margin-top:28px;border-top:1px solid var(--rule);padding-top:16px}
 @media (max-width:640px){.delivery-frame{grid-template-columns:1fr}}
+
+/* Recovery codes: shown once, so they are made easy to read and to copy. */
+.recovery-codes{margin-top:12px;padding:16px;border:1px solid var(--rule);border-radius:8px;background:var(--paper-2)}
+.recovery-code-list{list-style:none;margin:12px 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.recovery-code-list code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px;letter-spacing:.06em}
+@media (max-width:480px){.recovery-code-list{grid-template-columns:1fr}}

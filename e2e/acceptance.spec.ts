@@ -576,7 +576,12 @@ test.describe("two-factor authentication", () => {
     let lastCode = await freshTotp(secret);
     await page.getByLabel("Code from your app").fill(lastCode);
     await page.getByRole("button", { name: "Confirm and turn on" }).click();
-    await expect(page.getByText("Two-factor authentication is on.")).toBeVisible();
+
+    // Enrolment hands over recovery codes, because that is the moment a way
+    // back from a lost phone is needed.
+    await expect(page.getByRole("group", { name: "Recovery codes" })).toBeVisible();
+    await page.getByRole("link", { name: "I have saved them" }).click();
+    await expect(page.getByRole("button", { name: "Turn off two-factor" })).toBeVisible();
 
     try {
       await page.getByRole("button", { name: "Sign out" }).click();
@@ -639,6 +644,55 @@ test.describe("two-factor authentication", () => {
     } finally {
       await setWorkspaceMfaPolicy(false);
     }
+  });
+
+  test("a recovery code gets you back in when the phone is gone", async ({ page }, testInfo) => {
+    // Desktop only, for the same reason as the enrolment test: it waits out a
+    // TOTP window and proves something with no layout dimension.
+    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+    test.setTimeout(180_000);
+
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Set up two-factor" }).click();
+    const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
+    await page.getByLabel("Code from your app").fill(await freshTotp(secret));
+    await page.getByRole("button", { name: "Confirm and turn on" }).click();
+
+    // The codes arrive with the factor, because that is the moment they are
+    // needed later. They are shown once and never again.
+    await expect(page.getByRole("group", { name: "Recovery codes" })).toBeVisible();
+    const codes = await page.locator(".recovery-code-list code").allInnerTexts();
+    expect(codes).toHaveLength(10);
+    await page.getByRole("link", { name: "I have saved them" }).click();
+
+    // The phone is gone: the secret is of no use, only the paper is.
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(SEEDED.owner);
+    await page.getByLabel("Password").fill(SEEDED.password);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.waitForURL(/\/login\/verify/);
+
+    await page.getByRole("button", { name: /Lost your device/ }).click();
+    await page.getByLabel("Recovery code").fill(codes[0]);
+    await page.getByRole("button", { name: "Use this code" }).click();
+    await page.waitForURL(/\/work/);
+    await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+
+    // The factor came off, which is what let them in, so the account is back to
+    // a password and an invitation to enrol again.
+    await page.goto("/settings");
+    await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
+
+    // And that code is spent.
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(SEEDED.owner);
+    await page.getByLabel("Password").fill(SEEDED.password);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    // No factor now, so there is no challenge at all.
+    await page.waitForURL(/\/work/);
   });
 
   test("a wrong code changes nothing", async ({ page }) => {

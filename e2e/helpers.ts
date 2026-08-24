@@ -187,6 +187,7 @@ function localEnv(name: string): string | undefined {
 }
 
 export async function clearMfaFactors(email: string): Promise<void> {
+  await clearRecoveryCodes(email);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("No service role key: cannot reset two-factor state.");
@@ -205,6 +206,30 @@ export async function clearMfaFactors(email: string): Promise<void> {
       headers,
     });
   }
+}
+
+/**
+ * Drop every recovery code for an account.
+ *
+ * Enrolling issues a fresh set, so codes accumulate across runs and a stale one
+ * from a previous run is a credential nothing is tracking. Cleared alongside the
+ * factors, for the same reason.
+ */
+export async function clearRecoveryCodes(email: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot reset recovery codes.");
+
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const listed = await fetch(`${url}/auth/v1/admin/users?per_page=200`, { headers });
+  const { users } = (await listed.json()) as { users: { id: string; email?: string }[] };
+  const user = users.find((candidate) => candidate.email?.toLowerCase() === email.toLowerCase());
+  if (!user) return;
+
+  await fetch(`${url}/rest/v1/mfa_recovery_codes?user_id=eq.${user.id}`, {
+    method: "DELETE",
+    headers: { ...headers, Prefer: "return=minimal" },
+  });
 }
 
 /**

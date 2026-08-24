@@ -3,14 +3,45 @@
 import { useActionState, useState, useTransition } from "react";
 import { Badge, Field } from "@/components/primitives";
 import { formatSecretForTyping, type MfaStanding } from "@/lib/mfa";
+import { formatRecoveryCode } from "@/lib/recovery-codes";
 import {
   type ConfirmState,
   type EnrollState,
   confirmEnrollmentAction,
   disableMfaAction,
+  generateRecoveryCodesAction,
   setMfaPolicyAction,
   startEnrollmentAction,
 } from "../mfa-actions";
+
+/**
+ * The codes, shown once.
+ *
+ * Deliberately blunt about that: there is no second chance to read them, and a
+ * person who closes this without saving them has no way back from a lost phone
+ * except an administrator.
+ */
+function RecoveryCodes({ codes }: { codes: readonly string[] }) {
+  return (
+    <div className="recovery-codes" role="group" aria-label="Recovery codes">
+      <p className="section-note">
+        <strong>Save these now.</strong> Each one signs you in once if you lose your device, and
+        they cannot be shown again. Print them, or put them somewhere that is not the phone holding
+        your authenticator.
+      </p>
+      <ul className="recovery-code-list">
+        {codes.map((code) => (
+          <li key={code}>
+            <code>{formatRecoveryCode(code)}</code>
+          </li>
+        ))}
+      </ul>
+      <a className="button small" href="/settings">
+        I have saved them
+      </a>
+    </div>
+  );
+}
 
 /**
  * The workspace switch, shown only to an owner.
@@ -62,7 +93,16 @@ const INITIAL: ConfirmState = {};
  * reading this on the same phone that holds the authenticator cannot scan their
  * own screen, and that is the common case here.
  */
-export function TwoFactor({ standing, email }: { standing: MfaStanding; email: string }) {
+export function TwoFactor({
+  standing,
+  email,
+  remainingCodes,
+}: {
+  standing: MfaStanding;
+  email: string;
+  /** A line saying how many are left, without listing them. */
+  remainingCodes?: string;
+}) {
   const [enrollment, setEnrollment] = useState<EnrollState | null>(null);
   const [starting, startEnrollment] = useTransition();
   const [confirmState, confirmAction, confirming] = useActionState(
@@ -71,6 +111,26 @@ export function TwoFactor({ standing, email }: { standing: MfaStanding; email: s
   );
   const [removeState, removeAction, removing] = useActionState(disableMfaAction, INITIAL);
   const [removeOpen, setRemoveOpen] = useState(false);
+  const [newCodes, setNewCodes] = useState<{ codes?: readonly string[]; error?: string }>({});
+  const [issuing, issueCodes] = useTransition();
+
+  if (confirmState.codes) {
+    return (
+      <div className="panel-body">
+        <Badge tone="good">Two-factor on</Badge>
+        <RecoveryCodes codes={confirmState.codes} />
+      </div>
+    );
+  }
+
+  if (newCodes.codes) {
+    return (
+      <div className="panel-body">
+        <Badge tone="good">New recovery codes</Badge>
+        <RecoveryCodes codes={newCodes.codes} />
+      </div>
+    );
+  }
 
   if (standing === "protected") {
     return (
@@ -80,10 +140,25 @@ export function TwoFactor({ standing, email }: { standing: MfaStanding; email: s
           Signing in on a new device needs a code from your authenticator app as well as your
           password.
         </p>
+        <p className="section-note">{remainingCodes}</p>
         {!removeOpen ? (
-          <button className="button small" onClick={() => setRemoveOpen(true)} type="button">
-            Turn off two-factor
-          </button>
+          <div className="actions">
+            <button
+              className="button small"
+              disabled={issuing}
+              onClick={() =>
+                issueCodes(async () => {
+                  setNewCodes(await generateRecoveryCodesAction());
+                })
+              }
+              type="button"
+            >
+              {issuing ? "Making them…" : "Show new recovery codes"}
+            </button>
+            <button className="button small" onClick={() => setRemoveOpen(true)} type="button">
+              Turn off two-factor
+            </button>
+          </div>
         ) : (
           <form action={removeAction}>
             <Field
