@@ -22,7 +22,7 @@ export default function Page() {
         <div className="wrap">
           <div className="legal">
             <p className="meta">
-              Effective August 21, 2026 · Applies to mastline.co and the Mastline application
+              Effective August 25, 2026 · Applies to mastline.co and the Mastline application
             </p>
 
             <h2>1. Who Mastline is</h2>
@@ -64,12 +64,16 @@ export default function Page() {
                 operating system, and approximate location derived from IP address.
               </li>
               <li>
-                <strong>Cookies and analytics:</strong> Mastline uses Google Analytics, loaded
-                through Google Tag Manager, to understand how the site is used. In the EEA, the UK,
-                and Switzerland nothing is stored on your device and no analytics identifiers are
-                collected unless you accept, and you can change that choice at any time from
-                &ldquo;Cookie choices&rdquo; in the footer. A short-lived cookie recording your
-                country is set to decide whether to ask you; it holds nothing else.
+                <strong>Cookies and analytics:</strong> Mastline uses two analytics services. Google
+                Analytics, loaded through Google Tag Manager, is used to understand how the site is
+                used; in the EEA, the UK, and Switzerland nothing is stored on your device and no
+                analytics identifiers are collected unless you accept, and you can change that
+                choice at any time from &ldquo;Cookie choices&rdquo; in the footer. Vercel
+                Analytics, provided by Mastline&rsquo;s hosting provider, counts page views and
+                records basic browser, device, and country information; it sets no cookie, stores
+                nothing on your device, and does not follow you across other sites, so it is not
+                part of the choice described above. A short-lived cookie recording your country is
+                set to decide whether to ask you; it holds nothing else.
               </li>
               <li>
                 <strong>Pitch and license activity:</strong> when a buyer opens a pitch link,

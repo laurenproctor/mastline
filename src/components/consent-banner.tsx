@@ -87,7 +87,8 @@ export function ConsentBanner() {
     >
       <p className={styles.copy}>
         Mastline uses Google Analytics to understand how the site is used. Nothing is stored on your
-        device and no measurement is recorded until you accept. Read the{" "}
+        device and none of its measurement is recorded until you accept. A separate cookieless
+        service counts page views and stores nothing on your device either way. Read the{" "}
         <Link href="/privacy">privacy policy</Link>.
       </p>
       <div className={styles.actions}>
