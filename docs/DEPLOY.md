@@ -31,9 +31,23 @@ done and what is still needed.
 Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
 Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-All 7 migrations are applied: 25 tables, 52 policies, and the three private
-buckets (`originals`, `derivatives`, `evidence`), none public. Production was
-never seeded; the first workspace is made through real sign-up.
+All 22 migrations are applied, including the three private buckets
+(`originals`, `derivatives`, `evidence`), none public. Production was never
+seeded; the first workspace is made through real sign-up.
+
+`supabase migration list --linked` is the check that matters here, and it is
+worth running before any deploy that touches data: it prints local and remote
+side by side, and a local row with no remote opposite is a migration the code
+about to ship may already be assuming.
+
+One rule that migration `20260825170000` establishes, because it was learned the
+hard way: **service_role holds the same table privileges as authenticated.**
+Supabase's image stopped granting DML on new public tables, and service_role had
+no explicit grant, so on a fresh database every trusted server path that runs
+without a user session -- teammate invitations, the delivery webhook, the
+billing webhook -- failed with 42501. Row level security, which service_role
+bypasses by design, is what separates the two roles. Grant explicitly in every
+migration; never rely on a platform default.
 
 The Supabase Vercel integration had already populated Production with
 `POSTGRES_*`, `SUPABASE_*`, and `NEXT_PUBLIC_SUPABASE_*`. Those are managed by
@@ -92,6 +106,28 @@ Without this, password-reset and confirmation emails link back to `localhost`
 and silently fail for a real user. Site URL must track the canonical host: it
 is what Supabase puts in reset and confirmation emails.
 
+## Metadata suggestions
+
+`ANTHROPIC_API_KEY` is set for production. It is server-only and must never
+become `NEXT_PUBLIC_`. It gates one control: "Suggest from the image" in the
+asset inspector. With no key the control is not offered at all rather than
+offered and failing, so an unset key is a degradation and not an outage.
+
+The model is `claude-haiku-4-5` by default, overridable with
+`MASTLINE_SUGGESTION_MODEL` (unset in production, so the default applies).
+Roughly half a cent a suggestion. Two things to know before changing it:
+
+- Not every model accepts `output_config.effort`. Haiku 4.5 rejects it with a
+  400 rather than ignoring it. `supportsEffort` in `src/lib/metadata-suggestions.ts`
+  is an allow list, so an unrecognised model sends no effort and gets the
+  model's own default; add a model there when moving to an effort-capable tier.
+- Haiku 4.5's retirement commitment is "not sooner than 15 October 2026", the
+  nearest of any current model. Budget for a re-point.
+
+Changing either variable needs a redeploy. The value is read on the server per
+request, but Vercel binds a deployment's environment when the deployment is
+created.
+
 ## Stripe
 
 `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are still placeholders. Billing
@@ -109,11 +145,14 @@ already signed-in visitor, which needs the session.
 ## Verifying a deploy
 
 ```sh
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/welcome           # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/                 # 200
 curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/pricing           # 200
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/sign-in             # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/sign-in           # 200
+# /welcome is a 308 to the apex home, not a page. A 200 here means the
+# redirect recorded above has been lost.
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://mastline.co/welcome
 # www must redirect to the apex, not serve:
-curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.mastline.co/welcome
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.mastline.co/pricing
 ```
 
 The browser suite can be pointed at the deployment:
