@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { BuyerSelect } from "@/components/buyer-select";
 import { Field } from "@/components/primitives";
 import { type DispatchState, updatePackageAction } from "../actions";
 
@@ -42,14 +43,7 @@ export function PackageDetails({
     <form action={formAction} className="panel-body">
       <input name="packageId" type="hidden" value={packageId} />
 
-      <Field control="select" defaultValue={buyerId ?? ""} label="Buyer" name="buyerId">
-        <option value="">Choose a buyer…</option>
-        {buyers.map((buyer) => (
-          <option key={buyer.id} value={buyer.id}>
-            {buyer.name}
-          </option>
-        ))}
-      </Field>
+      <BuyerSelect buyers={buyers} defaultValue={buyerId ?? ""} />
       <div className="spacer" />
       <Field
         defaultValue={deliveryMethod ?? ""}

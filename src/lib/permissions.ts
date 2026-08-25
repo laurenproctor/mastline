@@ -22,6 +22,10 @@ export const CAPABILITIES = [
   "asset.tombstone",
   "package.read",
   "package.write",
+  // A counterparty record is created from wherever the work is: building a
+  // package, recording a payment, briefing a shoot. The roles here mirror
+  // buyers_write in the initial migration.
+  "buyer.write",
   "submission.read",
   "submission.send",
   "license.read",
@@ -60,15 +64,23 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
     "asset.write",
     "asset.tombstone",
     "package.write",
+    "buyer.write",
     "expense.write",
   ],
   // A dispatcher moves packages and submissions, and may advance a shoot's
   // status as part of dispatching. They do not rewrite briefs: shoot.write
   // covers the brief, and a database trigger enforces that boundary.
-  dispatcher: [...READ_ONLY, "package.write", "submission.send", "shoot.status"],
+  dispatcher: [...READ_ONLY, "package.write", "buyer.write", "submission.send", "shoot.status"],
   // docs/DATA_MODEL.md puts exports under finance alongside revenue and
   // statements.
-  finance: [...READ_ONLY, "license.write", "payment.write", "expense.write", "export.workspace"],
+  finance: [
+    ...READ_ONLY,
+    "license.write",
+    "payment.write",
+    "buyer.write",
+    "expense.write",
+    "export.workspace",
+  ],
   // Evidence and triage only. Escalation to a demand is a separate approved
   // workflow, deliberately not a role permission.
   rights_reviewer: [...READ_ONLY, "rights.triage"],

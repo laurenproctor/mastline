@@ -119,6 +119,17 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
       }
       return false;
     }
+    case "buyer.write": {
+      const { data } = await client
+        .from("buyers")
+        .insert({ organization_id: ORG_A, name: `probe-${role}-${Date.now()}` })
+        .select("id");
+      if (data?.[0]?.id) {
+        await service.from("buyers").delete().eq("id", data[0].id);
+        return true;
+      }
+      return false;
+    }
     case "asset.write": {
       const { data } = await client
         .from("assets")
@@ -138,6 +149,7 @@ const PROBES = [
   "payment.write",
   "license.write",
   "package.write",
+  "buyer.write",
   "rights.triage",
   "asset.write",
 ] as const;

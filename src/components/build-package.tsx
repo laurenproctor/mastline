@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { BuyerSelect } from "@/components/buyer-select";
 import { Field } from "@/components/primitives";
 import { type DispatchState, buildPackageAction } from "@/app/dispatch/actions";
 
@@ -74,20 +75,7 @@ export function BuildPackage({
       <h3>Build a package</h3>
       <Field defaultValue={`${shootTitle} — Package`} label="Package name" name="name" required />
       <div className="spacer" />
-      <Field
-        control="select"
-        label="Buyer"
-        name="buyerId"
-        onChange={(event) => setBuyerId(event.target.value)}
-        value={buyerId}
-      >
-        <option value="">Choose a buyer…</option>
-        {buyers.map((candidate) => (
-          <option key={candidate.id} value={candidate.id}>
-            {candidate.name}
-          </option>
-        ))}
-      </Field>
+      <BuyerSelect buyers={buyers} onChange={setBuyerId} required value={buyerId} />
       <div className="spacer" />
       <Field
         defaultValue={buyer?.deliveryProfile ?? ""}

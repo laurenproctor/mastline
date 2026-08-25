@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { BuyerSelect } from "@/components/buyer-select";
 import { Badge, Field } from "@/components/primitives";
 import {
   type StatementState,
@@ -33,14 +34,7 @@ export function ImportStatement({ buyers }: { buyers: readonly { id: string; nam
     <form action={formAction} className="side-card">
       <h3>Import a statement</h3>
 
-      <Field control="select" label="Buyer" name="buyerId">
-        <option value="">Not linked to a buyer</option>
-        {buyers.map((buyer) => (
-          <option key={buyer.id} value={buyer.id}>
-            {buyer.name}
-          </option>
-        ))}
-      </Field>
+      <BuyerSelect buyers={buyers} emptyLabel="Not linked to a buyer" />
       <div className="spacer" />
       <Field
         accept=".csv,text/csv"

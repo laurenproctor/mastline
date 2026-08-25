@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { BuyerSelect } from "@/components/buyer-select";
 import { Field } from "@/components/primitives";
 import { type MoneyActionState, recordPaymentAction } from "../actions";
 
@@ -41,14 +42,7 @@ export function RecordPayment({ buyers }: { buyers: readonly { id: string; name:
     <form action={formAction} className="side-card">
       <h3>Record a payment</h3>
 
-      <Field control="select" label="Buyer" name="buyerId">
-        <option value="">Not linked to a buyer</option>
-        {buyers.map((buyer) => (
-          <option key={buyer.id} value={buyer.id}>
-            {buyer.name}
-          </option>
-        ))}
-      </Field>
+      <BuyerSelect buyers={buyers} emptyLabel="Not linked to a buyer" />
       <div className="spacer" />
       <Field label="Reference" name="reference" placeholder="BG-882341" />
       <div className="spacer" />
