@@ -64,6 +64,14 @@ export default function Page() {
                 operating system, and approximate location derived from IP address.
               </li>
               <li>
+                <strong>Cookies and analytics:</strong> Mastline uses Google Analytics, loaded
+                through Google Tag Manager, to understand how the site is used. In the EEA, the UK,
+                and Switzerland nothing is stored on your device and no analytics identifiers are
+                collected unless you accept, and you can change that choice at any time from
+                &ldquo;Cookie choices&rdquo; in the footer. A short-lived cookie recording your
+                country is set to decide whether to ask you; it holds nothing else.
+              </li>
+              <li>
                 <strong>Pitch and license activity:</strong> when a buyer opens a pitch link,
                 accepts a license, or downloads files. This is core to the product and is shown to
                 you.

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AnimatedFavicon } from "@/components/animated-favicon";
+import { ConsentBanner } from "@/components/consent-banner";
+import { consentDefaultsScript } from "@/lib/consent";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -31,6 +33,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
+        {/*
+          Consent Mode defaults, which must be the first script in the head.
+          The container reads the consent state as it initialises, so declaring
+          the defaults after it would let the first hit be decided on the wrong
+          basis -- the one ordering mistake this whole mechanism turns on.
+        */}
+        <script dangerouslySetInnerHTML={{ __html: consentDefaultsScript() }} />
         {/* Google Tag Manager */}
         <script
           dangerouslySetInnerHTML={{
@@ -56,6 +65,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager (noscript) */}
         <AnimatedFavicon />
         {children}
+        <ConsentBanner />
       </body>
     </html>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { brandSans, brandSerif } from "@/lib/brand-fonts";
 import Image from "next/image";
 import Link from "next/link";
+import { ConsentReopenLink } from "@/components/consent-reopen-link";
 import { SiteNav } from "./_components/site-nav";
 import "./marketing.css";
 
@@ -143,6 +144,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                 </li>
                 <li>
                   <Link href="/accessibility">Accessibility</Link>
+                </li>
+                <li>
+                  <ConsentReopenLink />
                 </li>
               </ul>
             </div>

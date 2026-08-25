@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isMarketing, isProtected } from "@/lib/routes";
+import { COUNTRY_COOKIE } from "@/lib/consent";
 
 /**
  * Refreshes the Supabase session on every request and gates the application.
@@ -16,9 +17,33 @@ import { isMarketing, isProtected } from "@/lib/routes";
  * shared with robots.txt so the two cannot drift apart.
  */
 
+/**
+ * Stamps the visitor's country so the consent banner can decide whether to
+ * appear.
+ *
+ * The geo header exists only at the edge, and reading it inside a layout would
+ * turn every static marketing page dynamic. A cookie carries it to the client
+ * instead: two letters, no identifier, gone with the session, and strictly
+ * necessary for operating the consent mechanism itself.
+ *
+ * The header is absent in local development and for any request Vercel cannot
+ * place, and the banner treats an unknown country as one that needs asking.
+ */
+function stampCountry(request: NextRequest, response: NextResponse): NextResponse {
+  const country = request.headers.get("x-vercel-ip-country");
+  if (country) {
+    response.cookies.set(COUNTRY_COOKIE, country, {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+    });
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   if (isMarketing(request.nextUrl.pathname)) {
-    return NextResponse.next({ request });
+    return stampCountry(request, NextResponse.next({ request }));
   }
 
   let response = NextResponse.next({ request });
@@ -81,7 +106,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return stampCountry(request, response);
 }
 
 export const config = {
