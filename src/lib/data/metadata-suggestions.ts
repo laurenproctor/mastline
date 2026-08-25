@@ -11,6 +11,7 @@ import {
   buildSuggestionPrompt,
   describeBasis,
   normaliseSuggestion,
+  supportsEffort,
 } from "../metadata-suggestions";
 import { createClient } from "../supabase/server";
 import { getShoot } from "./shoots";
@@ -30,13 +31,23 @@ import { getShoot } from "./shoots";
  * preview has nothing to send, and says so rather than guessing from a filename.
  */
 
-/** Overridable so a workspace can be moved to a cheaper model without a deploy. */
-const MODEL = process.env.MASTLINE_SUGGESTION_MODEL ?? "claude-opus-5";
+/**
+ * Haiku 4.5: the cheapest model that can see, and this is not a hard seeing
+ * task. Describing what is visible in one frame is exactly the kind of short,
+ * well-specified work the small model is for, and the cost difference decides
+ * whether the feature can be offered on every frame or only on a chosen few.
+ * At roughly 0.6 of a cent a suggestion it can be offered on every frame.
+ *
+ * Overridable per deployment. Changing it needs a redeploy, not just a restart:
+ * the value is read on the server at request time, but Vercel only hands a new
+ * environment to a new deployment.
+ */
+const MODEL = process.env.MASTLINE_SUGGESTION_MODEL ?? "claude-haiku-4-5";
 
 /**
  * A suggestion is a short, structured draft, not an essay. The cap is generous
- * enough for adaptive thinking plus the tool call, and small enough that a
- * runaway response cannot become an expensive one.
+ * enough for the tool call plus whatever thinking the model does on the way to
+ * it, and small enough that a runaway response cannot become an expensive one.
  */
 const MAX_TOKENS = 4000;
 
@@ -205,9 +216,10 @@ export async function suggestMetadataForAsset(input: {
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      // Low effort: this is a short, well-specified description task, and the
-      // photographer is standing on a pavement waiting for it.
-      output_config: { effort: "low" },
+      // Low effort where the model takes it at all: this is a short, well
+      // specified description task, and the photographer is standing on a
+      // pavement waiting for it.
+      ...(supportsEffort(MODEL) ? { output_config: { effort: "low" as const } } : {}),
       system: SUGGESTION_SYSTEM_PROMPT,
       tools: [SUGGESTION_TOOL],
       tool_choice: { type: "tool", name: SUGGESTION_TOOL.name },

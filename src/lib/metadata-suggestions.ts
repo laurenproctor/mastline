@@ -20,6 +20,19 @@
  * The pure parts live here so they can be tested without a network.
  */
 
+/**
+ * Whether a model accepts `output_config.effort`.
+ *
+ * Haiku 4.5 -- the default -- rejects effort with a 400 rather than ignoring
+ * it, so this is a correctness check and not a tuning one. That is why it is an
+ * allow list: an unrecognised override sends no effort and gets the model's own
+ * default, which is always a valid request. Guessing the other way would turn a
+ * new model id into a failed suggestion.
+ */
+export function supportsEffort(model: string): boolean {
+  return /^claude-(opus|fable|mythos)-/.test(model) || /^claude-sonnet-(5|4-6)/.test(model);
+}
+
 export const MAX_HEADLINE = 120;
 export const MAX_CAPTION = 700;
 export const MAX_KEYWORDS = 12;

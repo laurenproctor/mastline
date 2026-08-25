@@ -7,6 +7,7 @@ import {
   buildSuggestionPrompt,
   describeBasis,
   normaliseSuggestion,
+  supportsEffort,
 } from "./metadata-suggestions";
 
 const BASIS = "Read from the image.";
@@ -136,5 +137,32 @@ describe("describeBasis", () => {
   it("always states that people are never suggested", () => {
     expect(describeBasis({})).toMatch(/People are never suggested/);
     expect(describeBasis({ isVideo: true })).toMatch(/frame of the clip/i);
+  });
+});
+
+describe("supportsEffort", () => {
+  // The default. Sending effort to it is a 400, not a wasted parameter.
+  it("does not send effort to the model this deployment actually runs", () => {
+    expect(supportsEffort("claude-haiku-4-5")).toBe(false);
+    expect(supportsEffort("claude-haiku-4-5-20251001")).toBe(false);
+  });
+
+  it("sends effort to the models that accept it", () => {
+    expect(supportsEffort("claude-opus-5")).toBe(true);
+    expect(supportsEffort("claude-sonnet-5")).toBe(true);
+    expect(supportsEffort("claude-sonnet-4-6")).toBe(true);
+    expect(supportsEffort("claude-fable-5")).toBe(true);
+  });
+
+  // Sonnet 4.5 rejects effort exactly as Haiku does, which is the case an
+  // "everything but haiku" rule would have got wrong.
+  it("withholds effort from older models that reject it", () => {
+    expect(supportsEffort("claude-sonnet-4-5")).toBe(false);
+  });
+
+  // A model released after this code was written is not a failed suggestion.
+  it("falls back to the model's own default rather than guessing", () => {
+    expect(supportsEffort("claude-something-7")).toBe(false);
+    expect(supportsEffort("")).toBe(false);
   });
 });
