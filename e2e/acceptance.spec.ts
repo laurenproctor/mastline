@@ -647,6 +647,70 @@ test.describe("two-factor authentication", () => {
     }
   });
 
+  /**
+   * Enrolling from the page the policy sends you to.
+   *
+   * The test above proves the gate closes. This one proves it opens, which is
+   * the half that was missing: every enrolment test ran from Settings with the
+   * policy off, where the gate is not in the way at all. With it on, the
+   * enrolment actions were calling the same `requireSession` that redirects
+   * here, so the button did nothing and the only screen out of the lockout was
+   * the lockout.
+   */
+  test("the locked-out page can actually let you out", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+    test.setTimeout(180_000);
+
+    await setWorkspaceMfaPolicy(true);
+    try {
+      await page.goto("/sign-in");
+      await page.getByLabel("Email").fill(SEEDED.owner);
+      await page.getByLabel("Password").fill(SEEDED.password);
+      await page.getByRole("button", { name: /sign in/i }).click();
+      await expect(page).toHaveURL(/secure-your-account/);
+
+      // This is the click that used to redirect the page to itself.
+      await page.getByRole("button", { name: "Set up two-factor" }).click();
+
+      const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
+      expect(secret.length).toBeGreaterThan(15);
+      // A camera has something to read, not only a key to be typed.
+      await expect(page.getByRole("img", { name: "Enrolment QR code" })).toBeVisible();
+
+      await page.getByLabel("Code from the app").fill(await freshTotp(secret));
+      await page.getByRole("button", { name: "Confirm and turn on" }).click();
+
+      await expect(page.getByRole("group", { name: "Recovery codes" })).toBeVisible();
+      expect(await page.locator(".recovery-code-list code").allInnerTexts()).toHaveLength(10);
+
+      // And the workspace is now reachable, which is the whole point.
+      await page.goto("/work");
+      await expect(page).toHaveURL(/\/work/);
+      await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
+    } finally {
+      await setWorkspaceMfaPolicy(false);
+    }
+  });
+
+  /**
+   * An owner cannot lock themselves out with one click.
+   *
+   * The policy is meant to be a decision about other people that they are
+   * warned about, not one the person pressing the button walks into before
+   * reading the sentence under it.
+   */
+  test("requiring two-factor asks the owner to enrol first", async ({ page }) => {
+    await signIn(page, SEEDED.owner);
+    await page.goto("/settings");
+
+    await page.getByRole("button", { name: "Require for owners and finance" }).click();
+    await expect(page.locator(".auth-error")).toContainText("Set up your own authenticator first");
+
+    // Nothing was switched on, so the workspace still opens.
+    await page.goto("/work");
+    await expect(page).toHaveURL(/\/work/);
+  });
+
   test("a recovery code gets you back in when the phone is gone", async ({ page }, testInfo) => {
     // Desktop only, for the same reason as the enrolment test: it waits out a
     // TOTP window and proves something with no layout dimension.

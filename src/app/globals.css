@@ -2459,6 +2459,27 @@ a.button {
   }
 }
 
+/*
+ * The enrolment QR.
+ *
+ * White rather than the panel's off-white, and padded on all four sides: a
+ * scanner needs the quiet zone and needs the contrast, and neither is
+ * decoration it can be talked out of. Sized in ch so it stays roughly the width
+ * of the key beneath it.
+ */
+.mfa-qr {
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  margin: 12px 0;
+  padding: 10px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+
 /* The enrolment key, shown as text because a phone cannot scan its own screen. */
 .mfa-secret {
   margin: 10px 0;

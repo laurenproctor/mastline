@@ -7,9 +7,11 @@ true of any workspace that has switched it on.
 ## What was built
 
 - **Enrolment** in Settings → Two-factor authentication. Supabase generates the
-  secret; nothing about it is stored here. The key is shown as text as well,
-  because someone reading this on the phone that holds their authenticator
-  cannot scan their own screen.
+  secret; nothing about it is stored here. It is shown as a QR code to scan and
+  as text to type, because someone reading this on the phone that holds their
+  authenticator cannot scan their own screen. The QR is encoded on the server by
+  `src/lib/qr.server.ts` and sent to the screen as an SVG path — the secret is
+  never handed to an image service to be drawn.
 - **A challenge at sign-in.** A password alone leaves the session at `aal1` when
   a factor is enrolled, so sign-in lands on `/sign-in/verify` instead of the
   workspace.
@@ -33,6 +35,30 @@ is to enrol. That is a decision a workspace should make deliberately rather than
 inherit. If you would rather every new workspace start with it on — which would
 make the `/security` sentence unconditionally true — that is a one-line change to
 the column default, and it puts an enrolment step in front of every new sign-up.
+
+**An owner cannot switch the requirement on before enrolling themselves.** The
+lockout is meant as a consequence other members are warned about, not one the
+person pressing the button walks into mid-click. `setMfaPolicyAction` refuses
+and asks them to set up their own authenticator first.
+
+**`/secure-your-account` does not bounce you away once you are protected**, even
+though that is the obvious thing for it to do. Confirming a factor is a Server
+Action, and an action re-renders the route it was called from. A guard that
+redirected on the way through that re-render navigated away from the panel
+holding the ten recovery codes, which exist in that render and nowhere else —
+only their hashes are stored. The enrolment worked, the workspace opened, and
+the only way back from a lost phone was silently thrown away. The page now stays
+where it is and offers the way out as a link. `e2e/acceptance.spec.ts` covers it
+under "the locked-out page can actually let you out".
+
+**The enrolment actions do not go through `requireSession`.** They use
+`requireSessionForEnrollment`, which checks the session and the workspace but
+not the factor. `requireSession` is what redirects to `/secure-your-account`, so
+an enrolment action calling it would redirect back to the page it was called
+from, and the screen would be a dead end instead of the way out of one. This was
+a real lockout, not a theoretical one: the browser tests both enrol from
+Settings with the policy off, where the gate is open, so the required path — the
+only one that reaches `/secure-your-account` — went unexercised.
 
 **Nobody can remove anyone else's factor through the product.** An owner who
 could would be a way around the feature rather than an administrator. Recovery

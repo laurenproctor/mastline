@@ -89,9 +89,10 @@ const INITIAL: ConfirmState = {};
 /**
  * Setting up, and turning off, a second factor.
  *
- * The secret is shown as text rather than only as a QR code. A photographer
- * reading this on the same phone that holds the authenticator cannot scan their
- * own screen, and that is the common case here.
+ * The secret is shown as a QR code and as text, not one or the other. Scanning
+ * is what most people do; a photographer reading this on the same phone that
+ * holds the authenticator cannot scan their own screen, and that is common
+ * enough here that the typed key is not a fallback so much as the other half.
  */
 export function TwoFactor({
   standing,
@@ -226,8 +227,26 @@ export function TwoFactor({
         <form action={confirmAction}>
           <input name="factorId" type="hidden" value={enrollment.factorId} />
           <p className="section-note">
-            Add this key to an authenticator app for <strong>{email}</strong>, then enter the code
-            it shows.
+            {enrollment.qr
+              ? "Scan this with an authenticator app for "
+              : "Add this key to an authenticator app for "}
+            <strong>{email}</strong>, then enter the code it shows.
+          </p>
+          {enrollment.qr && (
+            <svg
+              aria-label="Enrolment QR code"
+              className="mfa-qr"
+              role="img"
+              shapeRendering="crispEdges"
+              viewBox={`0 0 ${enrollment.qr.size} ${enrollment.qr.size}`}
+            >
+              <path d={enrollment.qr.path} fill="currentColor" />
+            </svg>
+          )}
+          <p className="section-note">
+            {enrollment.qr
+              ? "Reading this on the phone that holds the authenticator? Type the key instead."
+              : "Type this key into the app."}
           </p>
           <p className="mfa-secret">
             <code>{formatSecretForTyping(enrollment.secret)}</code>

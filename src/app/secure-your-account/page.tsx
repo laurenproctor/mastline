@@ -12,8 +12,16 @@ export const metadata = { title: "Add a second factor — Mastline" };
  * account does not have one yet.
  *
  * It reads the session directly rather than through requireSession, which is
- * the thing that redirects here: going through it would be a loop. Anyone who
- * does not need to be here is sent back to their work.
+ * the thing that redirects here: going through it would be a loop.
+ *
+ * It deliberately does NOT bounce someone away the moment they are protected,
+ * which is the obvious thing to write and is wrong. Confirming a factor is a
+ * Server Action, and an action re-renders the route it was called from; a
+ * redirect at that point navigates away from the panel that is holding the ten
+ * recovery codes, which exist in that one render and nowhere else afterwards.
+ * The result was an enrolment that worked, opened the workspace, and quietly
+ * threw away the only way back from a lost phone. So the page stays put and
+ * hands over the way out as a link.
  */
 export default async function SecureYourAccountPage() {
   const cookieStore = await cookies();
@@ -26,19 +34,25 @@ export default async function SecureYourAccountPage() {
     hasVerifiedFactor: session.hasVerifiedFactor,
     enforced: session.activeWorkspace.requireMfa,
   });
-  if (!mfaBlocksAccess(standing)) redirect("/work");
+  const blocked = mfaBlocksAccess(standing);
 
   return (
     <main className="auth-page">
       <div className="auth-card">
         <Image alt="Mastline" height={30} priority src="/mastline-wordmark.png" width={174} />
-        <h1>Add a second factor</h1>
+        <h1>{blocked ? "Add a second factor" : "The workspace is open"}</h1>
         <p className="section-note">
-          {session.activeWorkspace.name} requires a second factor for owners and finance. Adding one
-          unlocks the workspace.
+          {blocked
+            ? `${session.activeWorkspace.name} requires a second factor for owners and finance. Adding one unlocks the workspace.`
+            : `Your account is protected, so ${session.activeWorkspace.name} is yours to use again.`}
         </p>
         <div className="spacer" />
         <TwoFactor email={session.email} standing={standing} />
+        {!blocked && (
+          <p className="section-note">
+            <a href="/work">Continue to your work</a>
+          </p>
+        )}
       </div>
     </main>
   );

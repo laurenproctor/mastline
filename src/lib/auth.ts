@@ -182,6 +182,24 @@ export async function requireSession(activeWorkspaceId?: string): Promise<Worksp
   return session as WorkspaceSession;
 }
 
+/**
+ * The session and its workspace, without the two-factor gate.
+ *
+ * Only for the enrolment path itself. `requireSession` sends anyone who owes a
+ * factor to /secure-your-account, and that page is where enrolment happens, so
+ * the actions it offers would each redirect themselves back to it: the screen
+ * would be a dead end rather than the way out of one.
+ *
+ * It is not a hole in the gate. Everything reached through it acts on the
+ * caller's own account and can only add a factor, never read the workspace.
+ */
+export async function requireSessionForEnrollment(): Promise<WorkspaceSession> {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  if (!session.activeWorkspace) redirect("/onboarding");
+  return session as WorkspaceSession;
+}
+
 /** The session without requiring a workspace. For the onboarding flow itself. */
 export async function requireUser(): Promise<Session> {
   const session = await getSession();

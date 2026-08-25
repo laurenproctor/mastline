@@ -1,9 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { normalizeTotpCode } from "@/lib/mfa";
+import { normalizeTotpCode, otpauthUri } from "@/lib/mfa";
+import { type QrCode, qrCode } from "@/lib/qr.server";
 import { hashRecoveryCode, newRecoveryCodes } from "@/lib/recovery-codes.server";
-import { requireSession } from "@/lib/auth";
+import { requireSession, requireSessionForEnrollment } from "@/lib/auth";
 import { requireContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
 
@@ -25,6 +26,8 @@ export interface EnrollState {
   readonly factorId?: string;
   readonly secret?: string;
   readonly uri?: string;
+  /** The same URI as something a camera can read. Absent if encoding failed. */
+  readonly qr?: QrCode;
   readonly error?: string;
 }
 
@@ -42,7 +45,7 @@ export interface ConfirmState {
  * previous unverified attempt is cleared first rather than accumulating.
  */
 export async function startEnrollmentAction(): Promise<EnrollState> {
-  await requireSession();
+  const session = await requireSessionForEnrollment();
   const supabase = await createClient();
 
   const { data: existing } = await supabase.auth.mfa.listFactors();
@@ -61,11 +64,21 @@ export async function startEnrollmentAction(): Promise<EnrollState> {
     return { error: `Could not start setup: ${error?.message ?? "unknown error"}` };
   }
 
-  return {
-    factorId: data.id,
-    secret: data.totp.secret,
-    uri: data.totp.uri,
-  };
+  // Supabase's own URI when it sends one, ours from the same secret when it
+  // does not. Both name the same factor; ours only differs in labelling the
+  // entry "Mastline" in the authenticator's list rather than a project ref.
+  const uri = data.totp.uri || otpauthUri({ secret: data.totp.secret, account: session.email });
+
+  // A QR that cannot be drawn must not cost someone their enrolment: the typed
+  // key below it still works, so a failure here is silent rather than fatal.
+  let qr: QrCode | undefined;
+  try {
+    qr = await qrCode(uri);
+  } catch {
+    qr = undefined;
+  }
+
+  return { factorId: data.id, secret: data.totp.secret, uri, qr };
 }
 
 /**
@@ -84,7 +97,7 @@ export async function confirmEnrollmentAction(
   if (!factorId) return { error: "Start the setup again." };
   if (!code) return { error: "Enter the six-digit code from the authenticator app." };
 
-  await requireSession();
+  await requireSessionForEnrollment();
   const supabase = await createClient();
 
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
@@ -147,6 +160,10 @@ export async function disableMfaAction(
  * people from a distance without consequence: the moment it is on, any owner or
  * finance member without a factor is locked out until they enrol. The screen
  * says so before it asks.
+ *
+ * The one person that is not a fair warning to is the owner pressing the
+ * button, who would be locked out by their own click before reading the
+ * consequence. So the switch asks them to go first.
  */
 export async function setMfaPolicyAction(
   _previous: ConfirmState,
@@ -154,7 +171,15 @@ export async function setMfaPolicyAction(
 ): Promise<ConfirmState> {
   const required = String(formData.get("required") ?? "") === "on";
 
-  const { organizationId, actorId } = await requireContext("workspace.settings");
+  const { organizationId, actorId, session } = await requireContext("workspace.settings");
+
+  if (required && !session.hasVerifiedFactor) {
+    return {
+      error:
+        "Set up your own authenticator first. Requiring it while your account has none would lock you out of this workspace on the next request.",
+    };
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -194,7 +219,7 @@ export interface RecoveryCodesState {
  * shown once; only hashes are stored, each with a salt of its own.
  */
 export async function generateRecoveryCodesAction(): Promise<RecoveryCodesState> {
-  const session = await requireSession();
+  const session = await requireSessionForEnrollment();
   const supabase = await createClient();
 
   const codes = newRecoveryCodes();
