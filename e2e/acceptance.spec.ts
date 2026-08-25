@@ -575,7 +575,7 @@ test.describe("two-factor authentication", () => {
     expect(secret.length).toBeGreaterThan(15);
 
     let lastCode = await freshTotp(secret);
-    await page.getByLabel("Code from your app").fill(lastCode);
+    await page.getByLabel("Code from the app").fill(lastCode);
     await page.getByRole("button", { name: "Confirm and turn on" }).click();
 
     // Enrolment hands over recovery codes, because that is the moment a way
@@ -627,7 +627,7 @@ test.describe("two-factor authentication", () => {
 
       // The owner has no factor, so nothing behind the gate opens.
       await expect(page).toHaveURL(/secure-your-account/);
-      await expect(page.getByRole("heading", { name: "Secure your account" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Add a second factor" })).toBeVisible();
 
       for (const route of ["/work", "/money", "/settings"]) {
         await page.goto(route);
@@ -657,7 +657,7 @@ test.describe("two-factor authentication", () => {
     await page.goto("/settings");
     await page.getByRole("button", { name: "Set up two-factor" }).click();
     const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
-    await page.getByLabel("Code from your app").fill(await freshTotp(secret));
+    await page.getByLabel("Code from the app").fill(await freshTotp(secret));
     await page.getByRole("button", { name: "Confirm and turn on" }).click();
 
     // The codes arrive with the factor, because that is the moment they are
@@ -675,7 +675,7 @@ test.describe("two-factor authentication", () => {
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForURL(/\/sign-in\/verify/);
 
-    await page.getByRole("button", { name: /Lost your device/ }).click();
+    await page.getByRole("button", { name: /Lost the device/ }).click();
     await page.getByLabel("Recovery code").fill(codes[0]);
     await page.getByRole("button", { name: "Use this code" }).click();
     await page.waitForURL(/\/work/);
@@ -700,7 +700,7 @@ test.describe("two-factor authentication", () => {
     await signIn(page, SEEDED.owner);
     await page.goto("/settings");
     await page.getByRole("button", { name: "Set up two-factor" }).click();
-    await page.getByLabel("Code from your app").fill("000000");
+    await page.getByLabel("Code from the app").fill("000000");
     await page.getByRole("button", { name: "Confirm and turn on" }).click();
 
     await expect(page.getByText(/That code was not right/)).toBeVisible();
@@ -721,7 +721,7 @@ test.describe("signing up asks for a name in two fields", () => {
 
     await expect(page.getByLabel("First name")).toBeVisible();
     await expect(page.getByLabel("Last name")).toBeVisible();
-    await expect(page.getByLabel("Your name")).toHaveCount(0);
+    await expect(page.getByLabel("Name", { exact: true })).toHaveCount(0);
 
     // The browser can fill these only if they say which half they are.
     await expect(page.getByLabel("First name")).toHaveAttribute("autocomplete", "given-name");
@@ -749,24 +749,38 @@ test.describe("sending a package to a picture desk", () => {
    */
   const SEEDED_SUBMISSION = "a0000000-0000-0000-0000-00000000a001";
 
+  /**
+   * A recipient label no other run shares.
+   *
+   * The panel lists every link a submission has ever had, withdrawn ones
+   * included, so a bare ".delivery-link-url" locator matches one more element
+   * after every run and the three viewport projects collide with each other
+   * inside a single run. Naming the desk uniquely gives each test a handle on
+   * the link it just made.
+   */
+  const deskLabel = (info: { project: { name: string } }) =>
+    `NY picture desk ${info.project.name} ${Date.now()}`;
+
   test.beforeEach(async () => clearDeliveryLinks());
   test.afterEach(async () => clearDeliveryLinks());
 
-  test("a desk with no account opens it, and the record shows what they did", async ({
-    page,
-    browser,
-  }) => {
+  test("a desk with no account opens it, and the record shows what they did", async (
+    { page, browser },
+    testInfo,
+  ) => {
+    const recipient = deskLabel(testInfo);
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
       await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
 
       await page.getByRole("button", { name: "Create a delivery link" }).click();
-      await page.getByLabel("Recipient").fill("New York picture desk");
+      await page.getByLabel("Recipient").fill(recipient);
       await page.getByRole("button", { name: "Create the link" }).click();
-      await expect(page.locator(".delivery-link-url code")).toBeVisible();
+      const made = page.locator(".delivery-link").filter({ hasText: recipient });
+      await expect(made.locator(".delivery-link-url code")).toBeVisible();
 
-      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const url = (await made.locator(".delivery-link-url code").innerText()).trim();
       const path = new URL(url).pathname;
 
       // A different browser context: no cookies, no session, nothing but the link.
@@ -779,7 +793,7 @@ test.describe("sending a package to a picture desk", () => {
         await expect(deskPage.getByRole("navigation", { name: "Primary" })).toHaveCount(0);
 
         // The file follows the yes, so the terms are accepted first.
-        await deskPage.getByLabel("Your name").fill("Dana Whitfield");
+        await deskPage.getByLabel("Name", { exact: true }).fill("Dana Whitfield");
         await deskPage.getByRole("button", { name: "Accept these terms" }).click();
         await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
 
@@ -803,15 +817,17 @@ test.describe("sending a package to a picture desk", () => {
     }
   });
 
-  test("the full file follows the yes, not the link", async ({ page, browser }) => {
+  test("the full file follows the yes, not the link", async ({ page, browser }, testInfo) => {
+    const recipient = deskLabel(testInfo);
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
       await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
       await page.getByRole("button", { name: "Create a delivery link" }).click();
-      await page.getByLabel("Recipient").fill("New York picture desk");
+      await page.getByLabel("Recipient").fill(recipient);
       await page.getByRole("button", { name: "Create the link" }).click();
-      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const made = page.locator(".delivery-link").filter({ hasText: recipient });
+      const url = (await made.locator(".delivery-link-url code").innerText()).trim();
       const path = new URL(url).pathname;
 
       const desk = await browser.newContext();
@@ -829,7 +845,7 @@ test.describe("sending a package to a picture desk", () => {
         expect(refused.status()).toBe(404);
 
         // Accepting is the hinge, and it asks who is doing it.
-        await deskPage.getByLabel("Your name").fill("Dana Whitfield");
+        await deskPage.getByLabel("Name", { exact: true }).fill("Dana Whitfield");
         await deskPage.getByRole("button", { name: "Accept these terms" }).click();
         await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
 
