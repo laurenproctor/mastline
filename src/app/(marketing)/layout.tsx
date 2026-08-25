@@ -19,10 +19,31 @@ import "./marketing.css";
  * a Supabase client.
  */
 
+const DESCRIPTION =
+  "From assignment to payment, keep every shoot, image, submission, and dollar in one place.";
+
 export const metadata: Metadata = {
   title: { default: "Mastline", template: "%s — Mastline" },
-  description:
-    "From assignment to payment, keep every shoot, image, submission, and dollar in one place.",
+  description: DESCRIPTION,
+  // The card itself is opengraph-image.tsx and twitter-image.tsx beside this
+  // file; these are the words that travel with it. Without the twitter card
+  // type, X renders a thumbnail rather than the full-width image.
+  //
+  // Deliberately no `url` here and no `alternates.canonical`: metadata in a
+  // layout is inherited by every page under it, so a single value would tell
+  // search engines that all seventeen marketing pages are the same document as
+  // the home page. Canonicals belong on the individual pages if they are added.
+  openGraph: {
+    type: "website",
+    siteName: "Mastline",
+    title: "Mastline — the business behind every image",
+    description: DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mastline — the business behind every image",
+    description: DESCRIPTION,
+  },
 };
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
