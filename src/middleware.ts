@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isMarketing, isProtected } from "@/lib/routes";
 
 /**
  * Refreshes the Supabase session on every request and gates the application.
@@ -10,77 +11,10 @@ import { createServerClient } from "@supabase/ssr";
  * This is a convenience gate, not the security boundary. Row level security is
  * the boundary. A route that slipped past this matcher would still return
  * nothing to a caller with no membership.
- */
-
-const MARKETING_ROUTES = [
-  "/",
-  "/welcome",
-  "/pricing",
-  "/product",
-  "/how-it-works",
-  "/trust",
-  "/company",
-  "/early-access",
-  "/teams",
-  "/commercial",
-  "/editors",
-  "/press",
-  "/copyright",
-  "/subjects",
-  "/acceptable-use",
-  "/privacy",
-  "/terms",
-  "/security",
-  "/accessibility",
-];
-
-/**
- * Routes that do not require a session.
  *
- * /api/webhooks is here because an inbound provider callback has no session to
- * present. It is NOT unauthenticated: the handler verifies an HMAC signature
- * and refuses outright when no secret is configured. Everything else under
- * /api stays gated -- /api/export in particular must never be public.
+ * Which paths are gated and which are public marketing lives in @/lib/routes,
+ * shared with robots.txt so the two cannot drift apart.
  */
-const PUBLIC_ROUTES = [
-  "/sign-in",
-  "/sign-up",
-  // The addresses these two used to have. They only redirect, but they have to
-  // be reachable without a session to do it, or somebody following an old
-  // bookmark is bounced through a sign-in they may not need.
-  "/login",
-  "/signup",
-  "/reset-password",
-  "/auth",
-  "/api/webhooks",
-  // A delivery link is held by a picture desk with no account. The token is the
-  // credential, and the security-definer functions behind the page check it
-  // before returning anything.
-  "/d",
-  // Every marketing page is public by definition.
-  ...MARKETING_ROUTES,
-];
-
-function isPublic(pathname: string): boolean {
-  return PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-}
-
-/**
- * The public marketing site: pages that never vary by who is looking.
- *
- * These are served before a Supabase client is built, so the public site does
- * not depend on the database being reachable or the environment being
- * configured. A missing key should cost you the application, not the front
- * door -- previously it returned MIDDLEWARE_INVOCATION_FAILED for every route,
- * including these.
- *
- * /login and /signup are deliberately NOT here: they redirect an already
- * signed-in visitor onward, which needs the session.
- */
-
-function isMarketing(pathname: string): boolean {
-  return MARKETING_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-}
 
 export async function middleware(request: NextRequest) {
   if (isMarketing(request.nextUrl.pathname)) {
@@ -116,7 +50,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!user && !isPublic(pathname)) {
+  if (!user && isProtected(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     // Come back here after signing in.
@@ -128,7 +62,7 @@ export async function middleware(request: NextRequest) {
   // be a second factor. The assurance level comes from the token itself, so
   // this costs no round trip: aal1 with aal2 expected means the password was
   // accepted and the code has not been.
-  if (user && !isPublic(pathname)) {
+  if (user && isProtected(pathname)) {
     const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
       const url = request.nextUrl.clone();
@@ -155,7 +89,12 @@ export const config = {
     /*
      * Everything except Next internals and static assets. Auth routes are
      * matched deliberately so the session cookie is refreshed there too.
+     *
+     * robots.txt, the sitemap, and the social cards are excluded because they
+     * are crawler surface: there is no session to refresh on them, and every
+     * request would otherwise cost a Supabase getUser() round trip. They are
+     * generated statically and carry nothing session-dependent.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|opengraph-image|twitter-image|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico)$).*)",
   ],
 };
