@@ -1,10 +1,22 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { BuyerCheckboxes } from "@/components/buyer-select";
 import { Field } from "@/components/primitives";
+import { formatCoordinates, toDatetimeLocalValue } from "@/lib/geo";
 import { type ActionState, createShootAction } from "../actions";
 
 const INITIAL: ActionState = {};
+
+type LocationState = "idle" | "asking" | "filled" | "refused" | "unavailable";
+
+const LOCATION_NOTE: Record<LocationState, string> = {
+  idle: "",
+  asking: "Reading this device's location…",
+  filled: "From this device's location. Overwrite it with the place name.",
+  refused: "Location permission was declined. Type the place instead.",
+  unavailable: "This device could not report a location. Type the place instead.",
+};
 
 export function CreateShootForm({
   buyers,
@@ -15,11 +27,80 @@ export function CreateShootForm({
 }) {
   const [state, formAction, pending] = useActionState(createShootAction, INITIAL);
 
+  // Both defaults are written into the controls after mount rather than
+  // rendered. The server has no idea what time it is where the operator is
+  // standing, or where that is, so rendering a guess would mismatch on
+  // hydration. They stay uncontrolled: a default is a starting point, and the
+  // field belongs to whoever is typing in it.
+  const startsAtRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  const [locationState, setLocationState] = useState<LocationState>("idle");
+  const [locationTouched, setLocationTouched] = useState(false);
+
+  useEffect(() => {
+    const control = startsAtRef.current;
+    if (control && control.value === "") {
+      control.value = toDatetimeLocalValue(new Date());
+    }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Geolocation is an external platform API, and the whole exchange lives in
+    // its callbacks. Nothing here overwrites a field the operator has typed in.
+    const ask = async () => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        if (!cancelled) setLocationState("unavailable");
+        return;
+      }
+
+      setLocationState("asking");
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (cancelled) return;
+          const value = formatCoordinates(position.coords.latitude, position.coords.longitude);
+          const control = locationRef.current;
+          if (!value || !control) {
+            setLocationState("unavailable");
+            return;
+          }
+          // A fix that arrives after the operator started typing is discarded.
+          if (control.value !== "") {
+            setLocationState("idle");
+            return;
+          }
+          control.value = value;
+          setLocationState("filled");
+        },
+        () => {
+          if (!cancelled) setLocationState("refused");
+        },
+        { enableHighAccuracy: false, maximumAge: 120_000, timeout: 10_000 },
+      );
+    };
+
+    void ask();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const locationHint = locationTouched ? undefined : LOCATION_NOTE[locationState] || undefined;
+
   return (
     <form action={formAction}>
       <p className="section-note">
         Only a subject or event is required. A shoot can exist before there are any files, and
         before the time and place are settled.
+      </p>
+      <p className="required-legend">
+        <span aria-hidden="true" className="required-mark">
+          *
+        </span>{" "}
+        marks a required field.
       </p>
       <div className="spacer" />
 
@@ -34,8 +115,10 @@ export function CreateShootForm({
         />
         <Field
           error={state.errors?.startsAt}
+          hint="Defaults to now. Change it if the shoot was earlier."
           label="Date and time"
           name="startsAt"
+          ref={startsAtRef}
           type="datetime-local"
         />
         <Field control="select" defaultValue="standard" label="Priority" name="priority">
@@ -44,7 +127,15 @@ export function CreateShootForm({
           <option value="standard">Standard</option>
           <option value="watch">Watch</option>
         </Field>
-        <Field full label="Location" name="locationName" />
+        <Field
+          full
+          hint={locationHint}
+          label="Location"
+          name="locationName"
+          onChange={() => setLocationTouched(true)}
+          placeholder="Where the shoot happened"
+          ref={locationRef}
+        />
         <Field
           label="Assignment / agency"
           name="assignmentLabel"
@@ -57,19 +148,11 @@ export function CreateShootForm({
         </Field>
         <Field control="textarea" full label="Story angle" name="storyAngle" />
 
-        <fieldset className="field full buyer-picker">
-          <legend>Target buyers</legend>
-          <p className="section-note">Used to pre-fill the dispatch package later.</p>
-          <div className="checkbox-row">
-            {buyers.map((buyer) => (
-              <label className="checkbox" key={buyer.id}>
-                <input name="targetBuyerIds" type="checkbox" value={buyer.id} />
-                <span>{buyer.name}</span>
-              </label>
-            ))}
-            {buyers.length === 0 && <span className="muted">No buyers recorded yet.</span>}
-          </div>
-        </fieldset>
+        <BuyerCheckboxes
+          buyers={buyers}
+          hint="Used to pre-fill the dispatch package later."
+          legend="Target buyers"
+        />
 
         <Field
           error={state.errors?.embargoUntil}
