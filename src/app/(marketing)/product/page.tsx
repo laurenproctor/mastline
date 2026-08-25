@@ -395,7 +395,7 @@ export default function Page() {
           <div className="editors">
             <div>
               <span className="mk-eyebrow">Editor experience</span>
-              <h2 style={{ marginTop: "14px" }}>A link, a look, a tap. No account required.</h2>
+              <h2>A link, a look, a tap. No account required.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Every pitch is a single mobile page: watermarked previews, the photographer’s
                 caption, the price, the terms, and a countdown when an exclusive is offered. Editors

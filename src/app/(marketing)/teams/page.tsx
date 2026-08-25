@@ -161,7 +161,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">A night for a crew</span>
-            <h2 style={{ marginTop: "14px" }}>Three doors, one package, one payout.</h2>
+            <h2>Three doors, one package, one payout.</h2>
             <div className="who" style={{ gridTemplateColumns: "1fr", gap: "0", marginTop: "8px" }}>
               <div>
                 <ol>
@@ -340,7 +340,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions from crews</span>
-              <h2 style={{ marginTop: "14px" }}>Before bringing a team over.</h2>
+              <h2>Before bringing a team over.</h2>
             </div>
             <div className="faq">
               <details open>

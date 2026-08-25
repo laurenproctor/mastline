@@ -35,9 +35,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Commercial opportunities</span>
-            <h2 style={{ marginTop: "14px" }}>
-              A second market for every set, found automatically.
-            </h2>
+            <h2>A second market for every set, found automatically.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               News desks buy the moment. Brands and retailers buy what the moment is wearing. When a
               set lands in Mastline, it is scanned for people, garments, accessories, and logos,
@@ -256,7 +254,7 @@ export default function Page() {
           <div className="who">
             <div>
               <span className="mk-eyebrow">Route A</span>
-              <h2 style={{ marginTop: "14px" }}>Brand licensing, handled like any other sale.</h2>
+              <h2>Brand licensing, handled like any other sale.</h2>
               <ol>
                 <li>
                   <span>
@@ -295,7 +293,7 @@ export default function Page() {
             </div>
             <div>
               <span className="mk-eyebrow">Route B</span>
-              <h2 style={{ marginTop: "14px" }}>Shoppable content, published in minutes.</h2>
+              <h2>Shoppable content, published in minutes.</h2>
               <ol>
                 <li>
                   <span>
@@ -392,9 +390,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Nothing moves on its own</span>
-            <h2 style={{ marginTop: "14px" }}>
-              Nothing is sold, published, or linked without an approval.
-            </h2>
+            <h2>Nothing is sold, published, or linked without an approval.</h2>
             <ul>
               <li>
                 <svg
@@ -519,7 +515,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions</span>
-              <h2 style={{ marginTop: "14px" }}>Before turning it on.</h2>
+              <h2>Before turning it on.</h2>
             </div>
             <div className="faq">
               <details open>

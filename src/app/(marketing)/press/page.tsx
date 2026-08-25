@@ -142,9 +142,7 @@ export default function Page() {
           <div className="who">
             <div>
               <span className="mk-eyebrow">The story</span>
-              <h2 style={{ marginTop: "14px" }}>
-                The people who make the pictures never had software of their own.
-              </h2>
+              <h2>The people who make the pictures never had software of their own.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Every outlet, agency, and portal downstream of a paparazzo runs on software. The
                 photographers themselves have run on memory, group chats, hard drives, and unpaid
@@ -455,7 +453,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">For reporters</span>
-              <h2 style={{ marginTop: "14px" }}>Things reporters ask.</h2>
+              <h2>Things reporters ask.</h2>
             </div>
             <div className="faq">
               <details open>

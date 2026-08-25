@@ -300,7 +300,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions, answered</span>
-              <h2 style={{ marginTop: "14px" }}>
+              <h2>
                 The fine print,
                 <br />
                 in plain English.

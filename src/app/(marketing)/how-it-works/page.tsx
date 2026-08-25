@@ -163,7 +163,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">The first hour</span>
-            <h2 style={{ marginTop: "14px" }}>One live shoot, start to finish.</h2>
+            <h2>One live shoot, start to finish.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               The first loop is designed to be fast enough to complete during real work. If Mastline
               can’t make one live shoot materially easier, nothing else matters.

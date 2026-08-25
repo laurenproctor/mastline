@@ -25,9 +25,7 @@ export default function Page() {
           <div className="who">
             <div>
               <span className="mk-eyebrow">About Mastline</span>
-              <h2 style={{ marginTop: "14px" }}>
-                A Storyworlding company, built on the sidewalks of Hollywood and New York.
-              </h2>
+              <h2>A Storyworlding company, built on the sidewalks of Hollywood and New York.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Mastline is a Storyworlding company founded by Lauren Proctor. It was built in
                 collaboration with working paparazzi in Hollywood and New York, the photographers
@@ -66,9 +64,7 @@ export default function Page() {
           <div className="who">
             <div>
               <span className="mk-eyebrow">Who it’s for</span>
-              <h2 style={{ marginTop: "14px" }}>
-                Independent professionals and teams of two to ten.
-              </h2>
+              <h2>Independent professionals and teams of two to ten.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Photographers and small agencies who already produce meaningful volume but still
                 coordinate through informal systems. Their pain is acute, their workflows are
@@ -175,7 +171,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Common questions</span>
-              <h2 style={{ marginTop: "14px" }}>Before starting.</h2>
+              <h2>Before starting.</h2>
             </div>
             <div className="faq">
               <details open>

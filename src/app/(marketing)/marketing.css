@@ -30,8 +30,12 @@
 * {
   box-sizing: border-box;
 }
+/* Not smooth. The router scrolls to the top on every navigation, and with
+   smooth behaviour that became a visible ride up the page before the new one
+   could be read -- roughly 700ms of travel from a deep scroll position. An
+   anchor within a page now jumps rather than glides, which is the trade. */
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -3744,7 +3748,7 @@ h3 {
   color: var(--ink);
 }
 .btn.primary:hover {
-  background: var(--ink);
+  background: var(--bgrad);
   color: #fff;
 }
 .btn.primary svg {
@@ -5216,4 +5220,24 @@ footer ul a {
 .mobilemenu .mactions .btn.ghost {
   display: inline-flex;
   gap: 10px;
+}
+
+/* The eyebrow's distance from the line under it, set in one place rather than
+   twenty-one inline margins.
+
+   A section heading wants air: the eyebrow is a label for what follows, and at
+   the old spacing -- nothing but the span's own line box, about 4px -- it read
+   as part of the headline rather than above it. A display headline wants the
+   opposite, because an h1 that size already carries the separation and the
+   eyebrow should sit tucked under it.
+
+   In the hero the eyebrow is a flex item, so the space is the column's 22px
+   gap and a margin has to pull against it. Everywhere else the span is inline
+   and its own vertical margins do nothing, so the margin belongs on the
+   heading. */
+.mk-eyebrow + h2 {
+  margin-top: 20px;
+}
+.hero .wrap > .mk-eyebrow {
+  margin-bottom: -10px;
 }

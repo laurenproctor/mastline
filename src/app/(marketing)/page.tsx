@@ -193,7 +193,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Core thesis</span>
-            <h2 style={{ marginTop: "14px" }}>
+            <h2>
               Every image deserves a <em>commercial memory.</em>
             </h2>
             <p style={{ marginTop: "18px" }}>
@@ -338,7 +338,7 @@ export default function Page() {
           <div className="editors">
             <div>
               <span className="mk-eyebrow">Editor experience</span>
-              <h2 style={{ marginTop: "14px" }}>Buyers don’t have to sign up.</h2>
+              <h2>Buyers don’t have to sign up.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Editors don’t adopt new software. They open links. Every pitch is a single page that
                 works on a phone: watermarked previews, the photographer’s caption, the asking
@@ -407,7 +407,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Archive opportunities</span>
-            <h2 style={{ marginTop: "14px" }}>Turn today’s headlines into archive sales.</h2>
+            <h2>Turn today’s headlines into archive sales.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               An archive is full of pictures worth nothing today and a lot tomorrow. Mastline
               watches the news for the people in them. When a name spikes, the right sets light up,

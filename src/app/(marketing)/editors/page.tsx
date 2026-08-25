@@ -26,7 +26,7 @@ export default function Page() {
           <div className="editors">
             <div>
               <span className="mk-eyebrow">The short version</span>
-              <h2 style={{ marginTop: "14px" }}>No account. No app. No new process.</h2>
+              <h2>No account. No app. No new process.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Every pitch link works on its own. Open it, look, and accept, counter, or pass. Say
                 yes and the license and full-resolution files are released on the spot. No login to
@@ -227,7 +227,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Buying from a Mastline photographer</span>
-            <h2 style={{ marginTop: "14px" }}>The same way of working. Just faster.</h2>
+            <h2>The same way of working. Just faster.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               Relationships, rates and judgment stay with the desk. Mastline changes the mechanics,
               not the deal.
@@ -363,7 +363,7 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions from picture desks</span>
-              <h2 style={{ marginTop: "14px" }}>Quick answers.</h2>
+              <h2>Quick answers.</h2>
             </div>
             <div className="faq">
               <details open>
