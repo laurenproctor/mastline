@@ -32,6 +32,23 @@ export function canPreview(mimeType: string): boolean {
   return PREVIEWABLE.has(mimeType);
 }
 
+/**
+ * A clip the browser will decode far enough to grab a frame from.
+ *
+ * Which codecs actually play is the browser's business and cannot be known from
+ * the MIME type alone, so poster extraction is attempted and allowed to fail.
+ * The original is already recorded by then; a missing poster costs a thumbnail,
+ * not a file.
+ */
+export function isVideo(mimeType: string): boolean {
+  return mimeType.startsWith("video/");
+}
+
+/** Whether a browser-generated still can be attempted for this file at all. */
+export function hasBrowserPreview(mimeType: string): boolean {
+  return canPreview(mimeType) || isVideo(mimeType);
+}
+
 export interface Preview {
   readonly blob: Blob;
   readonly width: number;
@@ -40,8 +57,15 @@ export interface Preview {
 
 const PREVIEW_MAX_EDGE = 1400;
 
-/** Downscale an image for the contact sheet. Returns null if it cannot decode. */
+/**
+ * A still for the contact sheet. Returns null if the browser cannot decode it.
+ *
+ * A video yields a poster frame, which is what makes a clip reviewable next to
+ * the stills from the same shoot -- and is also the frame the metadata
+ * suggestion reads, since a vision model needs an image, not a container.
+ */
 export async function makePreview(file: File): Promise<Preview | null> {
+  if (isVideo(file.type)) return makeVideoPoster(file);
   if (!canPreview(file.type)) return null;
 
   try {
@@ -67,6 +91,88 @@ export async function makePreview(file: File): Promise<Preview | null> {
     return blob ? { blob, width, height } : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * How far into a clip to seek before grabbing the poster frame.
+ *
+ * The first frame of a paparazzi clip is usually a blur of pavement while the
+ * camera comes up. A second in, there is normally something to look at.
+ */
+const POSTER_SEEK_SECONDS = 1;
+
+/** Grab a frame from a video file, in the browser. Null if it cannot decode. */
+async function makeVideoPoster(file: File): Promise<Preview | null> {
+  const url = URL.createObjectURL(file);
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  video.crossOrigin = "anonymous";
+
+  try {
+    const frame = await new Promise<Preview | null>((resolve) => {
+      // A clip the browser will not decode must not hang the import queue.
+      const timer = setTimeout(() => resolve(null), 15_000);
+
+      const fail = () => {
+        clearTimeout(timer);
+        resolve(null);
+      };
+
+      const draw = () => {
+        clearTimeout(timer);
+        try {
+          const scale = Math.min(
+            1,
+            PREVIEW_MAX_EDGE / Math.max(video.videoWidth, video.videoHeight),
+          );
+          const width = Math.max(1, Math.round(video.videoWidth * scale));
+          const height = Math.max(1, Math.round(video.videoHeight * scale));
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          if (!context) return resolve(null);
+
+          context.drawImage(video, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => resolve(blob ? { blob, width, height } : null),
+            "image/jpeg",
+            0.82,
+          );
+        } catch {
+          resolve(null);
+        }
+      };
+
+      video.addEventListener("error", fail, { once: true });
+      video.addEventListener("seeked", draw, { once: true });
+      video.addEventListener(
+        "loadeddata",
+        () => {
+          if (!video.videoWidth || !video.videoHeight) return fail();
+          // A clip shorter than the seek point is drawn where it already is.
+          const target = Number.isFinite(video.duration)
+            ? Math.min(POSTER_SEEK_SECONDS, Math.max(0, video.duration - 0.1))
+            : 0;
+          if (target <= 0) return draw();
+          video.currentTime = target;
+        },
+        { once: true },
+      );
+
+      video.src = url;
+      video.load();
+    });
+
+    return frame;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
   }
 }
 

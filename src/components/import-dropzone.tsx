@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   finishImportAction,
@@ -10,8 +10,8 @@ import {
 } from "@/app/shoots/actions";
 import { createClient } from "@/lib/supabase/client";
 import {
-  canPreview,
   formatBytes,
+  hasBrowserPreview,
   hashFile,
   likelyCapturedAt,
   makePreview,
@@ -30,6 +30,11 @@ interface FileProgress {
   readonly duplicate?: boolean;
 }
 
+interface QueuedFile {
+  readonly id: string;
+  readonly file: File;
+}
+
 const STATE_LABELS: Record<FileState, string> = {
   queued: "Waiting",
   hashing: "Hashing",
@@ -40,14 +45,34 @@ const STATE_LABELS: Record<FileState, string> = {
 };
 
 /**
+ * How many files are in flight at once.
+ *
+ * One at a time made a card dump take as long as the sum of its parts, and
+ * every file waited on the round trip of the one before it. More than a handful
+ * saturates an uplink at a kerbside and makes every bar move at once, which is
+ * worse than useless. Three is fast without lying about progress.
+ */
+const CONCURRENCY = 3;
+
+/**
  * Import files into a shoot.
  *
  * Each file is hashed in the browser, staged, registered as an immutable
- * original, and only then promoted to its canonical key. Files are processed
- * one at a time so that a card dump does not saturate the connection and so
- * progress is honest rather than optimistic.
+ * original, and only then promoted to its canonical key.
+ *
+ * Selections accumulate. A second drop, or a second trip to the file picker
+ * while the first batch is still running, is appended to the queue rather than
+ * discarded -- the earlier version returned early whenever it was busy, so the
+ * files were silently dropped and the operator was told nothing.
  */
-export function ImportDropzone({ shootId }: { shootId: string }) {
+export function ImportDropzone({
+  shootId,
+  /** True once the shoot has files: the same control, taking less of the page. */
+  compact = false,
+}: {
+  shootId: string;
+  compact?: boolean;
+}) {
   const [files, setFiles] = useState<readonly FileProgress[]>([]);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -56,132 +81,206 @@ export function ImportDropzone({ shootId }: { shootId: string }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
+  // The queue and the drain flag live in refs: a drain loop started in one
+  // render must see files appended during a later one, and must not be
+  // restarted by a re-render partway through.
+  const queueRef = useRef<QueuedFile[]>([]);
+  const drainingRef = useRef(false);
+  const nextIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const update = useCallback((id: string, patch: Partial<FileProgress>) => {
+    if (!mountedRef.current) return;
     setFiles((current) => current.map((file) => (file.id === id ? { ...file, ...patch } : file)));
   }, []);
 
-  const importFiles = useCallback(
-    async (selected: File[]) => {
-      if (selected.length === 0 || busy) return;
-
-      setBusy(true);
-      setSummary(null);
-
-      const queued: FileProgress[] = selected.map((file, index) => ({
-        id: `${Date.now()}-${index}-${file.name}`,
-        name: file.name,
-        bytes: file.size,
-        state: "queued",
-      }));
-      setFiles((current) => [...current, ...queued]);
-
+  /** Everything that happens to one file, start to finish. */
+  const importOne = useCallback(
+    async (entry: QueuedFile): Promise<"imported" | "duplicate" | "failed"> => {
+      const { id, file } = entry;
       const supabase = createClient();
-      let imported = 0;
-      let failed = 0;
-      let duplicates = 0;
 
-      for (const [index, file] of selected.entries()) {
-        const progress = queued[index];
+      try {
+        update(id, { state: "hashing" });
+        const sha256 = await hashFile(file);
+        const dimensions = await readDimensions(file);
 
-        try {
-          update(progress.id, { state: "hashing" });
-          const sha256 = await hashFile(file);
-          const dimensions = await readDimensions(file);
+        update(id, { state: "uploading" });
+        const { stagingKey } = await prepareUploadAction(uploadToken());
+        const upload = await supabase.storage.from("originals").upload(stagingKey, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+        if (upload.error) throw new Error(upload.error.message);
 
-          update(progress.id, { state: "uploading" });
-          const { stagingKey } = await prepareUploadAction(uploadToken());
-          const upload = await supabase.storage.from("originals").upload(stagingKey, file, {
-            contentType: file.type || "application/octet-stream",
-            upsert: false,
-          });
-          if (upload.error) throw new Error(upload.error.message);
+        update(id, { state: "recording" });
+        const result = await registerImportAction({
+          shootId,
+          filename: file.name,
+          sha256,
+          bytes: file.size,
+          mimeType: file.type || "application/octet-stream",
+          capturedAt: likelyCapturedAt(file),
+          width: dimensions?.width,
+          height: dimensions?.height,
+          stagingKey,
+        });
 
-          update(progress.id, { state: "recording" });
-          const result = await registerImportAction({
-            shootId,
-            filename: file.name,
-            sha256,
-            bytes: file.size,
-            mimeType: file.type || "application/octet-stream",
-            capturedAt: likelyCapturedAt(file),
-            width: dimensions?.width,
-            height: dimensions?.height,
-            stagingKey,
-          });
+        if (!result.ok || !result.assetId) throw new Error(result.error ?? "Import failed.");
 
-          if (!result.ok || !result.assetId) throw new Error(result.error ?? "Import failed.");
-
-          // A preview makes the contact sheet usable. Its absence never fails
-          // the import: the original is already safely recorded.
-          if (canPreview(file.type)) {
-            const preview = await makePreview(file);
-            if (preview) {
-              const previewKey = `${stagingKey}-preview`;
-              const previewUpload = await supabase.storage
-                .from("derivatives")
-                .upload(previewKey, preview.blob, { contentType: "image/jpeg", upsert: true });
-              if (!previewUpload.error) {
-                await registerPreviewAction({
-                  assetId: result.assetId,
-                  sha256: await hashFile(preview.blob),
-                  bytes: preview.blob.size,
-                  width: preview.width,
-                  height: preview.height,
-                  stagingKey: previewKey,
-                });
-              }
+        // A preview makes the contact sheet usable, and for a clip it is the
+        // poster frame. Its absence never fails the import: the original is
+        // already safely recorded.
+        if (hasBrowserPreview(file.type)) {
+          const preview = await makePreview(file);
+          if (preview) {
+            const previewKey = `${stagingKey}-preview`;
+            const previewUpload = await supabase.storage
+              .from("derivatives")
+              .upload(previewKey, preview.blob, { contentType: "image/jpeg", upsert: true });
+            if (!previewUpload.error) {
+              await registerPreviewAction({
+                assetId: result.assetId,
+                sha256: await hashFile(preview.blob),
+                bytes: preview.blob.size,
+                width: preview.width,
+                height: preview.height,
+                stagingKey: previewKey,
+              });
             }
           }
+        }
 
+        update(id, {
+          state: "done",
+          duplicate: Boolean(result.duplicateOf),
+          detail: result.duplicateOf
+            ? "Same bytes already in this workspace"
+            : hasBrowserPreview(file.type)
+              ? undefined
+              : "Original preserved; no browser preview for this format",
+        });
+
+        return result.duplicateOf ? "duplicate" : "imported";
+      } catch (error) {
+        update(id, {
+          state: "failed",
+          detail: error instanceof Error ? error.message : "Unknown error",
+        });
+        return "failed";
+      }
+    },
+    [shootId, update],
+  );
+
+  /**
+   * Work the queue until it is empty, a few files at a time.
+   *
+   * The workers re-read the shared queue on every iteration, so files added
+   * while this is running are picked up by whichever worker frees up first.
+   */
+  const drain = useCallback(async () => {
+    if (drainingRef.current) return;
+    drainingRef.current = true;
+    setBusy(true);
+    setSummary(null);
+
+    let imported = 0;
+    let duplicates = 0;
+    let failed = 0;
+
+    const worker = async () => {
+      for (;;) {
+        const entry = queueRef.current.shift();
+        if (!entry) return;
+        const outcome = await importOne(entry);
+        if (outcome === "failed") failed += 1;
+        else {
           imported += 1;
-          if (result.duplicateOf) duplicates += 1;
-          update(progress.id, {
-            state: "done",
-            duplicate: Boolean(result.duplicateOf),
-            detail: result.duplicateOf
-              ? "Same bytes already in this workspace"
-              : canPreview(file.type)
-                ? undefined
-                : "Original preserved; no browser preview for this format",
-          });
-        } catch (error) {
-          failed += 1;
-          update(progress.id, {
-            state: "failed",
-            detail: error instanceof Error ? error.message : "Unknown error",
-          });
+          if (outcome === "duplicate") duplicates += 1;
         }
       }
+    };
 
-      if (imported > 0) {
+    await Promise.all(
+      Array.from({ length: Math.min(CONCURRENCY, queueRef.current.length) }, worker),
+    );
+
+    drainingRef.current = false;
+
+    // The shoot only advances if something actually landed, and only once for
+    // the whole batch rather than once per file.
+    if (imported > 0) {
+      try {
         await finishImportAction(shootId);
+      } catch {
+        // The files are imported either way; the status is cosmetic here.
+      }
+    }
+
+    if (!mountedRef.current) return;
+
+    const parts = [`${imported} imported`];
+    if (duplicates > 0) parts.push(`${duplicates} already in the archive`);
+    if (failed > 0) parts.push(`${failed} failed`);
+    setSummary(parts.join(" · "));
+    setBusy(false);
+    startTransition(() => router.refresh());
+  }, [importOne, router, shootId]);
+
+  const enqueue = useCallback(
+    (selected: readonly File[]) => {
+      // A directory drop reports zero files in some browsers; say so rather
+      // than appearing to do nothing.
+      if (selected.length === 0) {
+        setSummary("Nothing to import. Drop files rather than a folder.");
+        return;
       }
 
-      const parts = [`${imported} imported`];
-      if (duplicates > 0) parts.push(`${duplicates} already in the archive`);
-      if (failed > 0) parts.push(`${failed} failed`);
-      setSummary(parts.join(" · "));
-      setBusy(false);
-      startTransition(() => router.refresh());
+      const entries: QueuedFile[] = selected.map((file) => ({
+        id: `import-${(nextIdRef.current += 1)}`,
+        file,
+      }));
+
+      queueRef.current.push(...entries);
+      setFiles((current) => [
+        ...current,
+        ...entries.map((entry) => ({
+          id: entry.id,
+          name: entry.file.name,
+          bytes: entry.file.size,
+          state: "queued" as const,
+        })),
+      ]);
+
+      void drain();
     },
-    [busy, router, shootId, update],
+    [drain],
   );
 
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
       setDragging(false);
-      void importFiles([...event.dataTransfer.files]);
+      enqueue([...event.dataTransfer.files]);
     },
-    [importFiles],
+    [enqueue],
   );
 
   const done = files.filter((file) => file.state === "done").length;
+  const failedCount = files.filter((file) => file.state === "failed").length;
 
   return (
-    <section aria-label="Import files">
+    <section aria-label="Import files" id="import">
       <div
-        className={`dropzone${dragging ? " dragging" : ""}`}
+        className={`dropzone${compact ? " compact" : ""}${dragging ? " dragging" : ""}`}
         onDragLeave={() => setDragging(false)}
         onDragOver={(event) => {
           event.preventDefault();
@@ -193,21 +292,24 @@ export function ImportDropzone({ shootId }: { shootId: string }) {
           <div aria-hidden="true" className="dropzone-mark">
             ＋
           </div>
-          <h2>Bring in the shoot</h2>
+          <h2>{compact ? "Import more" : "Bring in the shoot"}</h2>
           <p>
-            Drop a folder, card export, JPEGs, RAW files, or video clips. Each file is hashed before
-            it leaves this machine, and the original is stored untouched.
+            Drop a folder, card export, JPEGs, RAW files, or video clips. Select as many as you like
+            — every file is hashed before it leaves this machine, and the original is stored
+            untouched.
           </p>
 
           <input
             accept="image/*,video/*,.arw,.cr2,.cr3,.nef,.raf,.orf,.dng"
             className="visually-hidden"
-            disabled={busy}
             id="import-files"
             multiple
             onChange={(event) => {
-              void importFiles([...(event.target.files ?? [])]);
+              // The FileList is copied before the input is cleared, and the
+              // input is cleared so choosing the same file twice still fires.
+              const chosen = [...(event.target.files ?? [])];
               event.target.value = "";
+              enqueue(chosen);
             }}
             ref={inputRef}
             type="file"
@@ -216,17 +318,17 @@ export function ImportDropzone({ shootId }: { shootId: string }) {
           <div className="upload-options">
             <button
               className="button primary"
-              disabled={busy}
               onClick={() => inputRef.current?.click()}
               type="button"
             >
-              {busy ? "Importing…" : "Choose files"}
+              {busy ? "Add more files" : "Choose files"}
             </button>
           </div>
 
           <p className="section-note">
-            Originals are never overwritten and never deleted. Delivery derivatives are created as
-            separate files.
+            {busy
+              ? "More files can be added while these upload; they join the queue."
+              : "Originals are never overwritten and never deleted. Delivery derivatives are created as separate files."}
           </p>
         </div>
       </div>
@@ -236,6 +338,7 @@ export function ImportDropzone({ shootId }: { shootId: string }) {
           <div className="split-heading">
             <h3>
               Import · {done} of {files.length}
+              {failedCount > 0 ? ` · ${failedCount} failed` : ""}
             </h3>
             {summary && <span className="muted">{summary}</span>}
           </div>
