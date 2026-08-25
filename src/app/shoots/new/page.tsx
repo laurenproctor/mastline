@@ -6,9 +6,18 @@ import { can } from "@/lib/permissions";
 import { currentContext } from "@/lib/session-context";
 import { CreateShootForm } from "./shoot-form";
 
-export default async function CreateShootPage() {
+export default async function CreateShootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ source?: string }>;
+}) {
   const { session, organizationId } = await currentContext();
   const role = session.activeWorkspace.role;
+
+  // Onboarding ends here rather than at a simulation of here, so somebody
+  // arriving for the first time gets an introduction to the real screen. The
+  // import system is not duplicated -- this is a sentence, not a second path.
+  const fromOnboarding = (await searchParams).source === "onboarding";
 
   // A role that cannot create a shoot is told so, rather than being shown a
   // form whose submit will be refused.
@@ -45,9 +54,21 @@ export default async function CreateShootPage() {
       <div className="page">
         <PageHeader
           description="Start with a brief. Facts entered here are inherited by every asset, package, and submission that follows."
-          eyebrow="New record"
+          eyebrow={fromOnboarding ? "Your workspace is ready" : "New record"}
           title="Create shoot"
         />
+
+        {fromOnboarding && (
+          <Panel title="This is the real thing">
+            <div className="panel-body">
+              <p className="section-note">
+                The sample set in setup was a demonstration. This screen writes real records. Start
+                with whatever you know — only a subject or event is required, and a shoot can be
+                created before any file exists.
+              </p>
+            </div>
+          </Panel>
+        )}
 
         <div className="panel-grid">
           <Panel action={<Badge tone="neutral">Draft</Badge>} title="Shoot brief">

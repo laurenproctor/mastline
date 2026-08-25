@@ -80,6 +80,7 @@ Business rules are centralized, not spread across components:
 | `src/lib/export.ts` | Workspace export |
 | `src/lib/webhook.ts` | Signature verification and payload parsing |
 | `src/lib/subscription.ts` | Trial state, storage limits, and what a workspace is told |
+| `src/lib/onboarding.ts` | Onboarding vocabularies, flow version, and Sales Engine terms version |
 | `src/lib/billing.ts` | Subscription lifecycle, grace window, plan-change rules |
 | `src/lib/billing/provider.ts` | The provider contract; Stripe sits behind it |
 | `src/lib/data/archive.ts` | Archive search, paged, executed in the database |

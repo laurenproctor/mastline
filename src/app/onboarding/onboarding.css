@@ -789,9 +789,21 @@
   color: var(--ob-muted);
   font-size: 11px;
 }
-.onboarding-actions .onboarding-primary {
+.onboarding-advance {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.onboarding-actions .onboarding-primary {
   min-width: 166px;
+}
+.onboarding-actions .onboarding-blocked {
+  max-width: 30ch;
+  text-align: right;
+  color: #8f231c;
+  font-size: 11px;
+  line-height: 1.35;
 }
 .onboarding-back,
 .ready-back {
@@ -951,4 +963,32 @@
     position: static;
     margin: 0 0 24px 20px;
   }
+}
+
+/* Added with the onboarding integration. A failed submit lists what to fix and
+   says the answers survived; the demonstration says it is one. */
+.onboarding-error ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 2px;
+}
+.onboarding-error-note {
+  margin-top: 6px;
+  color: var(--ob-muted);
+}
+.demo-banner {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--ob-rule);
+  background: var(--ob-surface);
+  color: var(--ob-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.shoot-mode-note {
+  margin-top: 14px;
+  color: var(--ob-muted);
+  font-size: 11px;
+  line-height: 1.45;
 }

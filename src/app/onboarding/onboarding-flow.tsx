@@ -1,7 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
+import {
+  ONBOARDING_GOALS,
+  SALES_ENGINE_TERMS_VERSION,
+  SPECIALTIES,
+  WORK_STYLES,
+  specialtyLabel,
+} from "@/lib/onboarding";
 import { DEFAULT_TIMEZONE, WORKSPACE_TIMEZONES, formatTimezone } from "@/lib/timezones";
 import { type OnboardingState, createWorkspaceAction } from "./actions";
 
@@ -15,56 +22,6 @@ const STEPS = [
   "Review",
   "Rights",
   "Ready",
-] as const;
-
-const WORK_STYLES = [
-  [
-    "independent",
-    "Independent photographer",
-    "I run my own assignments, archive, and buyer relationships.",
-  ],
-  [
-    "agency",
-    "Working with an agency",
-    "I deliver through one or more agencies while keeping my own record.",
-  ],
-  [
-    "team",
-    "Studio or team",
-    "Two or more people collaborate on shoots, selects, dispatch, or finance.",
-  ],
-  [
-    "contributor",
-    "Occasional contributor",
-    "I shoot selected events or stories alongside other work.",
-  ],
-] as const;
-
-const SPECIALTIES = ["Celebrity", "Street style", "Entertainment", "Events", "News", "Portraits"];
-
-const GOALS = [
-  [
-    "organize",
-    "Organize shoots and assets",
-    "Keep originals, selects, captions, and commercial history connected.",
-  ],
-  [
-    "dispatch",
-    "Prepare and track submissions",
-    "Know exactly what went out, to whom, and under which terms.",
-  ],
-  [
-    "editorial",
-    "Find editorial opportunities",
-    "Turn a shoot into a buyer-ready package while the story is live.",
-  ],
-  [
-    "brands",
-    "Identify brand opportunities",
-    "Review visible clothing and potential commercial matches.",
-  ],
-  ["rights", "Monitor usage rights", "Route possible uses through evidence and human review."],
-  ["archive", "Reactivate archived work", "Find new relevance in pictures you already own."],
 ] as const;
 
 const SAMPLE_IMAGES = [
@@ -132,10 +89,9 @@ export function OnboardingFlow({
   const [timezone, setTimezone] = useState<WorkspaceTimezone>(DEFAULT_TIMEZONE);
   const [workStyle, setWorkStyle] = useState("independent");
   const [city, setCity] = useState("New York, NY");
-  const [specialties, setSpecialties] = useState<string[]>(["Celebrity", "Street style"]);
+  const [specialties, setSpecialties] = useState<string[]>(["celebrity", "street_style"]);
   const [goals, setGoals] = useState<string[]>(["organize", "dispatch", "editorial"]);
   const [shootMode, setShootMode] = useState<"sample" | "folder" | "upcoming">("sample");
-  const [fileCount, setFileCount] = useState(0);
   const [selectedFrame, setSelectedFrame] = useState(0);
   const [subject, setSubject] = useState("Mara Voss");
   const [shootDate, setShootDate] = useState("2026-08-24");
@@ -143,11 +99,12 @@ export function OnboardingFlow({
   const [visibleBrands, setVisibleBrands] = useState("The Row, Bottega Veneta");
   const [createdByUser, setCreatedByUser] = useState("yes");
   const [restrictions, setRestrictions] = useState("none");
-  const [salesEngine, setSalesEngine] = useState(true);
-  const fileInput = useRef<HTMLInputElement>(null);
+  // Off unless the photographer turns it on. This governs the 70/30 split, so
+  // a pre-ticked box would be consent nobody actually gave.
+  const [salesEngine, setSalesEngine] = useState(false);
 
   const selectedGoalLabels = useMemo(
-    () => GOALS.filter(([value]) => goals.includes(value)).map(([, label]) => label),
+    () => ONBOARDING_GOALS.filter((goal) => goals.includes(goal.key)).map((goal) => goal.label),
     [goals],
   );
 
@@ -157,7 +114,27 @@ export function OnboardingFlow({
     );
   }
 
+  /**
+   * Why this step cannot be left yet, or null.
+   *
+   * The same rules run again in `parseOnboarding` on the server, because a
+   * disabled button is a courtesy and not a control.
+   */
+  function blockedReason(current: number): string | null {
+    if (current === 1) {
+      if (!workspaceName.trim()) return "Give the workspace a name.";
+      if (!city.trim()) return "Say where you are mostly based.";
+      if (specialties.length === 0) return "Choose at least one kind of work.";
+      return null;
+    }
+    if (current === 2 && goals.length === 0) return "Choose at least one priority.";
+    return null;
+  }
+
+  const blocked = blockedReason(step);
+
   function next() {
+    if (blockedReason(step)) return;
     setStep((current) => Math.min(STEPS.length - 1, current + 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -271,13 +248,13 @@ export function OnboardingFlow({
               <fieldset className="choice-fieldset">
                 <legend>Working model</legend>
                 <div className="choice-grid two">
-                  {WORK_STYLES.map(([value, label, description]) => (
+                  {WORK_STYLES.map((style) => (
                     <ChoiceButton
-                      active={workStyle === value}
-                      description={description}
-                      key={value}
-                      label={label}
-                      onClick={() => setWorkStyle(value)}
+                      active={workStyle === style.key}
+                      description={style.description}
+                      key={style.key}
+                      label={style.label}
+                      onClick={() => setWorkStyle(style.key)}
                     />
                   ))}
                 </div>
@@ -287,12 +264,12 @@ export function OnboardingFlow({
                 <div className="chip-row">
                   {SPECIALTIES.map((specialty) => (
                     <button
-                      aria-pressed={specialties.includes(specialty)}
-                      key={specialty}
-                      onClick={() => toggleList(specialty, specialties, setSpecialties)}
+                      aria-pressed={specialties.includes(specialty.key)}
+                      key={specialty.key}
+                      onClick={() => toggleList(specialty.key, specialties, setSpecialties)}
                       type="button"
                     >
-                      {specialty}
+                      {specialty.label}
                     </button>
                   ))}
                 </div>
@@ -312,17 +289,17 @@ export function OnboardingFlow({
               </p>
             </div>
             <div className="goal-list">
-              {GOALS.map(([value, label, description], index) => (
+              {ONBOARDING_GOALS.map((goal, index) => (
                 <button
-                  aria-pressed={goals.includes(value)}
-                  key={value}
-                  onClick={() => toggleList(value, goals, setGoals)}
+                  aria-pressed={goals.includes(goal.key)}
+                  key={goal.key}
+                  onClick={() => toggleList(goal.key, goals, setGoals)}
                   type="button"
                 >
                   <span>{String(index + 1).padStart(2, "0")}</span>
-                  <strong>{label}</strong>
-                  <small>{description}</small>
-                  <b>{goals.includes(value) ? "Selected" : "Select"}</b>
+                  <strong>{goal.label}</strong>
+                  <small>{goal.description}</small>
+                  <b>{goals.includes(goal.key) ? "Selected" : "Select"}</b>
                 </button>
               ))}
             </div>
@@ -341,15 +318,12 @@ export function OnboardingFlow({
               <div className="shoot-mode-list">
                 <button
                   aria-pressed={shootMode === "folder"}
-                  onClick={() => {
-                    setShootMode("folder");
-                    fileInput.current?.click();
-                  }}
+                  onClick={() => setShootMode("folder")}
                   type="button"
                 >
                   <span>01</span>
-                  <b>Choose a folder</b>
-                  <small>Photos, selects, or a full shoot folder</small>
+                  <b>Import a folder</b>
+                  <small>Opens the real importer once your workspace exists</small>
                 </button>
                 <button
                   aria-pressed={shootMode === "upcoming"}
@@ -370,25 +344,19 @@ export function OnboardingFlow({
                   <small>A fictional SoHo arrival set</small>
                 </button>
               </div>
-              <input
-                className="visually-hidden"
-                multiple
-                onChange={(event) => {
-                  setFileCount(event.target.files?.length ?? 0);
-                  setShootMode("folder");
-                }}
-                ref={fileInput}
-                type="file"
-              />
+              <p className="shoot-mode-note">
+                Nothing is uploaded here. Files are hashed in your browser and written to private
+                storage by the importer, which opens as soon as the workspace exists.
+              </p>
             </aside>
             <div className="shoot-preview">
               <div className="shoot-preview-head">
                 <span>Preview</span>
                 <b>
                   {shootMode === "sample"
-                    ? "SoHo arrival"
+                    ? "SoHo arrival — demonstration"
                     : shootMode === "folder"
-                      ? `${fileCount || "Your"} files selected`
+                      ? "Your folder, after setup"
                       : "Upcoming shoot"}
                 </b>
               </div>
@@ -456,8 +424,12 @@ export function OnboardingFlow({
               </div>
             </div>
             <div className="review-panel">
-              <p className="onboarding-eyebrow">Review</p>
+              <p className="onboarding-eyebrow">Review · demonstration</p>
               <h1 id="onboarding-title-4">Here’s what Mastline found.</h1>
+              <p className="demo-banner" role="note">
+                A worked example on sample pictures. Nothing here is saved, and any brand named is a
+                suggestion for you to confirm on a real asset later — never recorded as fact.
+              </p>
               <p className="review-note">
                 Suggested from file metadata and image review. Confirm or edit before it becomes
                 part of the record.
@@ -579,7 +551,8 @@ export function OnboardingFlow({
                     <strong>Let Mastline surface licensing opportunities.</strong>
                     <small>
                       You approve every pitch, price, and license. You keep 70% only when Mastline
-                      generates the sale; direct sales remain 100% yours.
+                      generates the sale; direct sales remain 100% yours. Recorded against terms
+                      version {SALES_ENGINE_TERMS_VERSION}, and you can turn this off later.
                     </small>
                   </span>
                 </label>
@@ -597,18 +570,39 @@ export function OnboardingFlow({
               <p className="onboarding-eyebrow">Ready</p>
               <h1 id="onboarding-title-6">Your first shoot is ready to work.</h1>
               <p>
-                Mastline has turned the sample set into the beginning of a commercial record. Create
-                the workspace to continue into the live shoot workflow.
+                The sample set above is a demonstration — no shoot, asset, or rights record is
+                created from it. Create the workspace and Mastline opens the real shoot intake,
+                where your own files go through hashing, private storage, and registration.
               </p>
               <form action={formAction}>
-                <input name="name" type="hidden" value={workspaceName || "My Studio"} />
+                <input name="name" type="hidden" value={workspaceName} />
                 <input name="timezone" type="hidden" value={timezone} />
+                <input name="workStyle" type="hidden" value={workStyle} />
+                <input name="baseCity" type="hidden" value={city} />
+                <input name="specialties" type="hidden" value={specialties.join(", ")} />
+                <input name="goals" type="hidden" value={goals.join(", ")} />
+                {salesEngine && <input name="salesEngine" type="hidden" value="on" />}
                 {state.error && (
-                  <p className="onboarding-error" role="alert">
-                    {state.error}
-                  </p>
+                  <div className="onboarding-error" role="alert">
+                    <p>{state.error}</p>
+                    {state.errors && (
+                      <ul>
+                        {Object.entries(state.errors).map(([field, message]) => (
+                          <li key={field}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="onboarding-error-note">
+                      Your answers are still here. Step back to change one, or try again.
+                    </p>
+                  </div>
                 )}
-                <button className="onboarding-primary" disabled={pending} type="submit">
+                <button
+                  aria-disabled={pending}
+                  className="onboarding-primary"
+                  disabled={pending}
+                  type="submit"
+                >
                   {pending ? "Creating workspace…" : "Create workspace and continue"}
                 </button>
               </form>
@@ -646,7 +640,7 @@ export function OnboardingFlow({
                 </div>
                 <div>
                   <dt>Primary work</dt>
-                  <dd>{specialties.join(", ")}</dd>
+                  <dd>{specialties.map(specialtyLabel).join(", ")}</dd>
                 </div>
                 <div>
                   <dt>Priorities</dt>
@@ -669,14 +663,21 @@ export function OnboardingFlow({
           <p>
             Step {step + 1} of {STEPS.length}
           </p>
-          <button
-            className="onboarding-primary"
-            disabled={step === 1 && !workspaceName.trim()}
-            onClick={next}
-            type="button"
-          >
-            {step === 5 ? "Review setup" : "Continue"}
-          </button>
+          <div className="onboarding-advance">
+            {blocked && (
+              <p className="onboarding-blocked" role="status">
+                {blocked}
+              </p>
+            )}
+            <button
+              className="onboarding-primary"
+              disabled={blocked !== null}
+              onClick={next}
+              type="button"
+            >
+              {step === 5 ? "Review setup" : "Continue"}
+            </button>
+          </div>
         </footer>
       )}
       {step === STEPS.length - 1 && (

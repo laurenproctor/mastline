@@ -8,6 +8,15 @@
  * them.
  */
 
+import {
+  type OnboardingGoal,
+  type Specialty,
+  type WorkStyle,
+  isOnboardingGoal,
+  isSpecialty,
+  isWorkStyle,
+} from "./onboarding";
+
 export type FieldErrors<T> = Partial<Record<keyof T | "_form", string>>;
 
 export type ParseResult<T> =
@@ -225,4 +234,68 @@ export function slugifyWorkspace(name: string): string {
     .slice(0, 40)
     .replace(/-+$/g, "");
   return base || "workspace";
+}
+
+export interface OnboardingInput {
+  name: string;
+  timezone: string;
+  workStyle: WorkStyle;
+  baseCity: string;
+  specialties: Specialty[];
+  goals: OnboardingGoal[];
+  salesEngineEnabled: boolean;
+}
+
+const MAX_WORKSPACE_NAME = 120;
+const MAX_CITY = 120;
+
+/**
+ * The answers the onboarding flow collects.
+ *
+ * Every list is filtered against the canonical vocabulary rather than trusted:
+ * the values arrive from hidden inputs, and a hidden input is only a hint about
+ * what a browser sent. The database repeats these same sets as check
+ * constraints, so an unknown key would be refused there too -- this parser
+ * exists to turn that refusal into a sentence somebody can act on.
+ */
+export function parseOnboarding(form: FormData): ParseResult<OnboardingInput> {
+  const errors: FieldErrors<OnboardingInput> = {};
+
+  const name = text(form, "name");
+  if (!name) errors.name = "Give the workspace a name.";
+  else if (name.length > MAX_WORKSPACE_NAME) {
+    errors.name = `Keep the name under ${MAX_WORKSPACE_NAME} characters.`;
+  }
+
+  const baseCity = text(form, "baseCity");
+  if (!baseCity) errors.baseCity = "Say where you are mostly based.";
+  else if (baseCity.length > MAX_CITY) {
+    errors.baseCity = `Keep this under ${MAX_CITY} characters.`;
+  }
+
+  const workStyleRaw = text(form, "workStyle");
+  if (!isWorkStyle(workStyleRaw)) errors.workStyle = "Choose how you work.";
+
+  const specialties = parseList(optionalText(form, "specialties")).filter(isSpecialty);
+  if (specialties.length === 0) errors.specialties = "Choose at least one kind of work.";
+
+  const goals = parseList(optionalText(form, "goals")).filter(isOnboardingGoal);
+  if (goals.length === 0) errors.goals = "Choose at least one priority.";
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      name,
+      timezone: text(form, "timezone") || "America/New_York",
+      workStyle: workStyleRaw as WorkStyle,
+      baseCity,
+      specialties,
+      goals,
+      // An unchecked checkbox sends nothing at all, so absence is a decline.
+      // This is the safe direction for a flag that governs the 70/30 split.
+      salesEngineEnabled: form.get("salesEngine") === "on",
+    },
+  };
 }

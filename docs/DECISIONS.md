@@ -87,6 +87,36 @@ Item numbers below are permanent. Resolved items keep their number so older note
   Navigation feedback, if wanted again, needs something that does not wrap a
   route in Suspense. Guarded by `tests/route-loading-boundary.test.ts`.
 
+- Onboarding profile columns use `text[]` with `<@` check constraints for
+  `specialties` and `onboarding_goals`, against the surrounding convention of
+  jsonb arrays (`keywords`, `subjects`, `target_buyers`). Those are open
+  vocabularies where a photographer types anything; these two are closed sets
+  drawn from a fixed menu, and `text[]` lets the database refuse a value that is
+  not in the set. jsonb cannot do that without a trigger. `work_style` is
+  checked text rather than an enum, matching `buyer_type` and shoot `priority`,
+  because an onboarding answer should widen with one migration rather than a
+  type change. If the inconsistency proves more expensive than the integrity is
+  worth, moving to jsonb is a mechanical migration.
+- Sales Engine consent is recorded three ways: the boolean, the timestamp, and
+  the terms version that was on screen — enforced together by a check
+  constraint, so the flag cannot exist without saying what was agreed to. The
+  opt-in is *also* written to `activity_events`, which is append-only. A column
+  can be edited later; for something governing the 70/30 split, the audit trail
+  should not be editable. Both timestamps are the database's, so a client cannot
+  backdate consent. Default is off — a pre-ticked box is not consent.
+- Onboarding collects seven steps' worth of answers but persists only the
+  workspace profile. The sample shoot stays a labelled demonstration and writes
+  no shoot, asset, or rights record, because inventing commercial history from
+  fictional pictures would corrupt the record the product exists to keep. The
+  flow ends at `/shoots/new?source=onboarding` — the real intake screen with an
+  introduction — rather than at a simulation of it.
+- `visibleBrands` in onboarding remains a suggestion and is not stored. When
+  brand matching is built it needs a basis, a confidence, and a human
+  confirmation before anything reaches `assets.keywords`, per
+  `suggest → explain → confirm`. `createdByUser` likewise: store the raw answer,
+  route uncertainty to review, never derive a copyright conclusion from a radio
+  button.
+
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.
