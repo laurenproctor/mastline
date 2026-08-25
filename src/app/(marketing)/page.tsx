@@ -19,33 +19,61 @@ export default function Page() {
       <HeroStage />
       <section className="hero">
         <div className="wrap">
-          <span className="mk-eyebrow">The business operating system for paparazzi</span>
-          <h1>
-            Every shoot, sale, and dollar <em>in one place.</em>
-          </h1>
-          <div className="row">
-            <p className="lede">
-              Pitch the right desks in minutes, see what every picture earned, and let the archive
-              sell itself when a name is back in the news. For paparazzi, entertainment
-              photographers, and small crews. Stills and video.
-            </p>
-            <div className="actions">
-              <Link className="btn primary" href="/sign-up">
-                Start the 30-day trial{" "}
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14M13 6l6 6-6 6" />
-                </svg>
-              </Link>
-              <Link className="btn ghost" href="/how-it-works">
-                See how it works
-              </Link>
+          <div className="hero-split">
+            <div className="hero-copy">
+              <span className="mk-eyebrow">The business operating system for paparazzi</span>
+              <h1>
+                Every shoot, sale, and dollar <em>in one place.</em>
+              </h1>
+              <div className="row">
+                <p className="lede">
+                  Pitch the right desks in minutes, see what every picture earned, and let the
+                  archive sell itself when a name is back in the news. For paparazzi, entertainment
+                  photographers, and small crews. Stills and video.
+                </p>
+                <div className="actions">
+                  <Link className="btn primary" href="/sign-up">
+                    Start the 30-day trial{" "}
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </Link>
+                  <Link className="btn ghost" href="/how-it-works">
+                    See how it works
+                  </Link>
+                </div>
+              </div>
+            </div>
+            <div className="stage" id="stage" aria-hidden="false">
+              <div className="stage-glow"></div>
+              <div className="float f1" data-depth="1.6" data-rot="-8">
+                <span className="fl">Exclusive ends in</span>
+                <b>00:18:07</b>
+                <small>Daily Mail · opened 2m ago</small>
+              </div>
+              <div className="float f2" data-depth="1.1" data-rot="6">
+                <span className="fl">Licensed</span>
+                <b>$1,800</b>
+                <small>All media · 30 days · paid net 30</small>
+              </div>
+              <div className="float f3" data-depth="2.1" data-rot="-5">
+                <span className="fl">Archive match</span>
+                <b>5 sets · 2019–2024</b>
+                <small>Casting news · demand high</small>
+              </div>
+              <div className="float f4" data-depth="1.3" data-rot="9">
+                <span className="fl">Rights match</span>
+                <b>3 unlicensed uses</b>
+                <small>Evidence saved · ready to invoice</small>
+              </div>
+              <HeroReel />
             </div>
           </div>
           <div className="money-strip">
@@ -62,30 +90,6 @@ export default function Page() {
               <span>to start. Thirty days free on any plan, no card.</span>
             </div>
             <Link href="/pricing">See pricing →</Link>
-          </div>
-          <div className="stage" id="stage" aria-hidden="false">
-            <div className="stage-glow"></div>
-            <div className="float f1" data-depth="1.6" data-rot="-8">
-              <span className="fl">Exclusive ends in</span>
-              <b>00:18:07</b>
-              <small>Daily Mail · opened 2m ago</small>
-            </div>
-            <div className="float f2" data-depth="1.1" data-rot="6">
-              <span className="fl">Licensed</span>
-              <b>$1,800</b>
-              <small>All media · 30 days · paid net 30</small>
-            </div>
-            <div className="float f3" data-depth="2.1" data-rot="-5">
-              <span className="fl">Archive match</span>
-              <b>5 sets · 2019–2024</b>
-              <small>Casting news · demand high</small>
-            </div>
-            <div className="float f4" data-depth="1.3" data-rot="9">
-              <span className="fl">Rights match</span>
-              <b>3 unlicensed uses</b>
-              <small>Evidence saved · ready to invoice</small>
-            </div>
-            <HeroReel />
           </div>
           <div className="ticker" aria-label="A night with Mastline, as it happens">
             <div className="ticker-track">

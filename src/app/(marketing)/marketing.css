@@ -3337,11 +3337,11 @@ footer .bottom {
   color: var(--ink);
   border: 1px solid var(--rule-2);
 }
-.hero .stage + .ticker {
+.hero .ticker {
   margin-top: 72px;
 }
 @media (max-width: 860px) {
-  .hero .stage + .ticker {
+  .hero .ticker {
     margin-top: 40px;
   }
 }
@@ -5038,14 +5038,14 @@ footer ul a {
     padding: 24px !important;
   }
 }
-.hero .stage + .ticker {
+.hero .ticker {
   border-top: 1px solid var(--ink);
   margin-top: 80px;
 }
 .hero .stage .shot {
   border-bottom: 1px solid var(--rule) !important;
 }
-.hero .stage + .ticker {
+.hero .ticker {
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
   border-top: 1px solid var(--ink);
@@ -5236,7 +5236,18 @@ footer ul a {
    and its own vertical margins do nothing, so the margin belongs on the
    heading. */
 .mk-eyebrow + h2 {
-  margin-top: 20px;
+  /* Halfway between the two. Before the margin moved here it did nothing at
+     all -- an inline span's vertical margins are ignored -- leaving about 4px
+     of line box, which read as part of the headline. Moving it to the heading
+     gave 23.8px, which separated them further than the pair wanted. */
+  margin-top: 10px;
+}
+/* Where the pair sits in a flex column the container's own gap already
+   separates them, and the margin lands on top of it. Both of these are 14px
+   already, which is the spacing being aimed at. */
+.calc-l .mk-eyebrow + h2,
+.pr-cta-in .mk-eyebrow + h2 {
+  margin-top: 0;
 }
 .hero .wrap > .mk-eyebrow {
   margin-bottom: -10px;
@@ -5370,5 +5381,82 @@ footer ul a {
   }
   .reel-col {
     transform: none !important;
+  }
+}
+
+/* The hero, side by side ------------------------------------------------
+
+   The words on the left, the wall of frames on the right, rather than the
+   wall sitting under everything. The money strip stays full width beneath
+   both, because it is a band and reads as one.
+
+   DOM order is copy then stage, which is also the reading order, so nothing
+   is rearranged behind a keyboard user's back. The stage is decorative and
+   hidden from assistive technology either way. */
+.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  gap: 56px;
+  align-items: center;
+}
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+/* Half the width needs a smaller headline: at the full-bleed size it broke to
+   five lines and stopped being a headline. */
+.hero-split .hero-copy h1 {
+  font-size: clamp(40px, 4.2vw, 66px);
+  max-width: 15ch;
+}
+.hero-split .stage {
+  margin-top: 0;
+}
+/* Taller than it is wide now, because the column is narrower than the page
+   was: the wall wants to read as a wall rather than a strip. */
+.hero-split .reel {
+  height: 560px;
+}
+@media (max-width: 1000px) {
+  .hero-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+  .hero-split .hero-copy h1 {
+    font-size: clamp(44px, 6.8vw, 84px);
+    max-width: 14ch;
+  }
+  .hero-split .reel {
+    height: 420px;
+  }
+}
+
+/* Beside the headline the stage is half the width it was, and four cards laid
+   over it buried the frames they are supposed to be annotating. Two remain --
+   the exclusive running down and the fee that came of it, which is the whole
+   argument in two numbers -- and they hang off the edges rather than sitting
+   on the pictures. */
+.hero-split .float.f3,
+.hero-split .float.f4 {
+  display: none;
+}
+.hero-split .float.f1 {
+  left: -14%;
+  top: 8%;
+}
+.hero-split .float.f2 {
+  right: -12%;
+  top: auto;
+  bottom: 16%;
+}
+@media (max-width: 1000px) {
+  .hero-split .float.f1 {
+    left: 0;
+    top: -2%;
+  }
+  .hero-split .float.f2 {
+    right: 0;
+    bottom: -2%;
   }
 }
