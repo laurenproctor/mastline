@@ -16,6 +16,9 @@
 
 .su-shell {
   min-height: 100vh;
+  /* The dynamic unit where it is understood, so a phone's collapsing address
+     bar does not leave a strip of the page's own background below the split. */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -58,7 +61,13 @@
   grid-template-areas:
     "lead form"
     "support form";
-  align-content: start;
+  /* The second row takes whatever height is left over, which is what carries
+     the white column to the bottom of a tall window. Packing the rows to the
+     top instead would leave the split ending wherever the copy happened to
+     end, with the page's paper showing across the full width beneath it. The
+     row only ever grows, so on a short window the content still sets the
+     height and the page scrolls as normal. */
+  grid-template-rows: auto 1fr;
 }
 .su-lead {
   grid-area: lead;
@@ -88,6 +97,8 @@
       "lead"
       "form"
       "support";
+    /* Stacked, it is the last section that absorbs the spare height. */
+    grid-template-rows: auto auto 1fr;
   }
   .su-lead {
     padding: 40px 24px 28px;
