@@ -13,7 +13,7 @@ export default function Page() {
           </div>
           <h1>Everything between the shutter and the bank, handled.</h1>
           <p className="lede">
-            Stills and video, from the first tip to the last dollar. Know what&apos;s worth shooting
+            Stills and video, from the first tip to the last dollar. Know what’s worth shooting
             tonight. Get the package to the right desk in minutes. See who opened it, what they
             paid, and what they still owe. Catch your pictures being used without a license. Sell
             from your archive the moment a name is back in the news. One workspace, every picture
@@ -149,7 +149,7 @@ export default function Page() {
                 </svg>
               </div>
               <h3>Shoot Workspace</h3>
-              <p className="q">What is happening on this job, and what&apos;s the next action?</p>
+              <p className="q">What is happening on this job, and what’s the next action?</p>
               <p>
                 The live record for a job: brief, timeline, map and logistics, contacts, notes, file
                 intake, selects, metadata status, team messages, costs, and next action. Mobile
@@ -166,7 +166,7 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Dispatch and sales operations</span>
-              <h2>Nothing leaves until it&apos;s buyer-ready. Nothing sent is forgotten.</h2>
+              <h2>Nothing leaves until it’s buyer-ready. Nothing sent is forgotten.</h2>
             </div>
           </div>
           <div className="areas">
@@ -290,7 +290,7 @@ export default function Page() {
                   <path d="M12 3v18M16 7.5c0-1.4-1.8-2.5-4-2.5S8 6.1 8 7.5 9.8 10 12 10s4 1.1 4 2.5S14.2 15 12 15s-4-1.1-4-2.5" />
                 </svg>
               </div>
-              <h3>Revenue &amp; Payments</h3>
+              <h3>Revenue & Payments</h3>
               <p className="q">What has been earned, paid, delayed, or lost?</p>
               <p>
                 A financial view by buyer, shoot, asset, subject, period, and status. Expected
@@ -398,7 +398,7 @@ export default function Page() {
               <h2 style={{ marginTop: "14px" }}>A link, a look, a tap. No account required.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
                 Every pitch is a single mobile page: watermarked previews, your caption, the price,
-                the terms, and a countdown if you&apos;ve offered an exclusive. Editors accept or
+                the terms, and a countdown if you’ve offered an exclusive. Editors accept or
                 counter with one tap and never create a login. The license and full-resolution files
                 are released to them the moment they accept, and every open and download is logged
                 for you.
@@ -449,7 +449,7 @@ export default function Page() {
               The archive features only pay off if the archive is in. Import from Dropbox, Google
               Drive, external drives, or an agency export. Mastline reads the captions and keywords
               already embedded in your files, groups frames into sets by time and place, and queues
-              anything untagged for quick, assisted tagging so every subject you&apos;ve ever shot
+              anything untagged for quick, assisted tagging so every subject you’ve ever shot
               becomes something it can watch the news for.
             </p>
           </div>
@@ -462,10 +462,10 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <h3>Reads what&apos;s already there</h3>
+              <h3>Reads what’s already there</h3>
               <p>
                 IPTC captions, keywords, dates, and locations come in automatically. Nothing
-                you&apos;ve typed before gets typed again.
+                you’ve typed before gets typed again.
               </p>
             </div>
             <div>
@@ -520,7 +520,7 @@ export default function Page() {
               <span>Import, sync, and archive</span>
             </div>
             <div>
-              <b>QuickBooks &amp; Xero</b>
+              <b>QuickBooks & Xero</b>
               <span>Invoices and payments sync to your books</span>
             </div>
             <div>
@@ -528,7 +528,7 @@ export default function Page() {
               <span>Card and bank payments from buyers</span>
             </div>
             <div>
-              <b>Email &amp; SMS</b>
+              <b>Email & SMS</b>
               <span>Pitches go out the way editors already read</span>
             </div>
           </div>

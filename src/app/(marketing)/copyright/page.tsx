@@ -14,7 +14,7 @@ export default function Page() {
           <h1>Copyright and DMCA Policy</h1>
           <p className="lede">
             Mastline stores and transmits photographs on behalf of the photographers who own them.
-            We respect copyright in both directions: we protect our photographers&apos; work, and we
+            We respect copyright in both directions: we protect our photographers’ work, and we
             respond promptly when someone believes their work has been used without permission.
           </p>
         </div>
@@ -71,7 +71,7 @@ export default function Page() {
               <li>
                 A statement, made under penalty of perjury, that the information in the notice is
                 accurate and that you are the copyright owner or authorized to act on the
-                owner&apos;s behalf.
+                owner’s behalf.
               </li>
             </ul>
             <p>
@@ -86,7 +86,7 @@ export default function Page() {
               <li>
                 If the notice is complete, we promptly disable access to the identified material on
                 Mastline, including pitch links and downloads, and record the action in the
-                image&apos;s provenance log.
+                image’s provenance log.
               </li>
               <li>
                 We notify the photographer whose account holds the material, provide a copy of the
@@ -136,7 +136,7 @@ export default function Page() {
               third results in termination. We may act sooner where infringement is flagrant.
             </p>
 
-            <h2>6. Protecting our photographers&apos; work</h2>
+            <h2>6. Protecting our photographers’ work</h2>
             <p>
               The same rules protect the photographers who use Mastline. If you are a Mastline
               photographer and find your image used without a license, Rights Matches helps you

@@ -77,14 +77,14 @@ export default function Page() {
                   color: "var(--ink-2)",
                 }}
               >
-                <li>Uploading images you don&apos;t own or have no right to license.</li>
+                <li>Uploading images you don’t own or have no right to license.</li>
                 <li>
                   Using Mastline to follow, harass, threaten, or endanger anyone, or to coordinate
                   others to do so.
                 </li>
                 <li>
                   Storing private addresses, private movements, or scraped private-account data as
-                  &quot;tips.&quot;
+                  “tips.”
                 </li>
                 <li>
                   Sexual or exploitative content involving minors, or any unlawful content. This is
@@ -95,7 +95,7 @@ export default function Page() {
                   faking provenance.
                 </li>
                 <li>
-                  Accessing another user&apos;s account or data, probing the service, or abusing
+                  Accessing another user’s account or data, probing the service, or abusing
                   buyer contact information.
                 </li>
                 <li>

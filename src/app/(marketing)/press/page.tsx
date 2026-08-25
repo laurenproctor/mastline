@@ -15,7 +15,7 @@ export default function Page() {
           <h1>Press and media kit.</h1>
           <p className="lede">
             Everything a journalist needs to cover Mastline accurately: what it is, who built it,
-            what it will and won&apos;t do, approved language, logos, screenshots, and a person to
+            what it will and won’t do, approved language, logos, screenshots, and a person to
             call.
           </p>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "24px" }}>
@@ -37,8 +37,8 @@ export default function Page() {
               <h2>Describe us this way.</h2>
             </div>
             <p className="lede">
-              Use either version verbatim. Please don&apos;t shorten Mastline to &quot;an app for
-              paparazzi&quot;; the business layer is the point.
+              Use either version verbatim. Please don’t shorten Mastline to “an app for
+              paparazzi”; the business layer is the point.
             </p>
           </div>
           <div className="principles">
@@ -112,7 +112,7 @@ export default function Page() {
                   <td>Pricing</td>
                   <td colSpan={2}>
                     Solo $49, Pro $99, Studio $279 per month billed annually; Agency custom. No
-                    commission on a photographer&apos;s own sales; 30% on sales Mastline creates.
+                    commission on a photographer’s own sales; 30% on sales Mastline creates.
                   </td>
                 </tr>
                 <tr>
@@ -151,12 +151,12 @@ export default function Page() {
                 photographers themselves have run on memory, group chats, hard drives, and unpaid
                 invoices. Mastline was built to fix that, by sitting with working photographers in
                 Hollywood and New York and turning the questions they ask every night into screens:
-                what&apos;s worth shooting, who will buy it, what&apos;s it worth, did they pay, and
+                what’s worth shooting, who will buy it, what’s it worth, did they pay, and
                 which of my old pictures just became valuable again.
               </p>
             </div>
             <div>
-              <span className="mk-eyebrow">Angles we&apos;re glad to talk about</span>
+              <span className="mk-eyebrow">Angles we’re glad to talk about</span>
               <ol>
                 <li>
                   The economics of a night: what a set actually earns, and where the money has been
@@ -236,8 +236,8 @@ export default function Page() {
           <div className="quotes">
             <blockquote className="quote">
               <p>
-                &quot;Every picture a photographer takes should keep paying them. Most of the
-                industry is set up so it pays everyone else.&quot;
+                “Every picture a photographer takes should keep paying them. Most of the
+                industry is set up so it pays everyone else.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -245,8 +245,8 @@ export default function Page() {
             </blockquote>
             <blockquote className="quote">
               <p>
-                &quot;We built this with the people who stand on the sidewalk at one in the morning.
-                If it doesn&apos;t make tonight easier, nothing else we do matters.&quot;
+                “We built this with the people who stand on the sidewalk at one in the morning.
+                If it doesn’t make tonight easier, nothing else we do matters.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -254,8 +254,8 @@ export default function Page() {
             </blockquote>
             <blockquote className="quote">
               <p>
-                &quot;Mastline helps photographers sell pictures taken in public. It is not a tool
-                for following people, and we say so in writing.&quot;
+                “Mastline helps photographers sell pictures taken in public. It is not a tool
+                for following people, and we say so in writing.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -286,8 +286,8 @@ export default function Page() {
             </div>
             <div>
               <span>
-                <b>No scraping of private accounts</b> or messages, and no storing of anyone&apos;s
-                home address as a &quot;signal.&quot;
+                <b>No scraping of private accounts</b> or messages, and no storing of anyone’s
+                home address as a “signal.”
               </span>
             </div>
             <div>
@@ -331,8 +331,8 @@ export default function Page() {
             </div>
             <p className="lede">
               The mark is the M-and-frame symbol with the blue square; the wordmark is MASTLINE set
-              in its custom geometric letterforms. Don&apos;t recolor, rotate, stretch, outline, or
-              add effects, and don&apos;t set the name in another typeface.
+              in its custom geometric letterforms. Don’t recolor, rotate, stretch, outline, or
+              add effects, and don’t set the name in another typeface.
             </p>
           </div>
           <div className="principles">
@@ -430,7 +430,7 @@ export default function Page() {
             </div>
             <p className="lede">
               All people, names, and stories shown in product images are fictional. Please credit
-              &quot;Mastline&quot; and do not crop out the interface.
+              “Mastline” and do not crop out the interface.
             </p>
           </div>
           <div className="shot">
@@ -491,15 +491,15 @@ export default function Page() {
               <details>
                 <summary>Can I speak to photographers who use it?</summary>
                 <p>
-                  Often, yes. Email press@mastline.co with the outlet and the angle; we&apos;ll ask,
-                  and we&apos;ll only connect you with photographers who want to talk.
+                  Often, yes. Email press@mastline.co with the outlet and the angle; we’ll ask,
+                  and we’ll only connect you with photographers who want to talk.
                 </p>
               </details>
               <details>
                 <summary>Can I try the product?</summary>
                 <p>
                   Yes. Ask for a demo account at press@mastline.co. It comes loaded with fictional
-                  sets, buyers, and deals so you can see every screen without touching anyone&apos;s
+                  sets, buyers, and deals so you can see every screen without touching anyone’s
                   real work.
                 </p>
               </details>
@@ -513,7 +513,7 @@ export default function Page() {
           <div>
             <h2>On deadline?</h2>
             <p>
-              Email press@mastline.co with &quot;DEADLINE&quot; in the subject line and we&apos;ll
+              Email press@mastline.co with “DEADLINE” in the subject line and we’ll
               respond within the hour during New York business hours, and as fast as we can outside
               them.
             </p>

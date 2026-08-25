@@ -26,7 +26,7 @@ export default function Page() {
             <h2>1. The agreement</h2>
             <p>
               These Terms govern your use of the Mastline website and application (the
-              &quot;Service&quot;), operated by Storyworlding (&quot;Mastline&quot;). By creating an
+              “Service”), operated by Storyworlding (“Mastline”). By creating an
               account or using the Service you agree to these Terms and to our{" "}
               <Link href="/privacy">Privacy Policy</Link>. If you use Mastline on behalf of a team
               or agency, you confirm you have authority to bind it.
@@ -35,7 +35,7 @@ export default function Page() {
             <h2>2. Your content stays yours</h2>
             <p>
               You retain all copyright and other rights in the photographs, video, captions,
-              records, and other material you add to Mastline (&quot;Your Content&quot;). Mastline
+              records, and other material you add to Mastline (“Your Content”). Mastline
               does not acquire ownership of Your Content, ever. You grant Mastline a limited,
               non-exclusive license to host, store, process, display, and transmit Your Content
               solely to operate the Service for you and at your direction, for example to render
@@ -58,13 +58,13 @@ export default function Page() {
               <li>
                 <strong>Sales made through Mastline.</strong> When an image is licensed through a
                 Mastline opportunity, a pitch sent through the platform, or a buyer request Mastline
-                helps close (a &quot;Mastline Sale&quot;), you receive 70% and Mastline receives 30%
+                helps close (a “Mastline Sale”), you receive 70% and Mastline receives 30%
                 of the license fee, calculated after taxes, refunds, chargebacks, and discounts.
-                Standard payment-processing costs are paid from Mastline&apos;s share.
+                Standard payment-processing costs are paid from Mastline’s share.
               </li>
               <li>
                 <strong>Licenses.</strong> You set the price and terms of every license. Mastline
-                generates the license document from your choices and records the buyer&apos;s
+                generates the license document from your choices and records the buyer’s
                 acceptance. Mastline is not a party to the license between you and the buyer.
               </li>
               <li>
@@ -81,7 +81,7 @@ export default function Page() {
               plan at any time; changes take effect at the next billing cycle and annual plans are
               prorated as described on our <Link href="/pricing">Pricing page</Link>. Fees are
               non-refundable except where required by law. We may change prices with at least 30
-              days&apos; notice.
+              days’ notice.
             </p>
 
             <h2>5. Acceptable use</h2>
@@ -89,13 +89,13 @@ export default function Page() {
             <ul>
               <li>
                 upload content you do not have the right to use or license, or that infringes
-                anyone&apos;s rights;
+                anyone’s rights;
               </li>
               <li>
                 harass, stalk, threaten, or endanger any person, or coordinate others to do so;
               </li>
               <li>
-                collect or store information about individuals&apos; private locations or activities
+                collect or store information about individuals’ private locations or activities
                 beyond what is lawful in the relevant jurisdiction;
               </li>
               <li>
@@ -106,7 +106,7 @@ export default function Page() {
                 editorial;
               </li>
               <li>
-                interfere with the Service, probe its security, or access another user&apos;s
+                interfere with the Service, probe its security, or access another user’s
                 account or data without permission.
               </li>
             </ul>
@@ -133,7 +133,7 @@ export default function Page() {
             <p>
               Editors and buyers who receive your pitches interact with Mastline through links you
               send. They are not required to hold accounts. We are not responsible for a
-              buyer&apos;s decisions, payment behavior, or use of licensed material beyond what
+              buyer’s decisions, payment behavior, or use of licensed material beyond what
               Mastline records. Third-party services you connect are governed by their own terms.
             </p>
 
@@ -170,10 +170,10 @@ export default function Page() {
 
             <h2>12. Disclaimers and limitation of liability</h2>
             <p>
-              The Service is provided &quot;as is&quot; and &quot;as available.&quot; To the fullest
+              The Service is provided “as is” and “as available.” To the fullest
               extent permitted by law, Mastline disclaims all warranties, express or implied, and is
               not liable for indirect, incidental, special, consequential, or punitive damages, or
-              for lost profits, revenue, or data. Mastline&apos;s total liability for any claim
+              for lost profits, revenue, or data. Mastline’s total liability for any claim
               arising from the Service will not exceed the greater of the fees you paid us in the
               twelve months before the claim or US$100. Some jurisdictions do not allow these
               limitations, in which case they apply to the maximum extent permitted.
@@ -195,7 +195,7 @@ export default function Page() {
 
             <h2>15. Changes to these Terms</h2>
             <p>
-              We may update these Terms. For material changes we will give at least 30 days&apos;
+              We may update these Terms. For material changes we will give at least 30 days’
               notice by email or in the product. Continued use after the effective date means you
               accept the new Terms.
             </p>

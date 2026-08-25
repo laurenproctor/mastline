@@ -15,7 +15,7 @@ export default function Page() {
           <p className="lede">
             You may have found this page because you, or someone you represent, appears in a picture
             that was pitched or licensed using Mastline. Here is what Mastline is, what it
-            isn&apos;t, and how to reach us.
+            isn’t, and how to reach us.
           </p>
         </div>
       </section>
@@ -33,7 +33,7 @@ export default function Page() {
 
             <h2>What Mastline will not do</h2>
             <p>
-              Mastline does not track people&apos;s locations, scrape private accounts, or
+              Mastline does not track people’s locations, scrape private accounts, or
               coordinate photographers toward any individual. Its news radar reads public
               information only: premieres, court calendars, published stories, and announced
               appearances. These rules are written into our{" "}

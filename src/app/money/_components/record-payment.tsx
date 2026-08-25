@@ -55,7 +55,7 @@ export function RecordPayment({ buyers }: { buyers: readonly { id: string; name:
       <Field control="select" defaultValue="statement" label="Source" name="source">
         <option value="statement">Agency statement</option>
         <option value="invoice">Invoice</option>
-        <option value="checkout">Direct licence</option>
+        <option value="checkout">Direct license</option>
         <option value="recovery">Rights recovery</option>
         <option value="manual">Manual entry</option>
       </Field>
@@ -89,7 +89,7 @@ export function RecordPayment({ buyers }: { buyers: readonly { id: string; name:
       />
       <div className="spacer" />
       <Field
-        hint="Only for a licence Mastline generated."
+        hint="Only for a license Mastline generated."
         inputMode="decimal"
         label="Sales Engine share"
         name="platformFee"

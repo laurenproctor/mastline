@@ -6,7 +6,7 @@ import { type MoneyActionState, allocatePaymentAction } from "../actions";
 
 const INITIAL: MoneyActionState = {};
 
-/** Attribute an unallocated remainder to the licence or submission that earned it. */
+/** Attribute an unallocated remainder to the license or submission that earned it. */
 export function AllocateForm({
   paymentId,
   reference,
@@ -38,8 +38,8 @@ export function AllocateForm({
         {reference} · ${remainingMajor.toFixed(2)} unattributed
       </p>
 
-      <Field control="select" label="Attribute to a licence" name="licenseId">
-        <option value="">Not a licence</option>
+      <Field control="select" label="Attribute to a license" name="licenseId">
+        <option value="">Not a license</option>
         {licenses.map((license) => (
           <option key={license.id} value={license.id}>
             {license.label}

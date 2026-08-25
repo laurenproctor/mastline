@@ -91,7 +91,7 @@ export function OutcomePanel({
           <div className="spacer" />
           <Field
             control="select"
-            label="Where did this licence come from?"
+            label="Where did this license come from?"
             name="origin"
             onChange={(event) =>
               setOrigin(event.target.value as "external" | "mastline_sales_engine")
@@ -136,7 +136,7 @@ export function OutcomePanel({
               <>
                 <Badge tone="neutral">No Mastline share</Badge>
                 <p className="section-note">
-                  Mastline takes 30% only on licences it generated. This one is yours in full.
+                  Mastline takes 30% only on licenses it generated. This one is yours in full.
                 </p>
               </>
             )}

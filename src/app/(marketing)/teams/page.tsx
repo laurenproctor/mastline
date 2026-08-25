@@ -10,7 +10,7 @@ export default function Page() {
       <section className="pagehead">
         <div className="wrap">
           <div className="crumb">
-            <Link href="/">Home</Link> / Teams &amp; agencies
+            <Link href="/">Home</Link> / Teams & agencies
           </div>
           <h1>Run a crew like one business, not five phones.</h1>
           <p className="lede">
@@ -32,7 +32,7 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Who it&apos;s for</span>
+              <span className="mk-eyebrow">Who it’s for</span>
               <h2>Crews of two to ten, and the agencies that grew out of them.</h2>
             </div>
             <p className="lede">
@@ -46,7 +46,7 @@ export default function Page() {
               <span className="k">
                 Same <em>night,</em> one record
               </span>
-              <h3>Everyone&apos;s frames, one set</h3>
+              <h3>Everyone’s frames, one set</h3>
               <p>
                 Three shooters at three doors of the same venue upload to one shoot. Captions,
                 selects, and the pitch draw from all of it. The buyer sees one package, not three
@@ -61,7 +61,7 @@ export default function Page() {
               <h3>Dispatch and review in a queue</h3>
               <p>
                 Packages wait for whoever is on the desk to check names, restrictions, and outlet
-                rules, then go out under the team&apos;s name. Nothing leaves twice; nothing leaves
+                rules, then go out under the team’s name. Nothing leaves twice; nothing leaves
                 wrong.
               </p>
               <span className="foot">Review queue · Approvals</span>
@@ -88,7 +88,7 @@ export default function Page() {
             <div>
               <span className="mk-eyebrow">What a team gets</span>
               <h2>
-                Everything in Pro, plus the parts that only matter when there&apos;s more than one
+                Everything in Pro, plus the parts that only matter when there’s more than one
                 of you.
               </h2>
             </div>
@@ -107,13 +107,13 @@ export default function Page() {
               <p>
                 Owner, shooter, dispatcher, finance, and rights review. A contributor sees their own
                 shoots and earnings; the desk sees every package; finance sees the money; nobody
-                sees a confidential source they weren&apos;t given.
+                sees a confidential source they weren’t given.
               </p>
             </div>
             <div>
               <h3>Dispatch and review queues</h3>
               <p>
-                Packages assemble from any shooter&apos;s frames and wait for desk approval.
+                Packages assemble from any shooter’s frames and wait for desk approval.
                 Outlet-specific rules are checked automatically; the human on the desk makes the
                 call.
               </p>
@@ -135,8 +135,8 @@ export default function Page() {
             <div>
               <h3>One shared archive</h3>
               <p>
-                Ten years of everyone&apos;s frames, searchable by subject, watched by the news
-                radar, pitched under the team&apos;s name, with the original shooter credited and
+                Ten years of everyone’s frames, searchable by subject, watched by the news
+                radar, pitched under the team’s name, with the original shooter credited and
                 paid on every resale.
               </p>
             </div>
@@ -144,7 +144,7 @@ export default function Page() {
               <h3>Source protection across the team</h3>
               <p>
                 Tips and locations are stored per person with their own visibility. A lead can share
-                a tip with tonight&apos;s crew without it living in everyone&apos;s account forever.
+                a tip with tonight’s crew without it living in everyone’s account forever.
               </p>
             </div>
             <div>
@@ -169,7 +169,7 @@ export default function Page() {
                   <li>
                     <span>
                       <strong>10:40 PM.</strong> The lead creates the shoot and assigns two shooters
-                      to the side entrances. The tip stays in the lead&apos;s account; the crew sees
+                      to the side entrances. The tip stays in the lead’s account; the crew sees
                       the brief.
                     </span>
                   </li>
@@ -183,7 +183,7 @@ export default function Page() {
                   <li>
                     <span>
                       <strong>11:14 PM.</strong> The dispatcher reviews one package, fixes a name,
-                      and sends six pitches under the agency&apos;s name, with a 45-minute exclusive
+                      and sends six pitches under the agency’s name, with a 45-minute exclusive
                       to two desks.
                     </span>
                   </li>
@@ -253,7 +253,7 @@ export default function Page() {
               <h3>API access and integrations</h3>
               <p>
                 Connect Mastline to your own portal, accounting, storage, or rights-monitoring
-                service. Keep what works; replace what doesn&apos;t.
+                service. Keep what works; replace what doesn’t.
               </p>
             </div>
             <div>
@@ -355,8 +355,8 @@ export default function Page() {
               <details>
                 <summary>Can a contributor take their work with them if they leave?</summary>
                 <p>
-                  That&apos;s between you and them, and Mastline supports either answer. Per-shooter
-                  export is available when the owner allows it, and the shooter&apos;s credit and
+                  That’s between you and them, and Mastline supports either answer. Per-shooter
+                  export is available when the owner allows it, and the shooter’s credit and
                   provenance stay on the frames either way.
                 </p>
               </details>
@@ -376,19 +376,19 @@ export default function Page() {
                 </p>
               </details>
               <details>
-                <summary>Can the desk see a shooter&apos;s sources?</summary>
+                <summary>Can the desk see a shooter’s sources?</summary>
                 <p>
                   Only if the shooter shares them. Tips and locations are stored per person with
                   their own visibility, and access is logged.
                 </p>
               </details>
               <details>
-                <summary>We&apos;re bigger than ten. Is that Agency?</summary>
+                <summary>We’re bigger than ten. Is that Agency?</summary>
                 <p>
                   Yes. Studio covers up to ten seats; beyond that, Agency is priced around your
                   contributor count and archive size. Email{" "}
                   <a href="mailto:hello@mastline.co">hello@mastline.co</a> with your contributor
-                  count and archive size and we&apos;ll tell you which plan fits and what migration
+                  count and archive size and we’ll tell you which plan fits and what migration
                   looks like.
                 </p>
               </details>
@@ -400,7 +400,7 @@ export default function Page() {
       <section className="cta-band">
         <div className="wrap">
           <div>
-            <h2>Bring one night&apos;s crew. Keep the rest of the business.</h2>
+            <h2>Bring one night’s crew. Keep the rest of the business.</h2>
             <p>Thirty days free on Studio. Agency plans start with a conversation.</p>
           </div>
           <div className="actions">

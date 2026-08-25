@@ -60,7 +60,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   <Link href="/commercial">Commercial opportunities</Link>
                 </li>
                 <li>
-                  <Link href="/teams">Teams &amp; agencies</Link>
+                  <Link href="/teams">Teams & agencies</Link>
                 </li>
                 <li>
                   <Link href="/editors">For editors</Link>

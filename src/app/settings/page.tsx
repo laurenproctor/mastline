@@ -346,7 +346,7 @@ export default async function SettingsPage({
               </div>
               <p className="section-note">
                 No vendor lock-in. The export contains every asset record, its file hashes and
-                object keys, caption history, shoots, submissions, licences, payments, allocations,
+                object keys, caption history, shoots, submissions, licenses, payments, allocations,
                 and the full activity record, as CSV you can open anywhere.
               </p>
               <p className="section-note">

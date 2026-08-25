@@ -44,7 +44,7 @@ export function ImportStatement({ buyers }: { buyers: readonly { id: string; nam
       <div className="spacer" />
       <Field
         accept=".csv,text/csv"
-        hint="Reference, gross, commission, and net are recognised under most common names."
+        hint="Reference, gross, commission, and net are recognized under most common names."
         label="Statement CSV"
         name="statement"
         required

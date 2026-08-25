@@ -112,7 +112,7 @@ export default function Page() {
             <div>
               <span>
                 <b>No scraping of private accounts</b> or private messages, and no storing of
-                anyone&apos;s home address as a &quot;signal.&quot;
+                anyone’s home address as a “signal.”
               </span>
             </div>
             <div>
@@ -124,7 +124,7 @@ export default function Page() {
             <div>
               <span>
                 <b>No altered or synthetic imagery presented as editorial.</b> Edits beyond standard
-                tone and crop are flagged in the picture&apos;s provenance.
+                tone and crop are flagged in the picture’s provenance.
               </span>
             </div>
             <div>
@@ -152,8 +152,8 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Support when you&apos;re working</span>
-              <h2>A human at 1 a.m., because that&apos;s when it matters.</h2>
+              <span className="mk-eyebrow">Support when you’re working</span>
+              <h2>A human at 1 a.m., because that’s when it matters.</h2>
             </div>
             <p className="lede">
               Live chat and phone support run [SUPPORT HOURS] every night of the week, staffed by

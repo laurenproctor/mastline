@@ -30,7 +30,7 @@ export default function Page() {
               <p className="lede" style={{ marginTop: "18px" }}>
                 Every pitch link works on its own. Open it, look, and accept, counter, or pass. Say
                 yes and the license and full-resolution files are released on the spot. No login to
-                buy. We rarely email, and only when it&apos;s useful.
+                buy. We rarely email, and only when it’s useful.
               </p>
             </div>
             <div className="edsteps">
@@ -91,7 +91,7 @@ export default function Page() {
                   Create a free editor account
                 </a>
                 <a className="btn ghost" href="#editor-account">
-                  See what&apos;s included
+                  See what’s included
                 </a>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">What you&apos;re getting</span>
+              <span className="mk-eyebrow">What you’re getting</span>
               <h2>Pictures with their paperwork already done.</h2>
             </div>
             <p className="lede">
@@ -132,14 +132,14 @@ export default function Page() {
               <h3>Captions that are ready to run</h3>
               <p>
                 Who, where, when, and context, written by the photographer who was there. Names and
-                places are checked against the photographer&apos;s own records before the pitch goes
+                places are checked against the photographer’s own records before the pitch goes
                 out.
               </p>
             </div>
             <div>
               <h3>Exclusives that mean something</h3>
               <p>
-                When you&apos;re offered an exclusive, the countdown is real: the set is not
+                When you’re offered an exclusive, the countdown is real: the set is not
                 released to anyone else until the window ends. When you take it, no one else gets it
                 for the agreed period.
               </p>
@@ -152,7 +152,7 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <h3>Invoices your accounts team will recognise</h3>
+              <h3>Invoices your accounts team will recognize</h3>
               <p>
                 The invoice arrives in the format your outlet requires, with PO and reference
                 fields, on the schedule you prefer: per deal or batched monthly.
@@ -186,7 +186,7 @@ export default function Page() {
             <div>
               <h3>Post a brief</h3>
               <p>
-                Tell Mastline photographers what you&apos;re looking for: a subject, a venue, a date
+                Tell Mastline photographers what you’re looking for: a subject, a venue, a date
                 range, an archive year. Briefs go only to photographers who have the subject on file
                 or are positioned to shoot it, and the responses come back as normal pitches.
               </p>
@@ -217,7 +217,7 @@ export default function Page() {
             <div>
               <h3>Still nothing to pay</h3>
               <p>
-                Editor accounts are free. Mastline earns from the photographer&apos;s side of a
+                Editor accounts are free. Mastline earns from the photographer’s side of a
                 sale, never from the desk.
               </p>
             </div>
@@ -264,7 +264,7 @@ export default function Page() {
                 </svg>
                 <span>
                   <b>Request a set.</b> Reply to any pitch link to ask the photographer for
-                  something specific, from tonight&apos;s shoot or their archive.
+                  something specific, from tonight’s shoot or their archive.
                 </span>
               </li>
               <li>
@@ -296,7 +296,7 @@ export default function Page() {
                 </svg>
                 <span>
                   <b>Pay the way you pay now.</b> Card or bank through Stripe, or on your
-                  outlet&apos;s standard terms. Your choice.
+                  outlet’s standard terms. Your choice.
                 </span>
               </li>
             </ul>
@@ -321,13 +321,13 @@ export default function Page() {
             </div>
             <p className="lede">
               Outlets accept pitches through Mastline knowing what the platform does and
-              doesn&apos;t do.
+              doesn’t do.
             </p>
           </div>
           <div className="never">
             <div>
               <span>
-                <b>No tracking of individuals.</b> Mastline&apos;s news radar reads public signals:
+                <b>No tracking of individuals.</b> Mastline’s news radar reads public signals:
                 premieres, court calendars, published stories, public appearances. It does not
                 locate people.
               </span>
@@ -335,7 +335,7 @@ export default function Page() {
             <div>
               <span>
                 <b>No altered or synthetic imagery presented as editorial.</b> Edits beyond standard
-                tone and crop are flagged in the image&apos;s provenance record.
+                tone and crop are flagged in the image’s provenance record.
               </span>
             </div>
             <div>
@@ -375,7 +375,7 @@ export default function Page() {
                 <p>
                   No. The link is the whole thing. You can view, counter, accept, and download
                   without creating an account. A free editor account is there if you want an inbox,
-                  briefs, and a license library, but it&apos;s never required to buy.
+                  briefs, and a license library, but it’s never required to buy.
                 </p>
               </details>
               <details>
@@ -383,7 +383,7 @@ export default function Page() {
                 <p>
                   The photographer. The license is between your outlet and them; Mastline generates
                   the paperwork, delivers the files, and keeps the record. The invoice comes from
-                  the photographer, or from Mastline on their behalf if they&apos;ve asked us to
+                  the photographer, or from Mastline on their behalf if they’ve asked us to
                   collect.
                 </p>
               </details>
@@ -395,10 +395,10 @@ export default function Page() {
                 </p>
               </details>
               <details>
-                <summary>What if the exclusive window ends while I&apos;m deciding?</summary>
+                <summary>What if the exclusive window ends while I’m deciding?</summary>
                 <p>
                   The set is released to other buyers at the non-exclusive price. You can still buy
-                  it; you just won&apos;t be the only one who has it.
+                  it; you just won’t be the only one who has it.
                 </p>
               </details>
               <details>
@@ -418,7 +418,7 @@ export default function Page() {
               </details>
               <details>
                 <summary>
-                  How do I get my outlet&apos;s invoice requirements into the system?
+                  How do I get my outlet’s invoice requirements into the system?
                 </summary>
                 <p>
                   Tell the photographer once, or email{" "}
@@ -431,7 +431,7 @@ export default function Page() {
                 <summary>Can I ask Mastline photographers for pictures directly?</summary>
                 <p>
                   Yes. Email <a href="mailto:hello@mastline.co">hello@mastline.co</a> with what your
-                  desk is looking for and we&apos;ll route it to photographers who have that subject
+                  desk is looking for and we’ll route it to photographers who have that subject
                   on file or are in position to get it.
                 </p>
               </details>
@@ -443,7 +443,7 @@ export default function Page() {
       <section className="cta-band">
         <div className="wrap">
           <div>
-            <h2>Questions about a pitch you&apos;ve received?</h2>
+            <h2>Questions about a pitch you’ve received?</h2>
             <p>Reply to the photographer directly from the link, or reach us any time.</p>
           </div>
           <div className="actions">

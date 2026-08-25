@@ -27,7 +27,7 @@ export default function Page() {
 
             <h2>1. Who we are</h2>
             <p>
-              Mastline (&quot;Mastline,&quot; &quot;we,&quot; &quot;us&quot;) is operated by
+              Mastline (“Mastline,” “we,” “us”) is operated by
               Storyworlding, with its principal place of business at 155 Prince Street, Floor 3, New
               York, NY 10012. We are the controller of the personal information described in this
               policy. You can reach us at{" "}
@@ -110,7 +110,7 @@ export default function Page() {
                 else, and we do not license them to third parties.
               </li>
               <li>
-                We do not share one photographer&apos;s buyer relationships, prices, or deal history
+                We do not share one photographer’s buyer relationships, prices, or deal history
                 with another photographer in identifiable form.
               </li>
               <li>

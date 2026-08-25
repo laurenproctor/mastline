@@ -265,14 +265,14 @@ export default async function MoneyPage() {
               </div>
               <p className="section-note panel-body">
                 Gross, deductions, the Sales Engine share, tax, and net stay separately inspectable.
-                The 30% share applies only to a licence generated inside Mastline.
+                The 30% share applies only to a license generated inside Mastline.
               </p>
             </Panel>
 
-            <Panel action={<span className="muted">{licenses.length}</span>} title="Licences">
+            <Panel action={<span className="muted">{licenses.length}</span>} title="Licenses">
               {licenses.length === 0 ? (
                 <div className="panel-body">
-                  <p className="section-note">No licences recorded yet.</p>
+                  <p className="section-note">No licenses recorded yet.</p>
                 </div>
               ) : (
                 <div className="table-scroll">
@@ -329,7 +329,7 @@ export default async function MoneyPage() {
                 <div className="side-card">
                   <h3>Export everything</h3>
                   <p>
-                    Assets, metadata, submissions, licences, payments, allocations, and the full
+                    Assets, metadata, submissions, licenses, payments, allocations, and the full
                     activity record, as CSV.
                   </p>
                   <a className="button" download href="/api/export">

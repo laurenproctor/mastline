@@ -112,7 +112,7 @@ export function Plans({ eyebrow, heading }: { eyebrow: string; heading: string }
               </Link>
               {!custom && <p className="plan-trial-note">{trialTermsLabel()}</p>}
 
-              <span className="inc">What&apos;s included</span>
+              <span className="inc">What’s included</span>
               <ul>
                 {plan.features.map((feature) => (
                   <li key={feature}>{feature}</li>

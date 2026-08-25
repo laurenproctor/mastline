@@ -169,7 +169,7 @@ export default function Page() {
               </h2>
               <p>
                 The split is calculated on the license fee after taxes, refunds, chargebacks and
-                discounts. Standard payment processing comes out of Mastline&apos;s share.
+                discounts. Standard payment processing comes out of Mastline’s share.
               </p>
               <label className="calc-slider">
                 <span className="mk-eyebrow" style={{ color: "#8FB0FF" }}>
@@ -230,14 +230,14 @@ export default function Page() {
               </thead>
               <tbody>
                 <tr>
-                  <td>Shoot, asset &amp; submission records</td>
+                  <td>Shoot, asset & submission records</td>
                   <td>✓</td>
                   <td>✓</td>
                   <td>✓</td>
                   <td>✓</td>
                 </tr>
                 <tr>
-                  <td>Invoicing, payments &amp; revenue reporting</td>
+                  <td>Invoicing, payments & revenue reporting</td>
                   <td>✓</td>
                   <td>✓</td>
                   <td>✓</td>
@@ -355,8 +355,8 @@ export default function Page() {
                 <summary>How quickly do I get paid?</summary>
                 <p>
                   When Mastline collects, your share is paid out within two business days of the
-                  buyer&apos;s payment clearing. When you invoice directly, you&apos;re paid on the
-                  outlet&apos;s terms, and Mastline tracks and chases the invoice for you.
+                  buyer’s payment clearing. When you invoice directly, you’re paid on the
+                  outlet’s terms, and Mastline tracks and chases the invoice for you.
                 </p>
               </details>
               <details>
@@ -405,7 +405,7 @@ export default function Page() {
             </h2>
             <p>
               Pitch faster, sell smarter, get paid on time, and keep earning from the work
-              you&apos;ve already done. Mastline runs the business so you can run the night.
+              you’ve already done. Mastline runs the business so you can run the night.
             </p>
             <Link className="btn light" href="/sign-up">
               Start your 30-day trial

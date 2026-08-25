@@ -52,7 +52,7 @@ export default function Page() {
                 }}
               >
                 The photographers who helped shape it still use it every night, and they still tell
-                us what&apos;s wrong with it. That&apos;s the arrangement. Mastline exists to make
+                us what’s wrong with it. That’s the arrangement. Mastline exists to make
                 their business faster, more visible, and more valuable, and to give every picture
                 they take a memory that outlasts the news cycle.
               </p>
@@ -65,7 +65,7 @@ export default function Page() {
         <div className="wrap">
           <div className="who">
             <div>
-              <span className="mk-eyebrow">Who it&apos;s for</span>
+              <span className="mk-eyebrow">Who it’s for</span>
               <h2 style={{ marginTop: "14px" }}>
                 Independent professionals and teams of two to ten.
               </h2>
@@ -116,7 +116,7 @@ export default function Page() {
               <h2>Not unprecedented features. Shared context.</h2>
             </div>
             <p className="lede">
-              Mastline&apos;s advantage is that its features share context across the full
+              Mastline’s advantage is that its features share context across the full
               commercial lifecycle and are designed for one highly specific form of work.
             </p>
           </div>
@@ -182,7 +182,7 @@ export default function Page() {
                 <summary>Do I have to leave my agency?</summary>
                 <p>
                   No. Keep every relationship you have. Record those sales in Mastline with no
-                  commission, and use Mastline&apos;s own pitching and archive tools alongside them.
+                  commission, and use Mastline’s own pitching and archive tools alongside them.
                 </p>
               </details>
               <details>
@@ -196,7 +196,7 @@ export default function Page() {
                 <summary>Does it work on my phone?</summary>
                 <p>
                   Yes. Mastline is a web app, so there is nothing to install: open it in your
-                  phone&apos;s browser, add it to your home screen, and it works like an app. Most
+                  phone’s browser, add it to your home screen, and it works like an app. Most
                   photographers run the whole night from the phone and do the desk work on a laptop
                   the next day.
                 </p>

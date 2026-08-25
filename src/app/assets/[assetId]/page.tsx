@@ -74,7 +74,7 @@ export default async function AssetPage({ params }: { params: Promise<{ assetId:
     })),
     ...assetLicenses.map((license) => ({
       date: license.startsAt ?? "",
-      event: license.origin === "mastline_sales_engine" ? "Direct licence" : "Agency licence",
+      event: license.origin === "mastline_sales_engine" ? "Direct license" : "Agency license",
       counterparty: license.licenseeName,
       detail: [license.media, license.territory].filter(Boolean).join(" · ") || "—",
       value: formatMoney(license.saleBase),
@@ -114,7 +114,7 @@ export default async function AssetPage({ params }: { params: Promise<{ assetId:
 
             <div className="metrics">
               <Metric
-                detail={`${assetLicenses.length} ${assetLicenses.length === 1 ? "licence" : "licences"}`}
+                detail={`${assetLicenses.length} ${assetLicenses.length === 1 ? "license" : "licenses"}`}
                 label="Lifetime earnings"
                 tone={earnings.minor > 0 ? "good" : undefined}
                 value={formatMoney(earnings)}

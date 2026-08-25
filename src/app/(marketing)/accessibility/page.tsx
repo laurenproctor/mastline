@@ -51,7 +51,7 @@ export default function Page() {
               </li>
               <li>
                 <strong>Motion.</strong> Animations are minimal, and the product respects your
-                operating system&apos;s &quot;reduce motion&quot; setting.
+                operating system’s “reduce motion” setting.
               </li>
               <li>
                 <strong>Zoom and reflow.</strong> Layouts reflow at up to 400% zoom and on small
@@ -85,9 +85,9 @@ export default function Page() {
             <p>We are honest about where we are still improving. Currently:</p>
             <ul>
               <li>
-                [KNOWN LIMITATION, e.g. &quot;Some third-party embedded maps in Shoot Workspace are
+                [KNOWN LIMITATION, e.g. “Some third-party embedded maps in Shoot Workspace are
                 not fully navigable by keyboard. We provide an accessible list view of the same
-                locations and are working with the provider.&quot;]
+                locations and are working with the provider.”]
               </li>
               <li>[KNOWN LIMITATION]</li>
             </ul>
@@ -100,7 +100,7 @@ export default function Page() {
               may not perform optimally on browsers more than two major versions old.
             </p>
 
-            <h2>Tell us what&apos;s not working</h2>
+            <h2>Tell us what’s not working</h2>
             <p>
               If you encounter a barrier, or if you need any part of Mastline, including a license
               or invoice, in an alternative format, please contact us. We aim to respond within two

@@ -10,7 +10,7 @@ const ROLES = [
   ["editor", "Editor — shoots, assets, captions, dispatch preparation"],
   ["dispatcher", "Dispatcher — package delivery and status"],
   ["finance", "Finance — revenue, payments, statements, exports"],
-  ["rights_reviewer", "Rights reviewer — evidence and licence checks"],
+  ["rights_reviewer", "Rights reviewer — evidence and license checks"],
   ["viewer", "Viewer — read only, no sensitive access"],
 ] as const;
 

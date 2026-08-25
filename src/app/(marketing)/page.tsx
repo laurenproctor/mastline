@@ -122,7 +122,7 @@ export default function Page() {
                   <em>11:25 PM</em>Full-res delivered · 9 files
                 </span>
                 <span>
-                  <em>11:40 PM</em>Invoice sent in the outlet&apos;s format
+                  <em>11:40 PM</em>Invoice sent in the outlet’s format
                 </span>
                 <span>
                   <em>12:02 AM</em>Archive match · [Subject] back in the news · 5 sets
@@ -166,7 +166,7 @@ export default function Page() {
                   <em>11:25 PM</em>Full-res delivered · 9 files
                 </span>
                 <span>
-                  <em>11:40 PM</em>Invoice sent in the outlet&apos;s format
+                  <em>11:40 PM</em>Invoice sent in the outlet’s format
                 </span>
                 <span>
                   <em>12:02 AM</em>Archive match · [Subject] back in the news · 5 sets
@@ -199,7 +199,7 @@ export default function Page() {
             <p style={{ marginTop: "18px" }}>
               Folders forget. Portals forget. Email definitely forgets. In Mastline every picture
               carries its own record of where it came from, where it went, what it earned, how it
-              may be used, and when it becomes valuable again. Nothing you&apos;ve shot, sold, or
+              may be used, and when it becomes valuable again. Nothing you’ve shot, sold, or
               are owed can quietly disappear.
             </p>
           </div>
@@ -247,7 +247,7 @@ export default function Page() {
             </div>
             <p className="lede">
               Every part of the job, from the tip to the bank, in one place that remembers
-              everything. Here are three of the tools you&apos;ll use every night, plus a{" "}
+              everything. Here are three of the tools you’ll use every night, plus a{" "}
               <Link href="/commercial">second market</Link>
               {" for what's inside every frame: the brands and products your subjects wear."}
             </p>
@@ -308,7 +308,7 @@ export default function Page() {
                   <path d="M12 3v18M16 7.5c0-1.4-1.8-2.5-4-2.5S8 6.1 8 7.5 9.8 10 12 10s4 1.1 4 2.5S14.2 15 12 15s-4-1.1-4-2.5" />
                 </svg>
               </div>
-              <h3>Revenue &amp; Payments</h3>
+              <h3>Revenue & Payments</h3>
               <p className="q">What has been earned, paid, delayed, or lost?</p>
               <p>
                 Expected revenue, statements, deductions, invoices, payment dates, aging, splits,
@@ -338,11 +338,11 @@ export default function Page() {
           <div className="editors">
             <div>
               <span className="mk-eyebrow">Editor experience</span>
-              <h2 style={{ marginTop: "14px" }}>Buyers don&apos;t have to sign up.</h2>
+              <h2 style={{ marginTop: "14px" }}>Buyers don’t have to sign up.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
-                Editors don&apos;t adopt new software. They open links. Every pitch you send is a
+                Editors don’t adopt new software. They open links. Every pitch you send is a
                 single page that works on a phone: watermarked previews, your caption, your price, a
-                countdown if it&apos;s exclusive, and one button to accept. No account, no password,
+                countdown if it’s exclusive, and one button to accept. No account, no password,
                 no app. When they accept, the license and the full-resolution files arrive on their
                 side, and the sale lands on yours.
               </p>
@@ -404,7 +404,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <span className="mk-eyebrow">Archive opportunities</span>
-            <h2 style={{ marginTop: "14px" }}>Turn today&apos;s headlines into archive sales.</h2>
+            <h2 style={{ marginTop: "14px" }}>Turn today’s headlines into archive sales.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               Your archive is full of pictures that are worth nothing today and a lot tomorrow.
               Mastline watches the news for the people in it. When a name spikes, the right sets
@@ -424,7 +424,7 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Who&apos;s trending in your archive</b>, matched against what you actually have
+                  <b>Who’s trending in your archive</b>, matched against what you actually have
                   on file.
                 </span>
               </li>
@@ -457,7 +457,7 @@ export default function Page() {
                 </svg>
                 <span>
                   <b>A freshness window</b>, because interest peaks in the first 72 hours and then
-                  it&apos;s gone.
+                  it’s gone.
                 </span>
               </li>
               <li>
@@ -537,7 +537,7 @@ export default function Page() {
                 </span>
               </div>
               <div className="rw-actions">
-                <span className="btn primary rw-btn">Approve &amp; send 24 pitches</span>
+                <span className="btn primary rw-btn">Approve & send 24 pitches</span>
                 <span className="rw-est">
                   If 4 of 8 buy ≈ <b>$4,200</b>
                 </span>
@@ -670,7 +670,7 @@ export default function Page() {
                 <div>
                   <b>The money lands.</b>
                   <p>
-                    Invoices went out the night of each sale, in each outlet&apos;s format. Payments
+                    Invoices went out the night of each sale, in each outlet’s format. Payments
                     arrive on terms, and every dollar is tied back to the picture that earned it.
                   </p>
                   <span className="mchip paid">Paid in full</span>
@@ -690,24 +690,24 @@ export default function Page() {
             </div>
             <p className="lede">
               Mastline was shaped by working paparazzi who still use it every night and still tell
-              us what&apos;s wrong with it.
+              us what’s wrong with it.
             </p>
           </div>
           <div className="quotes">
             <blockquote className="quote">
-              <p>&quot;[QUOTE FROM PHOTOGRAPHER 1]&quot;</p>
+              <p>“[QUOTE FROM PHOTOGRAPHER 1]”</p>
               <cite>
                 <b>[First name]</b> · [X] years shooting · New York
               </cite>
             </blockquote>
             <blockquote className="quote">
-              <p>&quot;[QUOTE FROM PHOTOGRAPHER 2]&quot;</p>
+              <p>“[QUOTE FROM PHOTOGRAPHER 2]”</p>
               <cite>
                 <b>[First name]</b> · [X] years shooting · New York
               </cite>
             </blockquote>
             <blockquote className="quote">
-              <p>&quot;[QUOTE FROM PHOTOGRAPHER 3]&quot;</p>
+              <p>“[QUOTE FROM PHOTOGRAPHER 3]”</p>
               <cite>
                 <b>[First name]</b> · [X] years shooting · Los Angeles
               </cite>

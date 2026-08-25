@@ -13,7 +13,7 @@ export default function Page() {
             <Link href="/">Home</Link> / <Link href="/product">Product</Link> / Commercial
             opportunities
           </div>
-          <h1>Photograph the moment. Get paid for what&apos;s inside it.</h1>
+          <h1>Photograph the moment. Get paid for what’s inside it.</h1>
           <p className="lede">
             Every frame you shoot carries more than a face. The jacket, the sneakers, the bag, the
             watch: each one is a product a brand wants seen and a reader wants to buy. Mastline
@@ -211,7 +211,7 @@ export default function Page() {
             </div>
             <p className="lede">
               Matching is assisted, not magic. Each item carries a label you and your readers can
-              trust, and nothing is presented as a certainty that isn&apos;t one.
+              trust, and nothing is presented as a certainty that isn’t one.
             </p>
           </div>
           <div className="matches">
@@ -227,15 +227,15 @@ export default function Page() {
               <span className="chip probable">Probable match</span>
               <h3>Very likely, flagged as such</h3>
               <p>
-                Strong visual match with one or two open questions. Shown with a &quot;likely&quot;
+                Strong visual match with one or two open questions. Shown with a “likely”
                 label; you can promote it to exact in one tap.
               </p>
             </div>
             <div className="match">
               <span className="chip alt">Same-brand alternative</span>
-              <h3>The brand&apos;s current equivalent</h3>
+              <h3>The brand’s current equivalent</h3>
               <p>
-                The item is sold out or last season; the brand&apos;s nearest in-stock piece is
+                The item is sold out or last season; the brand’s nearest in-stock piece is
                 offered, labeled as an alternative.
               </p>
             </div>
@@ -243,7 +243,7 @@ export default function Page() {
               <span className="chip similar">Similar style</span>
               <h3>Get the look</h3>
               <p>
-                No brand identified, or the brand doesn&apos;t sell online. Comparable items from
+                No brand identified, or the brand doesn’t sell online. Comparable items from
                 partner retailers, clearly marked as similar.
               </p>
             </div>
@@ -260,7 +260,7 @@ export default function Page() {
               <ol>
                 <li>
                   <span>
-                    <strong>Buyers you didn&apos;t know existed.</strong> The brand&apos;s PR team,
+                    <strong>Buyers you didn’t know existed.</strong> The brand’s PR team,
                     its agency, the retailer that stocks it, and the marketing desks that buy
                     celebrity-wearing-product imagery, ranked by how often they buy and what they
                     pay.
@@ -269,7 +269,7 @@ export default function Page() {
                 <li>
                   <span>
                     <strong>A suggested package and price.</strong> Built from the frame, the
-                    detected product, the subject&apos;s demand, and what comparable licenses have
+                    detected product, the subject’s demand, and what comparable licenses have
                     closed for.
                   </span>
                 </li>
@@ -287,7 +287,7 @@ export default function Page() {
                 </li>
                 <li>
                   <span>
-                    <strong>Money on the record.</strong> The fee lands in Revenue &amp; Payments
+                    <strong>Money on the record.</strong> The fee lands in Revenue & Payments
                     and on the Asset Record, beside every editorial sale of the same frame.
                   </span>
                 </li>
@@ -353,7 +353,7 @@ export default function Page() {
               <h3>Asset Record</h3>
               <p>
                 Detected products, confirmations, brand pitches, shoppable packages, and every
-                dollar either one earns, on the picture&apos;s permanent record.
+                dollar either one earns, on the picture’s permanent record.
               </p>
             </div>
             <div>
@@ -378,7 +378,7 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <h3>Revenue &amp; Payments</h3>
+              <h3>Revenue & Payments</h3>
               <p>
                 License fees and affiliate commissions, attributed by image, product, and channel,
                 reconciled with the rest of your money.
@@ -505,8 +505,8 @@ export default function Page() {
                 <span className="mk-eyebrow">Shoppable content</span>
                 <span className="big">Net</span>
                 <p>
-                  Affiliate commissions are paid to you net of the network&apos;s fees, attributed
-                  per image and product, and shown line by line in Revenue &amp; Payments.
+                  Affiliate commissions are paid to you net of the network’s fees, attributed
+                  per image and product, and shown line by line in Revenue & Payments.
                 </p>
               </div>
             </div>
@@ -536,7 +536,7 @@ export default function Page() {
                 </summary>
                 <p>
                   Not through Mastline unless the rights analysis clears it. Commercial use of a
-                  person&apos;s likeness often requires a release, and subjects who have opted out
+                  person’s likeness often requires a release, and subjects who have opted out
                   are excluded. Where a release is needed, Mastline says so before any pitch is
                   sent.
                 </p>
@@ -561,8 +561,8 @@ export default function Page() {
                 <summary>Which affiliate networks and brands are included?</summary>
                 <p>
                   Mastline connects to the major retail affiliate networks and a growing set of
-                  direct brand programs. If a brand isn&apos;t in a program, you still get the
-                  licensing route and a &quot;similar style&quot; alternative for the shoppable one.
+                  direct brand programs. If a brand isn’t in a program, you still get the
+                  licensing route and a “similar style” alternative for the shoppable one.
                 </p>
               </details>
               <details>
@@ -581,7 +581,7 @@ export default function Page() {
         <div className="wrap">
           <div>
             <h2>Your archive is full of products. Start getting paid for them.</h2>
-            <p>Thirty days free on Pro. Upload a set and see what&apos;s inside it.</p>
+            <p>Thirty days free on Pro. Upload a set and see what’s inside it.</p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">

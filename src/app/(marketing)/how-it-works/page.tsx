@@ -166,7 +166,7 @@ export default function Page() {
             <h2 style={{ marginTop: "14px" }}>One live shoot, start to finish.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               The first loop is designed to be fast enough to complete during real work. If Mastline
-              can&apos;t make one live shoot materially easier, nothing else matters.
+              can’t make one live shoot materially easier, nothing else matters.
             </p>
             <div className="who" style={{ gridTemplateColumns: "1fr", gap: "0", marginTop: "8px" }}>
               <div>
@@ -192,7 +192,7 @@ export default function Page() {
             >
               Point Mastline at your archive and let it import overnight. Existing captions and
               keywords come in on their own; anything untagged waits in a queue you can clear in a
-              few short sessions. By Monday the news radar is watching every subject you&apos;ve
+              few short sessions. By Monday the news radar is watching every subject you’ve
               ever shot.
             </p>
           </div>

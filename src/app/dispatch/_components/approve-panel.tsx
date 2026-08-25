@@ -136,7 +136,7 @@ export function ApprovePanel({
 
       <p className="section-note">
         The exact frames, versions, and terms above are frozen on the submission and cannot be
-        edited afterwards. Mastline records the dispatch; it does not transmit to the buyer&apos;s
+        edited afterwards. Mastline records the dispatch; it does not transmit to the buyer’s
         systems yet.
       </p>
     </form>

@@ -25,9 +25,9 @@ export default function Page() {
 
             <h2>Encryption</h2>
             <p>
-              All traffic between your devices, buyers&apos; devices, and Mastline is encrypted with
+              All traffic between your devices, buyers’ devices, and Mastline is encrypted with
               TLS 1.2 or higher. Your files and records are encrypted at rest using AES-256.
-              Encryption keys are managed through our cloud provider&apos;s key-management service
+              Encryption keys are managed through our cloud provider’s key-management service
               and rotated on a schedule.
             </p>
 
