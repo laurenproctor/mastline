@@ -24,6 +24,23 @@ describe("Field", () => {
     expect(screen.getByLabelText("Priority")).toBeInstanceOf(HTMLSelectElement);
   });
 
+  it("marks a required field in its label as well as on the control", () => {
+    render(<Field label="Subject or event" name="title" required />);
+    const label = document.querySelector("label[for='field-title']")!;
+    expect(label).toHaveTextContent("Subject or event*");
+    expect(screen.getByLabelText(/Subject or event/)).toBeRequired();
+  });
+
+  it("hides the asterisk from the accessibility tree, where required is announced", () => {
+    render(<Field label="Subject or event" name="title" required />);
+    expect(document.querySelector(".required-mark")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("puts no asterisk on an optional field", () => {
+    render(<Field label="Location" name="locationName" />);
+    expect(document.querySelector(".required-mark")).toBeNull();
+  });
+
   it("names the control so a form submission can read it", () => {
     render(<Field label="Location" name="locationName" />);
     expect(screen.getByLabelText("Location")).toHaveAttribute("name", "locationName");

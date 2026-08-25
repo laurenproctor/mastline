@@ -102,11 +102,16 @@ button {
   border-left-color: var(--blue);
   font-weight: 700;
 }
+/* An SVG now, not a glyph in a monospace box. */
 .nav-icon {
-  width: 20px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  text-align: center;
-  font-size: 16px;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  opacity: 0.62;
+}
+.nav-link.active .nav-icon,
+.nav-link:hover .nav-icon {
+  opacity: 1;
 }
 .sidebar-foot {
   margin-top: auto;
@@ -127,9 +132,11 @@ button {
   color: var(--muted);
 }
 .avatar {
+  flex: 0 0 auto;
   width: 34px;
   height: 34px;
   border-radius: 50%;
+  overflow: hidden;
   display: grid;
   place-items: center;
   color: white;
@@ -359,6 +366,19 @@ button {
 .list-row.danger {
   border-left: 2px solid var(--red);
 }
+/*
+ * The activity feed labels each row with the entity it happened to, and
+ * "organization" is wider than the 86px the work queue's Kind column needs.
+ * A wider first track and a larger gutter keep the label from crowding the
+ * sentence next to it, which is the part somebody is actually reading.
+ */
+.list.activity .list-row {
+  grid-template-columns: 116px minmax(0, 1fr) 90px;
+  gap: 20px;
+}
+.list.activity .list-row h3 {
+  margin: 0;
+}
 .side-card {
   padding: 18px;
   border-bottom: 1px solid var(--line);
@@ -580,6 +600,54 @@ button {
   color: var(--muted);
   font-weight: 750;
 }
+/* Colour never carries the meaning alone here: the asterisk is the signal. */
+.required-mark {
+  margin-left: 3px;
+  color: var(--red);
+}
+.required-legend {
+  color: var(--muted);
+  font-size: 11px;
+}
+/* The inline "add a buyer" form, nested inside a larger form. Indented and
+   ruled so it reads as a sub-decision rather than more of the same brief. */
+.buyer-new {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--blue);
+  background: rgba(0, 0, 0, 0.015);
+}
+.buyer-new .actions {
+  margin-top: 2px;
+}
+/* Suggestion controls in the inspector. A suggestion is always labelled as
+   one, and always sits above the fields it filled in, never inside them. */
+.suggest-bar {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0 2px;
+}
+.suggest-bar .button {
+  justify-self: start;
+}
+.suggestion-note {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  margin: 8px 0 2px;
+  border: 1px solid #bac6ff;
+  border-left: 2px solid var(--blue);
+  background: #eef1ff;
+}
+.suggestion-note p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink);
+}
 .field input,
 .field select,
 .field textarea {
@@ -621,6 +689,28 @@ button {
   place-items: center;
   text-align: center;
   padding: 40px;
+}
+/*
+ * Once a shoot has files the contact sheet is the point of the screen, so the
+ * same dropzone shrinks rather than being unmounted. Keeping it in the tree is
+ * what lets an upload already running survive the first batch landing.
+ */
+.dropzone.compact {
+  min-height: 0;
+  padding: 20px;
+  margin-top: 18px;
+}
+.dropzone.compact .dropzone-mark {
+  width: 40px;
+  height: 32px;
+  margin-bottom: 10px;
+  font-size: 17px;
+}
+.dropzone.compact h2 {
+  font-size: 19px;
+}
+.dropzone.compact .upload-options {
+  margin-top: 12px;
 }
 .dropzone-mark {
   width: 66px;
@@ -1126,6 +1216,10 @@ button {
   }
   .list-row {
     grid-template-columns: 70px 1fr;
+  }
+  .list.activity .list-row {
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 14px;
   }
   .list-row .age {
     display: none;

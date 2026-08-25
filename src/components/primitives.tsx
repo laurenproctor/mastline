@@ -161,11 +161,20 @@ export function Field({
   /** A validation message. Bound to the control and announced when it appears. */
   error?: string;
   children?: React.ReactNode;
-} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "children" | "name">) {
+  // ComponentPropsWithRef rather than InputHTMLAttributes so a caller can hold
+  // the control itself. Setting a default on an uncontrolled input from an
+  // effect is a DOM write, not a state update, and keeps the field the
+  // operator's to type in.
+} & Omit<React.ComponentPropsWithRef<"input">, "children" | "name">) {
   const id = `field-${name}`;
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
+  // A required field is marked in the label as well as on the control, so the
+  // obligation is visible before the form is submitted. The asterisk is
+  // decorative -- `required` is what a screen reader announces -- so it is
+  // hidden from the accessibility tree rather than read out as punctuation.
+  const isRequired = Boolean((rest as { required?: boolean }).required);
 
   const shared = {
     id,
@@ -177,7 +186,14 @@ export function Field({
 
   return (
     <div className={full ? "field full" : "field"}>
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>
+        {label}
+        {isRequired && (
+          <span aria-hidden="true" className="required-mark">
+            *
+          </span>
+        )}
+      </label>
       {control === "textarea" ? (
         <textarea {...(shared as React.TextareaHTMLAttributes<HTMLTextAreaElement>)} />
       ) : control === "select" ? (

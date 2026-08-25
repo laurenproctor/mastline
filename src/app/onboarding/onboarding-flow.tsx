@@ -32,6 +32,21 @@ const SAMPLE_IMAGES = [
 
 type WorkspaceTimezone = (typeof WORKSPACE_TIMEZONES)[number];
 
+function Arrow() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="onboarding-arrow"
+      fill="none"
+      height="14"
+      viewBox="0 0 18 14"
+      width="18"
+    >
+      <path d="M1 7h15M11 2l5 5-5 5" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
 function Progress({ step }: { step: number }) {
   return (
     <nav aria-label="Onboarding progress" className="onboarding-progress">
@@ -170,13 +185,9 @@ export function OnboardingFlow({
               </p>
               <button className="onboarding-primary" onClick={next} type="button">
                 Set up my workspace
+                <Arrow />
               </button>
               <p className="trial-line">{trialLabel}</p>
-              <div className="promise-row" aria-label="What this setup creates">
-                <span>01 · Your profile</span>
-                <span>02 · First shoot</span>
-                <span>03 · Ready to work</span>
-              </div>
             </div>
             <div className="welcome-image">
               <Image
@@ -604,6 +615,7 @@ export function OnboardingFlow({
                   type="submit"
                 >
                   {pending ? "Creating workspace…" : "Create workspace and continue"}
+                  {!pending && <Arrow />}
                 </button>
               </form>
               <p className="trial-line">{trialLabel}</p>
@@ -676,6 +688,7 @@ export function OnboardingFlow({
               type="button"
             >
               {step === 5 ? "Review setup" : "Continue"}
+              <Arrow />
             </button>
           </div>
         </footer>

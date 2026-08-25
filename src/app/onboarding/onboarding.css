@@ -7,6 +7,7 @@
   --ob-blue: #1f48ff;
   --ob-blue-soft: #eef1ff;
   --ob-acid: #c7f000;
+  --ob-blue-lift: #8ba1ff;
   min-height: 100vh;
   background: var(--ob-paper);
   color: var(--ob-ink);
@@ -165,19 +166,6 @@
   color: var(--ob-muted);
   font-size: 11px;
   letter-spacing: 0.04em;
-}
-.promise-row {
-  width: 100%;
-  margin-top: 58px;
-  padding-top: 18px;
-  border-top: 1px solid var(--ob-rule);
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  color: var(--ob-muted);
-  font-size: 10px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
 }
 .welcome-image {
   position: relative;
@@ -413,7 +401,7 @@
   background: #111210;
 }
 .dark-intro .onboarding-eyebrow {
-  color: var(--ob-acid);
+  color: var(--ob-blue-lift);
 }
 .dark-intro h1 {
   font-size: clamp(52px, 5vw, 76px);
@@ -439,13 +427,13 @@
   text-align: left;
 }
 .shoot-mode-list button[aria-pressed="true"] {
-  box-shadow: inset 3px 0 0 var(--ob-acid);
+  box-shadow: inset 3px 0 0 var(--ob-blue-lift);
   padding-left: 14px;
   background: #191a18;
 }
 .shoot-mode-list button span {
   grid-row: 1 / 3;
-  color: var(--ob-acid);
+  color: #77776f;
   font-size: 10px;
 }
 .shoot-mode-list button b {
@@ -555,7 +543,7 @@
   overflow: hidden;
 }
 .review-strip button.active {
-  border-color: var(--ob-acid);
+  border-color: var(--ob-blue-lift);
 }
 .review-strip img {
   object-fit: cover;
@@ -618,31 +606,36 @@
   text-transform: uppercase;
   letter-spacing: 0.07em;
 }
+/* Was solid black, which turned a reassurance into a warning. Blue is the
+   brand's own voice, and this is the one place on the screen that speaks in it. */
 .rights-principle {
   margin-top: 46px;
   padding: 22px;
-  color: #fff;
-  background: var(--ob-ink);
+  color: #16224d;
+  background: var(--ob-blue-soft);
+  border-left: 2px solid var(--ob-blue);
 }
 .rights-principle strong {
+  color: var(--ob-blue);
   font-family: var(--font-serif), Georgia, serif;
   font-size: 24px;
   font-weight: 400;
 }
 .rights-principle p {
   margin-bottom: 0;
-  color: #c8c6bf;
+  color: #46527d;
   font-size: 12px;
   line-height: 1.6;
 }
+/* No rules between questions. The heading hierarchy already separates them,
+   and a full-width hairline above each one read as an unfinished table. */
 .rights-form {
-  border-top: 1px solid var(--ob-ink);
+  border-top: 0;
 }
 .rights-form fieldset {
   margin: 0;
-  padding: 26px 0;
+  padding: 0 0 34px;
   border: 0;
-  border-bottom: 1px solid var(--ob-rule);
   display: grid;
   gap: 14px;
 }
@@ -656,9 +649,84 @@
   gap: 12px;
   align-items: flex-start;
 }
-.rights-form input {
-  margin-top: 3px;
-  accent-color: var(--ob-blue);
+/* Radio and checkbox, drawn rather than left to the browser.
+   Borrowed from the contact form's inputs: a 1px rule, a white field, and the
+   blue only arriving on selection. */
+.rights-form label {
+  cursor: pointer;
+}
+.rights-form input[type="radio"],
+.rights-form input[type="checkbox"],
+.sales-engine-toggle input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  border: 1px solid var(--ob-rule);
+  background: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+.rights-form input[type="radio"] {
+  border-radius: 50%;
+}
+.rights-form input[type="checkbox"],
+.sales-engine-toggle input[type="checkbox"] {
+  border-radius: 6px;
+}
+.rights-form input[type="radio"]:hover,
+.rights-form input[type="checkbox"]:hover,
+.sales-engine-toggle input[type="checkbox"]:hover {
+  border-color: var(--ob-blue);
+}
+.rights-form input[type="radio"]:checked,
+.rights-form input[type="checkbox"]:checked,
+.sales-engine-toggle input[type="checkbox"]:checked {
+  border-color: var(--ob-blue);
+  background: var(--ob-blue);
+}
+.rights-form input[type="radio"]::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  transform: scale(0);
+  transition: transform 120ms ease;
+}
+.rights-form input[type="radio"]:checked::after {
+  transform: scale(1);
+}
+.rights-form input[type="checkbox"]::after,
+.sales-engine-toggle input[type="checkbox"]::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 120ms ease;
+}
+.rights-form input[type="checkbox"]:checked::after,
+.sales-engine-toggle input[type="checkbox"]:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+.rights-form input:focus-visible,
+.sales-engine-toggle input:focus-visible {
+  outline: 2px solid var(--ob-blue);
+  outline-offset: 2px;
+}
+
+/* The arrow on every forward action. Drawn so it matches the label's weight
+   at any size, which a text glyph does not. */
+.onboarding-arrow {
+  flex: 0 0 auto;
 }
 .sales-engine-toggle span {
   display: grid;
@@ -888,10 +956,6 @@
   }
   .welcome-image {
     min-height: 460px;
-  }
-  .promise-row {
-    grid-template-columns: 1fr;
-    gap: 8px;
   }
   .onboarding-content {
     padding: 40px 20px 110px;

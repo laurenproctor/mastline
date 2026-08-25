@@ -134,16 +134,14 @@ export default async function WorkQueuePage() {
                   <p className="section-note">Nothing recorded yet.</p>
                 </div>
               ) : (
-                <ul className="list">
+                <ul className="list activity">
                   {activity.map((event) => (
                     <li className="list-row" key={event.id}>
                       <Badge tone="neutral">{event.entityType}</Badge>
                       <div>
                         <h3>{event.summary}</h3>
-                        <p>{event.action}</p>
                       </div>
                       <span className="age">{formatElapsed(event.createdAt, now)}</span>
-                      <span className="row-action muted">Logged</span>
                     </li>
                   ))}
                 </ul>
