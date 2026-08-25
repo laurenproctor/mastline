@@ -12,7 +12,7 @@ export function SignUpForm() {
 
   if (state.checkEmail) {
     return (
-      <div className="su-sent" role="status">
+      <div className="gate-sent" role="status">
         <h2>Check your email</h2>
         <p>
           A confirmation link is on its way to <strong>{state.email}</strong>. Open it and the
@@ -26,10 +26,10 @@ export function SignUpForm() {
   }
 
   return (
-    <form action={formAction} className="su-form">
+    <form action={formAction} className="gate-form">
       <h2>Create your account</h2>
 
-      <div className="su-names">
+      <div className="gate-names">
         <Field autoComplete="given-name" label="First name" name="firstName" />
         <Field autoComplete="family-name" label="Last name" name="lastName" />
       </div>
@@ -47,7 +47,7 @@ export function SignUpForm() {
       />
 
       {state.error && (
-        <p className="su-error" role="alert">
+        <p className="gate-error" role="alert">
           {state.error}
         </p>
       )}
@@ -66,7 +66,7 @@ export function SignUpForm() {
         </svg>
       </button>
 
-      <p className="su-fine">
+      <p className="gate-fine">
         By creating an account you agree to the <Link href="/terms">Terms of Service</Link> and the{" "}
         <Link href="/privacy">Privacy Policy</Link>.
       </p>

@@ -16,7 +16,8 @@ export function VerifyForm({ next }: { next: string }) {
 
   if (useRecovery) {
     return (
-      <form action={recoveryAction} className="auth-form">
+      <form action={recoveryAction} className="gate-form">
+        <h2>Use a recovery code</h2>
         <input name="next" type="hidden" value={next} />
         <Field
           autoComplete="one-time-code"
@@ -27,20 +28,19 @@ export function VerifyForm({ next }: { next: string }) {
           required
         />
         {recoveryState.error && (
-          <p className="auth-error" role="alert">
+          <p className="gate-error" role="alert">
             {recoveryState.error}
           </p>
         )}
-        <div className="spacer" />
-        <button className="button primary auth-submit" disabled={recovering} type="submit">
+        <button className="btn primary" disabled={recovering} type="submit">
           {recovering ? "Checking…" : "Use this code"}
         </button>
-        <p className="section-note">
+        <p className="gate-note">
           Using a code turns two-factor authentication off, so you can sign in and set it up again
           on your new device.
         </p>
-        <p className="section-note">
-          <button className="text-link" onClick={() => setUseRecovery(false)} type="button">
+        <p className="gate-note">
+          <button className="gate-switch" onClick={() => setUseRecovery(false)} type="button">
             Back to the app code
           </button>
         </p>
@@ -49,7 +49,8 @@ export function VerifyForm({ next }: { next: string }) {
   }
 
   return (
-    <form action={formAction} className="auth-form">
+    <form action={formAction} className="gate-form">
+      <h2>Enter your code</h2>
       <input name="next" type="hidden" value={next} />
       <Field
         autoComplete="one-time-code"
@@ -60,16 +61,15 @@ export function VerifyForm({ next }: { next: string }) {
         required
       />
       {state.error && (
-        <p className="auth-error" role="alert">
+        <p className="gate-error" role="alert">
           {state.error}
         </p>
       )}
-      <div className="spacer" />
-      <button className="button primary auth-submit" disabled={pending} type="submit">
+      <button className="btn primary" disabled={pending} type="submit">
         {pending ? "Checking…" : "Continue"}
       </button>
-      <p className="section-note">
-        <button className="text-link" onClick={() => setUseRecovery(true)} type="button">
+      <p className="gate-note">
+        <button className="gate-switch" onClick={() => setUseRecovery(true)} type="button">
           Lost your device? Use a recovery code
         </button>
       </p>

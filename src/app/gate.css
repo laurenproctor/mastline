@@ -1,20 +1,25 @@
 /*
- * The sign-up screen.
+ * The way in: sign up, sign in, the two-factor challenge, and the two password
+ * reset screens.
  *
- * It runs on the editorial direction imported from marketing.css -- paper,
+ * They run on the editorial direction imported from marketing.css -- paper,
  * black ink, acid green for the action, Newsreader for the display line,
- * hairlines instead of boxes -- and adds only what that sheet has no opinion
- * about: a two-column screen with the argument on the left and the form on the
- * right, and the form controls themselves, which come from the application's
- * .field primitive and would otherwise arrive in the operating language.
+ * hairlines instead of boxes -- because they are where the public site hands
+ * over, and a visitor should not fall off a design cliff between clicking the
+ * button and filling in the form. This sheet adds only what marketing.css has
+ * no opinion about: a two-column screen with the words on the left and the
+ * form on the right, and the form controls themselves, which come from the
+ * application's .field primitive and would otherwise arrive in the operating
+ * language.
  *
  * The grid is written as areas rather than DOM order so the reading order is
- * the same on a phone as on a desktop: the case for starting, then the form,
- * then the supporting detail. Nothing is reordered visually behind a keyboard
- * user's back.
+ * the same on a phone as on a desktop: the reason to be here, then the form,
+ * then whatever supports it. Nothing is reordered visually behind a keyboard
+ * user's back, and a screen with nothing to support -- signing in -- simply
+ * leaves that area empty and the split still reaches the bottom.
  */
 
-.su-shell {
+.gate-shell {
   min-height: 100vh;
   /* The dynamic unit where it is understood, so a phone's collapsing address
      bar does not leave a strip of the page's own background below the split. */
@@ -26,7 +31,7 @@
 
 /* Header --------------------------------------------------------------- */
 
-.su-head {
+.gate-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,18 +40,18 @@
   padding: 0 24px;
   border-bottom: 1px solid var(--ink);
 }
-.su-logo img {
+.gate-logo img {
   height: 24px;
   width: auto;
 }
-.su-alt {
+.gate-alt {
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
-.su-alt a {
+.gate-alt a {
   color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -54,7 +59,7 @@
 
 /* The screen ------------------------------------------------------------ */
 
-.su-main {
+.gate-main {
   flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
@@ -69,15 +74,15 @@
      height and the page scrolls as normal. */
   grid-template-rows: auto 1fr;
 }
-.su-lead {
+.gate-lead {
   grid-area: lead;
   padding: 64px 56px 40px 24px;
 }
-.su-support {
+.gate-support {
   grid-area: support;
   padding: 0 56px 64px 24px;
 }
-.su-panel {
+.gate-panel {
   grid-area: form;
   border-left: 1px solid var(--ink);
   background: #fff;
@@ -85,13 +90,13 @@
 }
 /* The reasons column is taller than the form, so the form follows rather than
    scrolling away from someone who reads them before deciding. */
-.su-form,
-.su-sent {
+.gate-form,
+.gate-sent {
   position: sticky;
   top: 40px;
 }
 @media (max-width: 900px) {
-  .su-main {
+  .gate-main {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "lead"
@@ -100,43 +105,43 @@
     /* Stacked, it is the last section that absorbs the spare height. */
     grid-template-rows: auto auto 1fr;
   }
-  .su-lead {
+  .gate-lead {
     padding: 40px 24px 28px;
   }
-  .su-panel {
+  .gate-panel {
     border-left: 0;
     border-top: 1px solid var(--ink);
     border-bottom: 1px solid var(--ink);
     padding: 36px 24px 40px;
   }
-  .su-support {
+  .gate-support {
     padding: 36px 24px 56px;
   }
   /* Nothing to follow on a phone: the form is a section of the page. */
-  .su-form,
-  .su-sent {
+  .gate-form,
+  .gate-sent {
     position: static;
   }
 }
 @media (max-width: 520px) {
   /* The wordmark needs the room more than the question does. */
-  .su-alt span {
+  .gate-alt span {
     display: none;
   }
 }
 
 /* The case -------------------------------------------------------------- */
 
-.su-lead h1 {
+.gate-lead h1 {
   font-size: clamp(44px, 6vw, 84px);
   max-width: 11ch;
   margin-top: 14px;
 }
-.su-lead .lede {
+.gate-lead .lede {
   margin-top: 20px;
   max-width: 46ch;
 }
-.su-terms {
+.gate-terms {
   margin-top: 26px;
   padding-top: 18px;
   border-top: 1px solid var(--ink);
@@ -150,13 +155,13 @@
 
 /* Three reasons, ruled rather than boxed, numbered the way the site numbers
    a sequence: serif figures in the blue it keeps for machinery. */
-.su-reasons {
+.gate-reasons {
   list-style: none;
   margin: 0;
   padding: 0;
   counter-reset: reason;
 }
-.su-reasons li {
+.gate-reasons li {
   counter-increment: reason;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -164,7 +169,7 @@
   padding: 22px 0;
   border-top: 1px solid var(--rule);
 }
-.su-reasons li::before {
+.gate-reasons li::before {
   content: counter(reason, decimal-leading-zero);
   font-family: var(--sans);
   font-size: 12px;
@@ -173,7 +178,7 @@
   color: var(--eblue);
   padding-top: 4px;
 }
-.su-reasons b {
+.gate-reasons b {
   display: block;
   font-family: var(--serif);
   font-weight: 400;
@@ -182,62 +187,62 @@
   font-variation-settings: "opsz" 36;
   margin-bottom: 4px;
 }
-.su-reasons p {
+.gate-reasons p {
   font-size: 14.5px;
   color: var(--ink-2);
   max-width: 52ch;
 }
 
 /* The one commercial fact worth putting in a box on this screen. */
-.su-split {
+.gate-split {
   display: grid;
   grid-template-columns: 1fr 1fr;
   margin-top: 32px;
   border: 1px solid var(--ink);
 }
-.su-split div {
+.gate-split div {
   padding: 20px 22px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.su-split div + div {
+.gate-split div + div {
   border-left: 1px solid var(--ink);
 }
-.su-split b {
+.gate-split b {
   font-family: var(--serif);
   font-weight: 400;
   font-size: clamp(34px, 4vw, 46px);
   line-height: 1;
   letter-spacing: -0.02em;
 }
-.su-split span {
+.gate-split span {
   font-size: 12.5px;
   color: var(--ink-2);
 }
-.su-split .keep {
+.gate-split .keep {
   background: var(--ink);
   color: var(--bg);
 }
-.su-split .keep b {
+.gate-split .keep b {
   color: var(--green);
 }
-.su-split .keep span {
+.gate-split .keep span {
   color: #cfcbc0;
 }
 
 /* The form -------------------------------------------------------------- */
 
-.su-panel h2 {
+.gate-panel h2 {
   font-size: 30px;
   margin-bottom: 24px;
 }
-.su-panel .field {
+.gate-panel .field {
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
-.su-panel .field label {
+.gate-panel .field label {
   font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
@@ -245,7 +250,7 @@
   text-transform: uppercase;
   color: var(--ink);
 }
-.su-panel .field input {
+.gate-panel .field input {
   height: 52px;
   width: 100%;
   padding: 0 14px;
@@ -255,68 +260,72 @@
   background: #fff;
   border: 1px solid var(--rule-2);
 }
-.su-panel .field input:focus-visible {
+.gate-panel .field input:focus-visible {
   outline: 2px solid var(--eblue);
   outline-offset: 1px;
   border-color: var(--eblue);
 }
-.su-panel .field small {
+.gate-panel .field small {
   font-size: 12.5px;
   color: var(--ink-3);
 }
-.su-panel .field-error {
+.gate-panel .field-error {
   color: #b3261e;
 }
-.su-names {
+.gate-names {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
 @media (max-width: 420px) {
-  .su-names {
+  .gate-names {
     grid-template-columns: 1fr;
   }
 }
-.su-form {
+.gate-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* A form, not a banner: past this width a single email field reads as a
+     search bar and the eye has to travel the whole panel to find the button. */
+  max-width: 520px;
 }
-.su-form .btn.primary {
+.gate-form .btn.primary {
   width: 100%;
   height: 56px;
   justify-content: space-between;
   margin-top: 4px;
 }
-.su-error {
+.gate-error {
   border-left: 3px solid #b3261e;
   padding: 10px 0 10px 14px;
   font-size: 14.5px;
   color: #b3261e;
 }
-.su-fine {
+.gate-fine {
   font-size: 12.5px;
   color: var(--ink-3);
   max-width: 44ch;
 }
-.su-fine a {
+.gate-fine a {
   color: var(--ink-3);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.su-fine a:hover {
+.gate-fine a:hover {
   color: var(--ink);
 }
 
 /* The state after the form is sent. */
-.su-sent {
+.gate-sent {
   border-top: 1px solid var(--ink);
   padding-top: 26px;
+  max-width: 520px;
 }
-.su-sent h2 {
+.gate-sent h2 {
   margin-bottom: 12px;
 }
-.su-sent p {
+.gate-sent p {
   font-size: 15px;
   color: var(--ink-2);
   max-width: 44ch;
@@ -325,6 +334,92 @@
 
 /* Somebody who wants Solo or Studio rather than the trial plan needs a way out
    that is not the browser's back button. */
-.su-plans {
+.gate-plans {
   margin-top: 28px;
+}
+
+/* Signing in ------------------------------------------------------------ */
+
+/* "Forgot it?" belongs on the password's own line, where somebody who cannot
+   remember it is already looking, rather than below the button they are about
+   to fail to press. */
+.gate-labelled {
+  position: relative;
+}
+.gate-aside-link {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gate-aside-link:hover {
+  color: var(--ink);
+}
+
+/* The exits, for the two ways a returning photographer gets stuck. Ruled
+   rather than numbered: they are alternatives, not a sequence. */
+.gate-support-head {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+.gate-outs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gate-outs li {
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 14.5px;
+  color: var(--ink-2);
+  max-width: 56ch;
+}
+.gate-outs a {
+  color: var(--eblue);
+}
+
+/* Notes and the switch between the app code and a recovery code. */
+.gate-note {
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 46ch;
+}
+.gate-switch {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--eblue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.gate-switch:hover {
+  color: var(--ink);
+}
+
+/* Development only, and never rendered in production -- see login/page.tsx. */
+.gate-seed {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ink);
+  font-size: 13px;
+  color: var(--ink-3);
+  max-width: 56ch;
+}
+.gate-seed p {
+  margin-top: 8px;
+}
+.gate-seed code {
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--bg-2);
+  padding: 1px 5px;
 }

@@ -23,8 +23,8 @@ export default function SignUpPage() {
   const share = Math.round(SALES_ENGINE_PHOTOGRAPHER_RATE * 100);
 
   return (
-    <main className="su-main" id="main">
-      <div className="su-lead">
+    <main className="gate-main" id="main">
+      <div className="gate-lead">
         <span className="mk-eyebrow">Create your account</span>
         <h1>Start free</h1>
         <p className="lede">
@@ -32,15 +32,15 @@ export default function SignUpPage() {
           the picture that earned it. That is the only demonstration that counts, and it is why the
           trial is as long as it is.
         </p>
-        <p className="su-terms">{trialTermsLabel()}</p>
+        <p className="gate-terms">{trialTermsLabel()}</p>
       </div>
 
-      <div className="su-panel">
+      <div className="gate-panel">
         <SignUpForm />
       </div>
 
-      <div className="su-support">
-        <ol className="su-reasons">
+      <div className="gate-support">
+        <ol className="gate-reasons">
           <li>
             <div>
               <b>The whole of {plan.name}, not a sample.</b>
@@ -71,7 +71,7 @@ export default function SignUpPage() {
           </li>
         </ol>
 
-        <div className="su-split">
+        <div className="gate-split">
           <div className="keep">
             <b>100%</b>
             <span>of the sales made directly. No commission, ever.</span>
@@ -82,7 +82,7 @@ export default function SignUpPage() {
           </div>
         </div>
 
-        <Link className="more su-plans" href="/pricing">
+        <Link className="more gate-plans" href="/pricing">
           Compare all plans
         </Link>
       </div>

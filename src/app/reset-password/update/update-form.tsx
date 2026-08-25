@@ -12,10 +12,10 @@ export function UpdatePasswordForm() {
 
   if (state.ok) {
     return (
-      <div className="auth-confirm" role="status">
+      <div className="gate-sent" role="status">
         <h2>Password updated</h2>
-        <p className="section-note">You can sign in with your new password now.</p>
-        <Link className="button primary" href="/login">
+        <p className="gate-note">You can sign in with your new password now.</p>
+        <Link className="btn primary" href="/login">
           Sign in
         </Link>
       </div>
@@ -23,9 +23,11 @@ export function UpdatePasswordForm() {
   }
 
   return (
-    <form action={formAction} className="auth-form">
+    <form action={formAction} className="gate-form">
+      <h2>New password</h2>
       <Field
         autoComplete="new-password"
+        autoFocus
         hint="At least 10 characters."
         label="New password"
         minLength={10}
@@ -33,7 +35,6 @@ export function UpdatePasswordForm() {
         required
         type="password"
       />
-      <div className="spacer" />
       <Field
         autoComplete="new-password"
         label="Confirm new password"
@@ -44,13 +45,12 @@ export function UpdatePasswordForm() {
       />
 
       {state.error && (
-        <p className="auth-error" role="alert">
+        <p className="gate-error" role="alert">
           {state.error}
         </p>
       )}
 
-      <div className="spacer" />
-      <button className="button primary auth-submit" disabled={pending} type="submit">
+      <button className="btn primary" disabled={pending} type="submit">
         {pending ? "Updating…" : "Update password"}
       </button>
     </form>

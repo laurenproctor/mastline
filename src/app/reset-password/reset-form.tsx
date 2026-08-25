@@ -12,13 +12,13 @@ export function ResetForm() {
 
   if (state.sent) {
     return (
-      <div className="auth-confirm" role="status">
+      <div className="gate-sent" role="status">
         <h2>Check your email</h2>
-        <p className="section-note">
+        <p className="gate-note">
           If that address has an account, a reset link is on its way. The link works once and
           expires shortly.
         </p>
-        <Link className="text-link" href="/login">
+        <Link className="gate-switch" href="/login">
           Back to sign in
         </Link>
       </div>
@@ -26,21 +26,21 @@ export function ResetForm() {
   }
 
   return (
-    <form action={formAction} className="auth-form">
-      <Field autoComplete="email" label="Email" name="email" required type="email" />
+    <form action={formAction} className="gate-form">
+      <h2>Reset your password</h2>
+      <Field autoComplete="email" autoFocus label="Email" name="email" required type="email" />
 
       {state.error && (
-        <p className="auth-error" role="alert">
+        <p className="gate-error" role="alert">
           {state.error}
         </p>
       )}
 
-      <div className="spacer" />
-      <button className="button primary auth-submit" disabled={pending} type="submit">
+      <button className="btn primary" disabled={pending} type="submit">
         {pending ? "Sending…" : "Send reset link"}
       </button>
-      <p className="section-note">
-        <Link className="text-link" href="/login">
+      <p className="gate-note">
+        <Link className="gate-switch" href="/login">
           Back to sign in
         </Link>
       </p>
