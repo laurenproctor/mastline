@@ -4353,11 +4353,43 @@ h2 {
   gap: 28px;
   align-items: center;
 }
+/* The money facts run on the blue gradient, which the direction reserves for
+   money and machinery -- the calculator, the asset record, the running total,
+   the footer. The fill alone defines the panel: border 0 cancels the ink edges
+   the earlier layer sets, so the hero gains no fifth outlined box.
+
+   The type colours are the same ladder the calculator and asset record use:
+   #fff for the figure, #c9d6ff for its sentence. The link needs an explicit
+   colour because the global `a` rule further down sets --eblue, which is
+   unreadable on this ground; `.money-strip a` outranks it on specificity
+   regardless of order. */
 .money-strip {
-  border-top: 1px solid var(--ink);
-  border-bottom: 0;
-  padding: 24px 0 8px;
+  background: var(--bgrad-x);
+  border: 0;
+  padding: 26px 30px;
   margin-top: 22px;
+  gap: 0 32px;
+}
+.money-strip b {
+  color: #fff;
+}
+.money-strip span {
+  color: #c9d6ff;
+}
+.money-strip a {
+  color: #e8eeff;
+}
+.money-strip a:hover {
+  color: var(--green);
+}
+@media (max-width: 860px) {
+  .money-strip {
+    /* Stacked, the panel is tall rather than wide, so the vertical token is
+       the one that reads correctly here. */
+    background: var(--bgrad);
+    padding: 22px 22px;
+    gap: 14px 0;
+  }
 }
 .ticker {
   border-top: 0;
@@ -4814,6 +4846,12 @@ footer .top {
   --eblue: #2b6bff;
   --dblue: #071a66;
   --bgrad: linear-gradient(180deg, #2b6bff 0%, #1240c9 45%, #071a66 100%);
+  /* The same three stops turned along the long axis, for surfaces that are far
+     wider than they are tall. --bgrad crams its full bright-to-navy range into
+     a short element and picks up a glossy sheen; this keeps the travel gradual
+     on a wide strip. Tall surfaces -- the footer, the calculator -- keep the
+     vertical token. */
+  --bgrad-x: linear-gradient(100deg, #2b6bff 0%, #1240c9 45%, #071a66 100%);
 }
 a {
   color: var(--eblue);
