@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" role="presentation">
+<defs>
+<filter id="s1" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10.8"/></filter>
+<filter id="s2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="27.0"/></filter>
+<filter id="s3" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="63.0"/></filter>
+<filter id="haze" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="117.0"/></filter>
+<radialGradient id="flare"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="18%" stop-color="#fff" stop-opacity="0.62"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="vig" cx="50%" cy="42%" r="74%"><stop offset="30%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.86"/></radialGradient>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="36"/><feColorMatrix type="saturate" values="0"/></filter>
+</defs>
+<defs><linearGradient id="g" x1="0.1" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#c3c8d0"/><stop offset="100%" stop-color="#3b4048"/></linearGradient></defs><rect width="1200" height="900" fill="url(#g)"/>
+<circle cx="-123" cy="431" r="36" fill="#f2f4f8" opacity="0.51" filter="url(#s1)"/>
+<circle cx="-107" cy="339" r="39" fill="#f2f4f8" opacity="0.50" filter="url(#s1)"/>
+<circle cx="679" cy="446" r="44" fill="#2b3038" opacity="0.28" filter="url(#s1)"/>
+<circle cx="1069" cy="434" r="43" fill="#ffffff" opacity="0.25" filter="url(#s1)"/>
+<circle cx="32" cy="242" r="38" fill="#ffffff" opacity="0.22" filter="url(#s1)"/>
+<circle cx="463" cy="304" r="34" fill="#ffffff" opacity="0.38" filter="url(#s1)"/>
+<circle cx="344" cy="868" r="45" fill="#ffffff" opacity="0.52" filter="url(#s1)"/>
+<circle cx="728" cy="494" r="17" fill="#f2f4f8" opacity="0.46" filter="url(#s1)"/>
+<circle cx="1307" cy="-70" r="45" fill="#f2f4f8" opacity="0.32" filter="url(#s1)"/>
+<circle cx="682" cy="360" r="26" fill="#2b3038" opacity="0.52" filter="url(#s1)"/>
+<circle cx="1293" cy="526" r="39" fill="#2b3038" opacity="0.23" filter="url(#s1)"/>
+<circle cx="-106" cy="729" r="55" fill="#8f96a1" opacity="0.20" filter="url(#s2)"/>
+<circle cx="918" cy="-86" r="91" fill="#2b3038" opacity="0.35" filter="url(#s2)"/>
+<circle cx="292" cy="343" r="89" fill="#f2f4f8" opacity="0.35" filter="url(#s2)"/>
+<circle cx="633" cy="-29" r="70" fill="#ffffff" opacity="0.42" filter="url(#s2)"/>
+<circle cx="781" cy="218" r="58" fill="#2b3038" opacity="0.21" filter="url(#s2)"/>
+<circle cx="1222" cy="815" r="87" fill="#f2f4f8" opacity="0.43" filter="url(#s2)"/>
+<circle cx="942" cy="857" r="53" fill="#ffffff" opacity="0.26" filter="url(#s2)"/>
+<circle cx="210" cy="608" r="96" fill="#f2f4f8" opacity="0.29" filter="url(#s2)"/>
+<circle cx="880" cy="54" r="146" fill="#f2f4f8" opacity="0.23" filter="url(#s3)"/>
+<circle cx="646" cy="817" r="130" fill="#2b3038" opacity="0.21" filter="url(#s3)"/>
+<circle cx="1217" cy="629" r="111" fill="#ffffff" opacity="0.17" filter="url(#s3)"/>
+<circle cx="357" cy="271" r="153" fill="#ffffff" opacity="0.24" filter="url(#s3)"/>
+<circle cx="1020" cy="271" r="73" fill="url(#flare)"/>
+<circle cx="1020" cy="271" r="12" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<circle cx="1105" cy="198" r="180" fill="url(#flare)"/>
+<circle cx="1105" cy="198" r="29" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<circle cx="613" cy="222" r="144" fill="url(#flare)"/>
+<circle cx="613" cy="222" r="23" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<rect x="578" y="825" width="664" height="11" fill="#2b3038" opacity="0.19" filter="url(#s1)"/>
+<rect x="224" y="781" width="659" height="15" fill="#8f96a1" opacity="0.32" filter="url(#s1)"/>
+<ellipse cx="-96" cy="505" rx="408" ry="450" fill="#000" opacity="0.66" filter="url(#haze)"/>
+<ellipse cx="600" cy="918" rx="840" ry="198" fill="#ffffff" opacity="0.16" filter="url(#haze)"/>
+<rect width="1200" height="900" fill="url(#vig)"/>
+<rect width="1200" height="900" filter="url(#grain)" opacity="0.17" style="mix-blend-mode:overlay"/>
+</svg>

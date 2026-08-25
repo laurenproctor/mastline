@@ -263,11 +263,15 @@ p {
   font-weight: 600;
 }
 
-/* Sections */
-section {
+/* Sections
+   Scoped to .mkt. Next's App Router makes any imported stylesheet global once
+   loaded, so a bare `section` selector here reached /onboarding and /work and
+   put 88px of dead space above every stage. Same reason the `!important`
+   radius reset below is scoped: it was squaring the avatar in the app shell. */
+.mkt section {
   padding: 96px 0;
 }
-section + section {
+.mkt section + section {
   border-top: 1px solid var(--rule);
 }
 .head {
@@ -3500,7 +3504,8 @@ footer .bottom {
   --serif: var(--font-serif), Georgia, "Times New Roman", serif;
   --sans: var(--font-sans), "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
-* {
+.mkt,
+.mkt * {
   border-radius: 0 !important;
   box-shadow: none !important;
 }
@@ -4315,10 +4320,10 @@ a {
 }
 
 /* ===== Editorial direction: spacing + fewer rules ===== */
-section {
+.mkt section {
   padding: 88px 0;
 }
-section + section {
+.mkt section + section {
   border-top: 1px solid var(--rule);
 }
 .head {
@@ -5332,7 +5337,7 @@ footer ul a {
   margin: 0;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  background: var(--bg-3);
+  background: #0b0d12 center / cover no-repeat;
   border: 1px solid var(--ink);
   flex: none;
 }
@@ -5343,30 +5348,6 @@ footer ul a {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-/* The placeholder treatments, in the same four tones the archive
-   demonstration uses for frames it does not have either. A photograph dropped
-   in covers them. */
-.reel-frame.tone-1 {
-  background: linear-gradient(135deg, #3a3f4b, #1c1f26 60%, #0e1014);
-}
-.reel-frame.tone-2 {
-  background: linear-gradient(135deg, #5a4036, #2a1f1b 60%, #120e0d);
-}
-.reel-frame.tone-3 {
-  background: linear-gradient(135deg, #2f4a5c, #1a2630 60%, #0c1116);
-}
-.reel-frame.tone-4 {
-  background: linear-gradient(135deg, #6b6b63, #2a2a27 55%, #101010);
-}
-/* The sheen that keeps an empty frame from reading as a dead rectangle. It is
-   scoped to frames with no photograph in them: dropped on top of a real one it
-   would wash the picture out, which is the opposite of showcasing it. */
-.reel-frame:not(:has(img))::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 62% 34%, rgba(255, 255, 255, 0.22), transparent 58%);
 }
 .reel-frame figcaption {
   position: absolute;
@@ -5497,4 +5478,15 @@ footer ul a {
     right: 0;
     bottom: -2%;
   }
+}
+
+/* The paid date in the asset record was highlighted acid green, which made one
+   ordinary field shout over the five around it and read as a warning rather
+   than a date. It sits on the blue gradient card, so plain white is legible
+   and the record stays even. */
+.memory em {
+  background: transparent;
+  color: #fff;
+  padding: 0;
+  font-style: normal;
 }

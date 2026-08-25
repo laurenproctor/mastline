@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200" width="900" height="1200" role="presentation">
+<defs>
+<filter id="s1" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10.8"/></filter>
+<filter id="s2" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="27.0"/></filter>
+<filter id="s3" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="63.0"/></filter>
+<filter id="haze" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="117.0"/></filter>
+<radialGradient id="flare"><stop offset="0%" stop-color="#fff" stop-opacity="1"/><stop offset="18%" stop-color="#fff" stop-opacity="0.62"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="vig" cx="50%" cy="42%" r="74%"><stop offset="42%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#000" stop-opacity="0.74"/></radialGradient>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="31"/><feColorMatrix type="saturate" values="0"/></filter>
+</defs>
+<defs><linearGradient id="g" x1="0.1" y1="0" x2="0.7" y2="1"><stop offset="0%" stop-color="#1a2130"/><stop offset="100%" stop-color="#0c0f16"/></linearGradient></defs><rect width="900" height="1200" fill="url(#g)"/>
+<circle cx="-86" cy="658" r="23" fill="#ffcf8a" opacity="0.48" filter="url(#s1)"/>
+<circle cx="850" cy="51" r="35" fill="#ffcf8a" opacity="0.37" filter="url(#s1)"/>
+<circle cx="482" cy="797" r="43" fill="#fff2d4" opacity="0.59" filter="url(#s1)"/>
+<circle cx="413" cy="840" r="41" fill="#ffcf8a" opacity="0.38" filter="url(#s1)"/>
+<circle cx="985" cy="64" r="17" fill="#ffcf8a" opacity="0.20" filter="url(#s1)"/>
+<circle cx="450" cy="486" r="20" fill="#ffb45e" opacity="0.52" filter="url(#s1)"/>
+<circle cx="469" cy="997" r="31" fill="#ffb45e" opacity="0.28" filter="url(#s1)"/>
+<circle cx="782" cy="1032" r="18" fill="#ffcf8a" opacity="0.57" filter="url(#s1)"/>
+<circle cx="-80" cy="1083" r="25" fill="#8fb0ff" opacity="0.53" filter="url(#s1)"/>
+<circle cx="170" cy="1168" r="49" fill="#ffb45e" opacity="0.27" filter="url(#s1)"/>
+<circle cx="899" cy="278" r="20" fill="#fff2d4" opacity="0.44" filter="url(#s1)"/>
+<circle cx="602" cy="41" r="37" fill="#ffcf8a" opacity="0.37" filter="url(#s1)"/>
+<circle cx="749" cy="782" r="39" fill="#ffb45e" opacity="0.45" filter="url(#s1)"/>
+<circle cx="241" cy="424" r="17" fill="#8fb0ff" opacity="0.52" filter="url(#s1)"/>
+<circle cx="621" cy="611" r="78" fill="#ffb45e" opacity="0.16" filter="url(#s2)"/>
+<circle cx="1005" cy="1047" r="69" fill="#8fb0ff" opacity="0.28" filter="url(#s2)"/>
+<circle cx="861" cy="-65" r="64" fill="#8fb0ff" opacity="0.23" filter="url(#s2)"/>
+<circle cx="954" cy="-80" r="76" fill="#fff2d4" opacity="0.17" filter="url(#s2)"/>
+<circle cx="374" cy="1042" r="72" fill="#ffcf8a" opacity="0.30" filter="url(#s2)"/>
+<circle cx="-9" cy="790" r="85" fill="#ffb45e" opacity="0.26" filter="url(#s2)"/>
+<circle cx="872" cy="951" r="67" fill="#fff2d4" opacity="0.44" filter="url(#s2)"/>
+<circle cx="126" cy="-109" r="51" fill="#ffcf8a" opacity="0.19" filter="url(#s2)"/>
+<circle cx="-52" cy="460" r="53" fill="#ffcf8a" opacity="0.25" filter="url(#s2)"/>
+<circle cx="330" cy="898" r="99" fill="#8fb0ff" opacity="0.41" filter="url(#s2)"/>
+<circle cx="15" cy="1131" r="206" fill="#8fb0ff" opacity="0.16" filter="url(#s3)"/>
+<circle cx="39" cy="420" r="188" fill="#ffcf8a" opacity="0.22" filter="url(#s3)"/>
+<circle cx="-80" cy="745" r="240" fill="#ffcf8a" opacity="0.10" filter="url(#s3)"/>
+<circle cx="786" cy="-114" r="259" fill="#fff2d4" opacity="0.15" filter="url(#s3)"/>
+<circle cx="215" cy="449" r="98" fill="url(#flare)"/>
+<circle cx="215" cy="449" r="16" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<circle cx="279" cy="631" r="185" fill="url(#flare)"/>
+<circle cx="279" cy="631" r="30" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<circle cx="468" cy="346" r="168" fill="url(#flare)"/>
+<circle cx="468" cy="346" r="27" fill="#fff" opacity="0.95" filter="url(#s1)"/>
+<rect x="225" y="529" width="368" height="24" fill="#8fb0ff" opacity="0.28" filter="url(#s1)"/>
+<ellipse cx="-72" cy="696" rx="306" ry="600" fill="#000" opacity="0.66" filter="url(#haze)"/>
+<ellipse cx="450" cy="1224" rx="630" ry="264" fill="#ffcf8a" opacity="0.16" filter="url(#haze)"/>
+<rect width="900" height="1200" fill="url(#vig)"/>
+<rect width="900" height="1200" filter="url(#grain)" opacity="0.17" style="mix-blend-mode:overlay"/>
+</svg>
