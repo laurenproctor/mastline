@@ -5,21 +5,13 @@ import "./globals.css";
 
 const GTM_ID = "GTM-5V6WVX4R";
 
-/**
- * Search Console's HTML-tag verification, when a token has been issued.
- *
- * Set GOOGLE_SITE_VERIFICATION to the content value Google gives you and the
- * tag appears; leave it unset and no empty tag is emitted. Verifying by DNS TXT
- * instead is the better option if you would rather the token not live in the
- * environment at all -- it also survives a hosting change.
- */
-const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION;
-
 export const metadata: Metadata = {
   // Without this, Next emits relative Open Graph and canonical URLs and warns
   // at build. It is also what the sitemap and robots.txt resolve against.
   metadataBase: new URL(SITE_URL),
-  ...(googleSiteVerification ? { verification: { google: googleSiteVerification } } : {}),
+  // No Search Console verification tag: the property is verified by a DNS TXT
+  // record instead, which keeps the token out of the environment and holds
+  // across a hosting change. Do not add the meta tag back.
   title: "Mastline — Paparazzi Business OS",
   description:
     "From assignment to payment, keep every shoot, image, submission, and dollar in one place.",
