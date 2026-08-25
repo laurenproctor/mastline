@@ -11,6 +11,7 @@ import type { SheetAsset } from "@/components/contact-sheet";
 import { listAssets, listCaptionHistory } from "@/lib/data/assets";
 import { listPackages } from "@/lib/data/packages";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
+import { suggestionsAreConfigured } from "@/lib/data/metadata-suggestions";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { getSensitiveNote, getShoot } from "@/lib/data/shoots";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
@@ -78,6 +79,7 @@ export default async function ShootWorkspacePage({
       missingRequired: report.missingRequired.map((rule) => rule.label),
       missingRecommended: report.missingRecommended.map((rule) => rule.label),
       revisionCount: histories[index].length,
+      isVideo: asset.assetKind === "video",
     };
   });
 
@@ -130,19 +132,7 @@ export default async function ShootWorkspacePage({
           </div>
         </div>
 
-        {assets.length === 0 ? (
-          mayEdit ? (
-            <ImportDropzone shootId={shootId} />
-          ) : (
-            <Panel title="No files yet">
-              <div className="panel-body">
-                <p className="section-note">
-                  This shoot has no files. This role can view the record but not import.
-                </p>
-              </div>
-            </Panel>
-          )
-        ) : (
+        {assets.length > 0 && (
           <>
             <div className="sheet-header">
               <Progress label="Selection ready" value={selectionReport.completionPercent} />
@@ -156,8 +146,28 @@ export default async function ShootWorkspacePage({
               inspectorAssets={inspectorAssets}
               sheetAssets={sheetAssets}
               shootId={shootId}
+              shootLocationName={shoot.locationName}
+              suggestionsAvailable={mayEdit && suggestionsAreConfigured()}
             />
           </>
+        )}
+
+        {/* The dropzone stays on the page once there are files, rather than
+            being swapped out for a link to an anchor that no longer existed.
+            Keeping it mounted is also what lets a running batch finish when the
+            first file lands and the page re-renders underneath it. */}
+        {mayEdit ? (
+          <ImportDropzone compact={assets.length > 0} shootId={shootId} />
+        ) : (
+          assets.length === 0 && (
+            <Panel title="No files yet">
+              <div className="panel-body">
+                <p className="section-note">
+                  This shoot has no files. This role can view the record but not import.
+                </p>
+              </div>
+            </Panel>
+          )
         )}
 
         <div className="spacer" />

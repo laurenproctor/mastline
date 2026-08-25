@@ -205,6 +205,8 @@ export interface Asset {
   readonly organizationId: Id;
   readonly shootId?: Id;
   readonly status: AssetStatus;
+  /** A still or a clip. Set at import from the file's MIME type. */
+  readonly assetKind?: "image" | "video";
   readonly canonicalFilename: string;
   readonly capturedAt?: IsoTimestamp;
   readonly headline?: string;

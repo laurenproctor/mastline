@@ -15,10 +15,16 @@ export function ShootWorkspace({
   shootId,
   sheetAssets,
   inspectorAssets,
+  shootLocationName,
+  suggestionsAvailable = false,
 }: {
   shootId: string;
   sheetAssets: readonly SheetAsset[];
   inspectorAssets: readonly InspectorAsset[];
+  /** Inherited into a frame that has no location of its own. */
+  shootLocationName?: string;
+  /** False when this deployment has no suggestion service configured. */
+  suggestionsAvailable?: boolean;
 }) {
   const [focusedId, setFocusedId] = useState<string | undefined>(sheetAssets[0]?.id);
   const focused = inspectorAssets.find((asset) => asset.id === focusedId) ?? inspectorAssets[0];
@@ -35,7 +41,12 @@ export function ShootWorkspace({
           {focused ? null : <Badge tone="neutral">No frames</Badge>}
         </div>
         {focused ? (
-          <AssetInspector asset={focused} shootId={shootId} />
+          <AssetInspector
+            asset={focused}
+            shootId={shootId}
+            shootLocationName={shootLocationName}
+            suggestionsAvailable={suggestionsAvailable}
+          />
         ) : (
           <p className="empty-sheet">Import files to start captioning.</p>
         )}

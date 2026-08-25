@@ -1,8 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Badge, Field } from "@/components/primitives";
-import { type MetadataState, saveAssetMetadataAction } from "@/app/shoots/actions";
+import {
+  type MetadataState,
+  saveAssetMetadataAction,
+  suggestAssetMetadataAction,
+} from "@/app/shoots/actions";
+import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
+import { formatConfidence } from "@/lib/format";
 
 const INITIAL: MetadataState = {};
 
@@ -21,20 +27,89 @@ export interface InspectorAsset {
   readonly missingRequired: readonly string[];
   readonly missingRecommended: readonly string[];
   readonly revisionCount: number;
+  /** True when the file is a clip rather than a still. */
+  readonly isVideo?: boolean;
 }
 
 /**
  * Edit one asset's metadata.
  *
  * Saving preserves the previous values in the caption history rather than
- * overwriting them, which is why the form says so beneath the button. The key
- * on the form resets its fields when the focused frame changes.
+ * overwriting them, which is why the form says so beneath the button. Remounted
+ * per asset so the fields, and any suggestion sitting in them, belong to the
+ * frame currently in view.
  */
-export function AssetInspector({ asset, shootId }: { asset: InspectorAsset; shootId: string }) {
+export function AssetInspector({
+  asset,
+  shootId,
+  shootLocationName,
+  suggestionsAvailable = false,
+}: {
+  asset: InspectorAsset;
+  shootId: string;
+  /** Inherited into the Location field when this frame has none of its own. */
+  shootLocationName?: string;
+  suggestionsAvailable?: boolean;
+}) {
+  return (
+    <InspectorForm
+      asset={asset}
+      key={asset.id}
+      shootId={shootId}
+      shootLocationName={shootLocationName}
+      suggestionsAvailable={suggestionsAvailable}
+    />
+  );
+}
+
+function InspectorForm({
+  asset,
+  shootId,
+  shootLocationName,
+  suggestionsAvailable,
+}: {
+  asset: InspectorAsset;
+  shootId: string;
+  shootLocationName?: string;
+  suggestionsAvailable: boolean;
+}) {
   const [state, formAction, pending] = useActionState(saveAssetMetadataAction, INITIAL);
 
+  // One fact entered once: a frame with no location of its own starts at the
+  // shoot's, and the operator can overwrite it like any other field. This is a
+  // form default, not a stored value -- nothing is written until Save.
+  const [headline, setHeadline] = useState(asset.headline ?? "");
+  const [caption, setCaption] = useState(asset.caption ?? "");
+  const [keywords, setKeywords] = useState(asset.keywords.join(", "));
+  const [locationName, setLocationName] = useState(asset.locationName ?? shootLocationName ?? "");
+
+  const [suggestion, setSuggestion] = useState<MetadataSuggestion | null>(null);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [suggesting, startSuggesting] = useTransition();
+
+  const inheritedLocation =
+    !asset.locationName && Boolean(shootLocationName) && locationName === shootLocationName;
+
+  const requestSuggestion = () => {
+    setSuggestError(null);
+    startSuggesting(async () => {
+      const result = await suggestAssetMetadataAction(asset.id);
+      if (!result.ok || !result.suggestion) {
+        setSuggestError(result.error ?? "The suggestion could not be made.");
+        return;
+      }
+      const drafted = result.suggestion;
+      setSuggestion(drafted);
+      // Applied straight into the fields, because a suggestion nobody can edit
+      // in place is a suggestion nobody uses. Nothing is saved by this.
+      if (drafted.headline) setHeadline(drafted.headline);
+      if (drafted.caption) setCaption(drafted.caption);
+      if (drafted.keywords.length > 0) setKeywords(drafted.keywords.join(", "));
+    });
+  };
+
   return (
-    <form action={formAction} className="inspector" key={asset.id}>
+    <form action={formAction} className="inspector">
       <input name="assetId" type="hidden" value={asset.id} />
       <input name="shootId" type="hidden" value={shootId} />
 
@@ -51,26 +126,75 @@ export function AssetInspector({ asset, shootId }: { asset: InspectorAsset; shoo
         <p className="inspector-missing">Needs: {asset.missingRequired.join(", ")}</p>
       )}
 
-      <Field defaultValue={asset.headline ?? ""} label="Headline" name="headline" />
+      {suggestionsAvailable && (
+        <div className="suggest-bar">
+          <button
+            className="button small"
+            disabled={suggesting || pending}
+            onClick={requestSuggestion}
+            type="button"
+          >
+            {suggesting
+              ? "Reading the frame…"
+              : suggestion
+                ? "Suggest again"
+                : `Suggest from the ${asset.isVideo ? "clip" : "image"}`}
+          </button>
+          <span className="section-note">
+            Drafts a headline, caption, and keywords. Never suggests who is in frame.
+          </span>
+        </div>
+      )}
+
+      {suggestError && (
+        <p className="auth-error" role="alert">
+          {suggestError}
+        </p>
+      )}
+
+      {suggestion && (
+        <div className="suggestion-note" role="status">
+          <Badge tone="blue">Suggested</Badge>
+          <p>
+            {suggestion.basis} Confidence {formatConfidence(suggestion.confidence)}. Read it,
+            correct it, then save — nothing below is recorded until you do.
+          </p>
+        </div>
+      )}
+
+      <Field
+        label="Headline"
+        name="headline"
+        onChange={(event) => setHeadline(event.target.value)}
+        value={headline}
+      />
       <Field
         control="textarea"
-        defaultValue={asset.caption ?? ""}
         hint="What is happening, who is in frame, where, and when."
         label="Caption"
         name="caption"
+        onChange={(event) => setCaption(event.target.value)}
+        value={caption}
       />
       <Field
         defaultValue={asset.subjects.join(", ")}
-        hint="Comma separated. Leave empty rather than guessing a name."
+        hint="Comma separated. Leave empty rather than guessing a name. Never suggested."
         label="People"
         name="subjects"
       />
-      <Field defaultValue={asset.locationName ?? ""} label="Location" name="locationName" />
       <Field
-        defaultValue={asset.keywords.join(", ")}
+        hint={inheritedLocation ? "Inherited from the shoot. Change it for this frame." : undefined}
+        label="Location"
+        name="locationName"
+        onChange={(event) => setLocationName(event.target.value)}
+        value={locationName}
+      />
+      <Field
         hint="Comma separated."
         label="Keywords"
         name="keywords"
+        onChange={(event) => setKeywords(event.target.value)}
+        value={keywords}
       />
       <Field defaultValue={asset.creditLine ?? ""} label="Credit" name="creditLine" />
       <Field defaultValue={asset.copyrightNotice ?? ""} label="Copyright" name="copyrightNotice" />

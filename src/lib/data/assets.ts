@@ -57,6 +57,7 @@ function toAsset(
     organizationId: row.organization_id,
     shootId: row.shoot_id ?? undefined,
     status: row.status as Asset["status"],
+    assetKind: row.asset_kind === "video" ? "video" : "image",
     canonicalFilename: row.canonical_filename,
     capturedAt: row.captured_at ?? undefined,
     headline: row.headline ?? undefined,

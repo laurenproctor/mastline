@@ -10,6 +10,8 @@ import {
   updateAssetMetadata,
 } from "@/lib/data/assets";
 import { registerDerivative, registerImport, stagingKeyFor } from "@/lib/data/imports";
+import { suggestMetadataForAsset } from "@/lib/data/metadata-suggestions";
+import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
 import { createShoot, getShoot, setShootStatus, updateShootBrief } from "@/lib/data/shoots";
 import { requireContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
@@ -214,6 +216,26 @@ export async function setRatingAction(input: {
   const { organizationId, actorId } = await requireContext("asset.write");
   await setRating({ organizationId, actorId, assetId: input.assetId, rating: input.rating });
   revalidatePath(`/shoots/${input.shootId}`);
+}
+
+export interface SuggestionState {
+  readonly ok: boolean;
+  readonly suggestion?: MetadataSuggestion;
+  readonly error?: string;
+}
+
+/**
+ * Draft caption metadata for one frame.
+ *
+ * This writes nothing. It returns a draft the operator reads, edits, and saves
+ * through saveAssetMetadataAction like anything they typed themselves, which is
+ * what keeps an inferred caption from ever becoming a recorded fact without a
+ * human deciding it should.
+ */
+export async function suggestAssetMetadataAction(assetId: string): Promise<SuggestionState> {
+  const { organizationId } = await requireContext("asset.write");
+  const outcome = await suggestMetadataForAsset({ organizationId, assetId });
+  return { ok: outcome.ok, suggestion: outcome.suggestion, error: outcome.error };
 }
 
 export interface MetadataState {

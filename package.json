@@ -23,6 +23,7 @@
     "verify:all": "npm run verify && npm run test:e2e"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.120.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.112.3",
     "next": "16.2.4",
