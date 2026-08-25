@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { AnimatedFavicon } from "@/components/animated-favicon";
 import { ConsentBanner } from "@/components/consent-banner";
 import { consentDefaultsScript } from "@/lib/consent";
@@ -66,6 +67,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <AnimatedFavicon />
         {children}
         <ConsentBanner />
+        {/*
+          Vercel Analytics, which is deliberately not behind the Consent Mode gate
+          above: it sets no cookie and writes nothing to the visitor's device, so
+          there is no storage signal for that mechanism to withhold. It is a
+          separate collector from the GTM container and is not covered by what the
+          privacy page currently says about analytics -- that disclosure is a
+          question to route to review, not one to settle here.
+        */}
+        <Analytics />
       </body>
     </html>
   );
