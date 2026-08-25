@@ -112,6 +112,7 @@ Placeholders that shipped as written, with the page they are on:
 
 | Placeholder | Page |
 | --- | --- |
+| Nine hero frames — real paparazzi photographs | `/` |
 | `[QUOTE FROM PHOTOGRAPHER 1..3]`, `[First name]`, `[X] years shooting` | `/` |
 | `[Subject]`, `[Franchise]` (the archive demonstration) | `/` |
 | `[CLOUD PROVIDER]`, `[REGION]` | `/security` |
@@ -120,6 +121,14 @@ Placeholders that shipped as written, with the page they are on:
 | `[SUPPORT HOURS]` | `/trust` |
 | `[AGENT PHONE]` | `/copyright` |
 | `[PHONE NUMBER]`, `[KNOWN LIMITATION]` | `/accessibility` |
+
+The hero's wall of frames is the largest of these. It ships with placeholder
+frames rather than photographs because putting real paparazzi shots on the page
+means licensing pictures of identifiable people for commercial use — the thing
+the product exists to keep straight. `_components/hero-reel.tsx` holds the nine
+frames: give one a `src` and an `alt`, drop the file in `public/marketing/hero/`,
+and it renders the photograph in the same box the placeholder was holding, so
+the composition does not move as they arrive one at a time.
 
 Nine addresses are linked and need to exist as real mailboxes: `hello@`,
 `support@`, `press@`, `privacy@`, `legal@`, `security@`, `copyright@`,

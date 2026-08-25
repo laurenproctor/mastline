@@ -5,7 +5,7 @@ import {
   MoneyCounter,
   RelativeDates,
 } from "./_components/behaviors";
-import Image from "next/image";
+import { HeroReel } from "./_components/hero-reel";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: "Mastline — the business behind every image" };
@@ -85,14 +85,7 @@ export default function Page() {
               <b>3 unlicensed uses</b>
               <small>Evidence saved · ready to invoice</small>
             </div>
-            <div className="shot" id="heroShot">
-              <Image
-                src="/marketing/news-radar.jpg"
-                alt="Mastline News radar screen: a live entertainment feed, a selected story with matching archive assets, and an opportunity panel with sales fit, likely buyers, estimated package range, rights snapshot and a Build sales package button."
-                width={1400}
-                height={996}
-              />
-            </div>
+            <HeroReel />
           </div>
           <div className="ticker" aria-label="A night with Mastline, as it happens">
             <div className="ticker-track">

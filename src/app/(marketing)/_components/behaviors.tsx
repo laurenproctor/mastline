@@ -269,13 +269,16 @@ export function RelativeDates() {
 }
 
 /**
- * The hero: a screenshot lying back in 3D that stands up as you scroll, with
- * four cards floating in front of it.
+ * The hero: a wall of frames lying back in 3D that stands up as the page is
+ * scrolled, with four cards floating in front of it.
  *
- * `.hero .stage .shot` is parked at `rotateX(22deg) scale(.94)` in the
- * stylesheet, which is the *start* of the movement, not a pose. Without this
- * the screenshot stays tipped away from the reader for ever and the cards never
- * settle, which reads as a broken image rather than a still one.
+ * `.reel` is parked at `rotateX(22deg) scale(.94)` in the stylesheet, which is
+ * the *start* of the movement, not a pose. Without this the wall stays tipped
+ * away from the reader for ever and the cards never settle, which reads as a
+ * broken image rather than a still one.
+ *
+ * The three columns drift at three rates on top of that, which is the depth:
+ * the near column travels furthest, the far one barely moves.
  *
  * Progress runs 0 to 1 as the stage travels from just below the fold to the
  * upper third of the viewport, smoothed with a smoothstep so it eases at both
@@ -291,10 +294,26 @@ export function HeroStage() {
 
   useEffect(() => {
     const stage = document.getElementById("stage");
-    const shot = document.getElementById("heroShot");
-    if (!stage || !shot || reduced) return;
+    const shot = document.getElementById("heroReel");
+    if (!stage || !shot) return;
 
     const floats = [...stage.querySelectorAll<HTMLElement>(".float")];
+    // Each column drifts at its own rate, which is what makes the wall read as
+    // three planes at three depths rather than one flat picture.
+    const columns = [...stage.querySelectorAll<HTMLElement>(".reel-col")];
+
+    // The preference is only known after the first render, so by the time it
+    // arrives this effect may already have written inline transforms -- and an
+    // inline style outranks the stylesheet's reduced-motion rule, which would
+    // leave the wall tipped over for exactly the reader who asked it not to
+    // move. Hand the positions back to CSS rather than just stopping.
+    if (reduced) {
+      for (const el of [shot, ...columns, ...floats]) {
+        el.style.transform = "";
+        el.style.opacity = "";
+      }
+      return;
+    }
     const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
     // Where the pointer is, and where the animation has caught up to.
@@ -319,6 +338,15 @@ export function HeroStage() {
       const scale = 0.94 + 0.06 * eased;
       const lift = (1 - eased) * 12;
       shot.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale}) translateY(${lift}px)`;
+
+      // The wall travels up as the stage stands up, each column by its own
+      // multiple, and keeps travelling with the page after that so the
+      // parallax does not stop dead at the top of the section.
+      const travel = viewport === 0 ? 0 : clamp((viewport - top) / viewport, 0, 2);
+      for (const column of columns) {
+        const drift = Number(column.dataset.drift) || 1;
+        column.style.transform = `translate3d(0, ${-travel * 96 * drift}px, 0)`;
+      }
 
       for (const float of floats) {
         const depth = Number(float.dataset.depth) || 1;
