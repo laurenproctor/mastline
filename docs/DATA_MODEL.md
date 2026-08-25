@@ -19,6 +19,7 @@ The asset is the canonical center, but it is not isolated:
 | --- | --- |
 | organizations | Tenant/workspace and commercial owner context |
 | memberships | Person-to-organization role and status |
+| profiles | The readable face of an account: name, address, avatar key. Visible to people who share a workspace |
 | buyers | Agencies, publishers, picture desks, and direct licensees |
 | opportunities | News/tip/demand signals and suggested archive value |
 | shoots | Brief, place/time, assignment, confidentiality, workflow state |

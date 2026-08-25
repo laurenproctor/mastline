@@ -70,6 +70,65 @@ export async function makePreview(file: File): Promise<Preview | null> {
   }
 }
 
+/**
+ * The edge of a stored avatar, in pixels.
+ *
+ * It is drawn at 34px in the sidebar, so 256 covers that on a 3x screen and
+ * leaves room for somewhere larger later. Storing the camera original instead
+ * would mean sending twelve megabytes to show a circle the size of a thumbnail.
+ */
+export const AVATAR_EDGE = 256;
+
+/**
+ * The centre square of a rectangle.
+ *
+ * Separated from the drawing so the geometry can be tested without a canvas.
+ * Centre rather than top-left because a face is usually in the middle of a
+ * frame and never in the corner of one.
+ */
+export function centreSquare(
+  width: number,
+  height: number,
+): { x: number; y: number; edge: number } {
+  const edge = Math.min(width, height);
+  return {
+    x: Math.round((width - edge) / 2),
+    y: Math.round((height - edge) / 2),
+    edge,
+  };
+}
+
+/**
+ * Square and shrink a chosen photo, in the browser, before it is uploaded.
+ *
+ * JPEG rather than WebP: at this size the saving is a few kilobytes and is not
+ * worth depending on an encoder that older Safari does not have.
+ */
+export async function makeAvatar(file: File): Promise<Blob | null> {
+  if (!canPreview(file.type)) return null;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { x, y, edge } = centreSquare(bitmap.width, bitmap.height);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = AVATAR_EDGE;
+    canvas.height = AVATAR_EDGE;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      bitmap.close();
+      return null;
+    }
+
+    context.drawImage(bitmap, x, y, edge, edge, 0, 0, AVATAR_EDGE, AVATAR_EDGE);
+    bitmap.close();
+
+    return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+  } catch {
+    return null;
+  }
+}
+
 /** Natural dimensions of an image file, when the browser can read them. */
 export async function readDimensions(
   file: File,

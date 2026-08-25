@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
 import { humanizeStatus } from "@/lib/format";
 import { getWorkspaceStatus } from "@/lib/data/subscription";
+import { Avatar } from "./avatar";
+import { getProfile, signAvatarUrl } from "@/lib/data/profiles";
 import { WorkspaceBanner } from "./workspace-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -92,9 +94,10 @@ export async function AppShell({
           </Link>
 
           <div className="profile">
-            <span aria-hidden="true" className="avatar">
-              {session.initials}
-            </span>
+            <Avatar
+              initials={session.initials}
+              url={await signAvatarUrl((await getProfile(session.userId))?.avatarPath)}
+            />
             <span>
               <strong>{session.displayName}</strong>
               <small>

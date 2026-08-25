@@ -117,6 +117,22 @@ Item numbers below are permanent. Resolved items keep their number so older note
   route uncertainty to review, never derive a copyright conclusion from a radio
   button.
 
+- `public.profiles` has RLS enabled but **not forced**, alone among the tables
+  here. The sign-up trigger must write a row before the account it describes can
+  authenticate, and a forced policy blocks its own `security definer`. The
+  client surface is narrower than elsewhere in exchange: no insert policy and no
+  delete policy exist at all, so a signed-in caller can only read profiles they
+  share a workspace with and update exactly one row. `avatar_path` carries a
+  check constraint tying it to the owner's own storage prefix, so the column
+  cannot be pointed at a colleague's object to borrow their face.
+- Avatars live in their own private bucket keyed by user id, not by
+  organization. The existing storage policies require the first path segment to
+  be an organization id, and a person who works in two workspaces has one face.
+  Read is granted to anyone who shares a workspace with the owner — the same
+  rule as the table — so a face is never visible to someone who cannot already
+  see the name. Kept private rather than public because a photographer's own
+  face at a guessable address is exactly what source protection argues against.
+
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.

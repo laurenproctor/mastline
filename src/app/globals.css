@@ -11,6 +11,16 @@
   --green: #287a52;
   --sidebar: 224px;
   --radius: 3px;
+  /*
+   * The auth and settings blocks below were written against --rule and
+   * --paper-2, which are defined in marketing.css and therefore resolve to
+   * nothing on this side of the sign-in gate. Sixteen borders and backgrounds
+   * were silently not being drawn. Aliasing here fixes all of them in one
+   * place; renaming the call sites instead would be a large diff over working
+   * intent.
+   */
+  --rule: var(--line);
+  --paper-2: #efede7;
 }
 
 * {
@@ -2457,6 +2467,33 @@ a.button {
     align-items: stretch;
     text-align: center;
   }
+}
+
+/*
+ * A photo in the circle the initials used to hold.
+ *
+ * object-fit keeps a face from stretching when the stored square is not quite
+ * square, which it can be by a pixel after rounding. The letter styling above
+ * is harmless on an img and stays there for the resting state.
+ */
+img.avatar {
+  object-fit: cover;
+  background: var(--paper-2);
+}
+
+/* The photo, the explanation, and the two buttons, side by side. */
+.profile-photo {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.profile-photo .avatar {
+  width: 56px;
+  height: 56px;
+  font-size: 16px;
+}
+.profile-photo .section-note {
+  margin-top: 0;
 }
 
 /*

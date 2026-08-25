@@ -19,6 +19,9 @@ import { Progress } from "@/components/primitives";
 import { BuyerTemplate } from "./_components/buyer-template";
 import { EditWorkspace } from "./_components/edit-workspace";
 import { MfaPolicy, TwoFactor } from "./_components/two-factor";
+import { ProfilePhoto } from "./_components/profile-photo";
+import { Avatar } from "@/components/avatar";
+import { getProfile, signAvatarUrl } from "@/lib/data/profiles";
 import { InviteMember } from "./_components/invite-member";
 import { BillingPanel, type PlanOption } from "./_components/billing-panel";
 import { billingSummary, type BillingState } from "@/lib/billing";
@@ -101,6 +104,14 @@ export default async function SettingsPage({
         />
 
         <div className="settings-grid">
+          <Panel title="Your photo">
+            <ProfilePhoto
+              displayName={session.displayName}
+              initials={session.initials}
+              url={await signAvatarUrl((await getProfile(session.userId))?.avatarPath)}
+            />
+          </Panel>
+
           <Panel title="Workspace">
             <div className="panel-body">
               <h3>{workspace.name}</h3>
@@ -149,9 +160,11 @@ export default async function SettingsPage({
             <div className="panel-body">
               {members.map((person) => (
                 <div className="profile" key={person.userId}>
-                  <span aria-hidden="true" className="avatar">
-                    {person.initials}
-                  </span>
+                  <Avatar
+                    initials={person.initials}
+                    name={person.displayName}
+                    url={person.avatarUrl}
+                  />
                   <span>
                     <strong>
                       {person.userId === session.userId ? session.displayName : person.displayName}
