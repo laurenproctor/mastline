@@ -18,7 +18,7 @@ export default function Page() {
             one dispatch queue, one set of books, and splits that pay out without a spreadsheet.
           </p>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "24px" }}>
-            <Link className="btn primary" href="/signup">
+            <Link className="btn primary" href="/sign-up">
               Start a Studio trial
             </Link>
             <a className="btn ghost" href="mailto:hello@mastline.co?subject=Agency%20plan">
@@ -310,7 +310,7 @@ export default function Page() {
               </p>
               <Link
                 className="btn primary"
-                href="/signup"
+                href="/sign-up"
                 style={{ alignSelf: "flex-start", marginTop: "8px" }}
               >
                 Start a Studio trial
@@ -404,7 +404,7 @@ export default function Page() {
             <p>Thirty days free on Studio. Agency plans start with a conversation.</p>
           </div>
           <div className="actions">
-            <Link className="btn light" href="/signup">
+            <Link className="btn light" href="/sign-up">
               Start a Studio trial
             </Link>
             <a className="btn outline" href="mailto:hello@mastline.co?subject=Agency%20plan">

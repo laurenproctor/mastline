@@ -14,7 +14,7 @@ export const SEEDED_ASSET = "a0000000-0000-0000-0000-0000000000d1";
 
 /** Sign in through the real form, because that is a smoke test in itself. */
 export async function signIn(page: Page, email: string = SEEDED.owner): Promise<void> {
-  await page.goto("/login");
+  await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SEEDED.password);
   await page.getByRole("button", { name: /sign in/i }).click();

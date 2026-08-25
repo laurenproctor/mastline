@@ -89,7 +89,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   <Link href="/subjects">If you appear in a photo</Link>
                 </li>
                 <li>
-                  <Link href="/signup">Start free</Link>
+                  <Link href="/sign-up">Start free</Link>
                 </li>
                 <li>
                   <a href="mailto:hello@mastline.co">Contact</a>

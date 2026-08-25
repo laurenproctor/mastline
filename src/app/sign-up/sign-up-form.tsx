@@ -18,7 +18,7 @@ export function SignUpForm() {
           A confirmation link is on its way to <strong>{state.email}</strong>. Open it and the
           workspace is waiting.
         </p>
-        <Link className="btn ghost" href="/login">
+        <Link className="btn ghost" href="/sign-in">
           Back to sign in
         </Link>
       </div>

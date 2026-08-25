@@ -90,7 +90,7 @@ describe("no credential is committed in source", () => {
 
   it("keeps the seeded development password out of application code", () => {
     const appFiles = FILES.filter(
-      (file) => !file.path.includes(".test.") && !file.path.includes("/login/page"),
+      (file) => !file.path.includes(".test.") && !file.path.includes("/sign-in/page"),
     );
     for (const file of appFiles) {
       expect(file.source, file.path).not.toContain("mastline-dev-password");

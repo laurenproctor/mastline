@@ -10,10 +10,10 @@ import "@/app/gate.css";
  * two should not feel they have changed product. What differs is the way out:
  * the alternative offered here is starting an account, not signing in.
  */
-export default function LoginLayout({ children }: { children: React.ReactNode }) {
+export default function SignInLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`mkt gate-shell ${brandSans.variable} ${brandSerif.variable}`}>
-      <GateShell action={{ prompt: "New to Mastline?", label: "Start free", href: "/signup" }}>
+      <GateShell action={{ prompt: "New to Mastline?", label: "Start free", href: "/sign-up" }}>
         {children}
       </GateShell>
     </div>

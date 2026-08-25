@@ -224,7 +224,7 @@ export default function Page() {
             </p>
           </div>
           <div className="actions">
-            <Link className="btn light" href="/signup">
+            <Link className="btn light" href="/sign-up">
               Start your 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">

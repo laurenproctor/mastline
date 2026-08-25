@@ -7,7 +7,7 @@ import { type SignInState, signIn } from "./actions";
 
 const INITIAL: SignInState = {};
 
-export function LoginForm({ next }: { next: string }) {
+export function SignInForm({ next }: { next: string }) {
   const [state, formAction, pending] = useActionState(signIn, INITIAL);
 
   return (

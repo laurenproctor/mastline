@@ -53,10 +53,10 @@ export function SiteNav() {
           ))}
         </ul>
         <div className="cta">
-          <Link className="btn ghost" href="/login">
+          <Link className="btn ghost" href="/sign-in">
             Sign in
           </Link>
-          <Link className="btn primary" href="/signup">
+          <Link className="btn primary" href="/sign-up">
             Start free
           </Link>
         </div>
@@ -92,10 +92,10 @@ export function SiteNav() {
           ))}
         </ul>
         <div className="mactions">
-          <Link className="btn ghost" href="/login">
+          <Link className="btn ghost" href="/sign-in">
             Sign in
           </Link>
-          <Link className="btn primary" href="/signup">
+          <Link className="btn primary" href="/sign-up">
             Start free
           </Link>
         </div>

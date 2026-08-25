@@ -106,7 +106,7 @@ export function Plans({ eyebrow, heading }: { eyebrow: string; heading: string }
 
               <Link
                 className={`btn ${custom ? "ghost" : "primary"}`}
-                href={custom ? "/company" : "/signup"}
+                href={custom ? "/company" : "/sign-up"}
               >
                 {plan.ctaLabel}
               </Link>

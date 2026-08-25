@@ -39,7 +39,7 @@ export async function signIn(_previous: SignInState, formData: FormData): Promis
   revalidatePath("/", "layout");
 
   if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
-    redirect(`/login/verify?next=${encodeURIComponent(destination)}`);
+    redirect(`/sign-in/verify?next=${encodeURIComponent(destination)}`);
   }
 
   redirect(destination);
@@ -101,7 +101,7 @@ export async function verifyWithRecoveryCode(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   const { data: stored } = await supabase
     .from("mfa_recovery_codes")

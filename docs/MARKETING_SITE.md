@@ -58,7 +58,7 @@ and can be linked to and indexed.
 | `/how-it-works` | `/editors` | `/security` |
 | `/pricing` | `/press` | `/accessibility` |
 | `/trust` | `/copyright` | `/acceptable-use` |
-| `/company` | `/subjects` | `/early-access` → `/signup` |
+| `/company` | `/subjects` | `/early-access` → `/sign-up` |
 
 `/` used to redirect to `/work`, which sent anyone who was not signed in
 straight to a sign-in screen. It is now the home page. `/welcome` permanently
@@ -132,12 +132,12 @@ against a "typical agency 40–60%", which is a claim about third parties.
 ## The way in
 
 Every "Start free" -- in the header, the mobile menu, the plan cards, the
-footer, and each page's closing call to action -- goes to `/signup`, which
+footer, and each page's closing call to action -- goes to `/sign-up`, which
 creates the account and hands over to `/onboarding`. "Sign in" goes to
-`/login`. On a phone the header keeps only the primary call to action and sign
+`/sign-in`. On a phone the header keeps only the primary call to action and sign
 in moves into the menu.
 
-`/early-access` permanently redirects to `/signup`. The design captured it as a
+`/early-access` permanently redirects to `/sign-up`. The design captured it as a
 form posting to a `mailto:` address, which would have sent a conversion into a
 mail client instead of creating a workspace. The qualifying questions it asked
 -- market, how you work, what slows you down -- are not captured anywhere yet;

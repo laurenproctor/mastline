@@ -14,5 +14,5 @@ import { permanentRedirect } from "next/navigation";
  * there is an account to attach them to.
  */
 export default function EarlyAccess() {
-  permanentRedirect("/signup");
+  permanentRedirect("/sign-up");
 }

@@ -15,7 +15,7 @@ export function UpdatePasswordForm() {
       <div className="gate-sent" role="status">
         <h2>Password updated</h2>
         <p className="gate-note">You can sign in with your new password now.</p>
-        <Link className="btn primary" href="/login">
+        <Link className="btn primary" href="/sign-in">
           Sign in
         </Link>
       </div>

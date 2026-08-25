@@ -104,7 +104,7 @@ export async function AppShell({
             </span>
           </div>
 
-          <form action="/auth/signout" method="post">
+          <form action="/auth/sign-out" method="post">
             <button className="signout" type="submit">
               Sign out
             </button>

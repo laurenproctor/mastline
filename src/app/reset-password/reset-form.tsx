@@ -18,7 +18,7 @@ export function ResetForm() {
           If that address has an account, a reset link is on its way. The link works once and
           expires shortly.
         </p>
-        <Link className="gate-switch" href="/login">
+        <Link className="gate-switch" href="/sign-in">
           Back to sign in
         </Link>
       </div>
@@ -40,7 +40,7 @@ export function ResetForm() {
         {pending ? "Sending…" : "Send reset link"}
       </button>
       <p className="gate-note">
-        <Link className="gate-switch" href="/login">
+        <Link className="gate-switch" href="/sign-in">
           Back to sign in
         </Link>
       </p>

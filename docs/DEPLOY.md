@@ -10,7 +10,7 @@ done and what is still needed.
   serving <https://mastline.co>.
 - **`/` is the marketing home.** It used to redirect to `/work`, so a stranger
   arriving at mastline.co was sent to the sign-in screen. `/welcome` now
-  permanently redirects to `/`, and sign-in stays at `/login`.
+  permanently redirects to `/`, and sign-in stays at `/sign-in`.
 - **The apex is canonical.** `mastline.co` serves the site and
   `www.mastline.co` returns a 308 to it, preserving the path. Vercel had it the
   other way round when the domain was added, which is the default. If it ever
@@ -103,7 +103,7 @@ else in the product depends on them.
 Middleware serves `/welcome` and `/pricing` before it builds a Supabase client,
 so the public site stays up even when the environment is unconfigured or the
 database is unreachable. Everything behind the sign-in gate correctly fails
-without it. `/login` and `/signup` are not in that set because they redirect an
+without it. `/sign-in` and `/sign-up` are not in that set because they redirect an
 already signed-in visitor, which needs the session.
 
 ## Verifying a deploy
@@ -111,7 +111,7 @@ already signed-in visitor, which needs the session.
 ```sh
 curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/welcome           # 200
 curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/pricing           # 200
-curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/login             # 200
+curl -s -o /dev/null -w '%{http_code}\n' https://mastline.co/sign-in             # 200
 # www must redirect to the apex, not serve:
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://www.mastline.co/welcome
 ```

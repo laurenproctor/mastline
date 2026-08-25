@@ -18,7 +18,7 @@ export const metadata = { title: "Secure your account — Mastline" };
 export default async function SecureYourAccountPage() {
   const cookieStore = await cookies();
   const session = await getSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
   if (!session.activeWorkspace) redirect("/onboarding");
 
   const standing = mfaStanding({

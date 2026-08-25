@@ -43,6 +43,11 @@ const MARKETING_ROUTES = [
  * /api stays gated -- /api/export in particular must never be public.
  */
 const PUBLIC_ROUTES = [
+  "/sign-in",
+  "/sign-up",
+  // The addresses these two used to have. They only redirect, but they have to
+  // be reachable without a session to do it, or somebody following an old
+  // bookmark is bounced through a sign-in they may not need.
   "/login",
   "/signup",
   "/reset-password",
@@ -113,7 +118,7 @@ export async function middleware(request: NextRequest) {
 
   if (!user && !isPublic(pathname)) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/sign-in";
     // Come back here after signing in.
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
@@ -127,7 +132,7 @@ export async function middleware(request: NextRequest) {
     const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
       const url = request.nextUrl.clone();
-      url.pathname = "/login/verify";
+      url.pathname = "/sign-in/verify";
       url.search = "";
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
@@ -135,7 +140,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Somebody already signed in has no use for the sign-in or sign-up screens.
-  if (user && (pathname === "/login" || pathname === "/signup")) {
+  if (user && (pathname === "/sign-in" || pathname === "/sign-up")) {
     const url = request.nextUrl.clone();
     url.pathname = "/work";
     url.search = "";

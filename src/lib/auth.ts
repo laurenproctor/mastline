@@ -168,7 +168,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
  */
 export async function requireSession(activeWorkspaceId?: string): Promise<WorkspaceSession> {
   const session = await getSession(activeWorkspaceId);
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
   if (!session.activeWorkspace) redirect("/onboarding");
 
   // A workspace that requires a second factor requires it to be there before
@@ -187,7 +187,7 @@ export async function requireSession(activeWorkspaceId?: string): Promise<Worksp
 /** The session without requiring a workspace. For the onboarding flow itself. */
 export async function requireUser(): Promise<Session> {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
   return session;
 }
 

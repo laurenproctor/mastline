@@ -11,7 +11,7 @@ true of any workspace that has switched it on.
   because someone reading this on the phone that holds their authenticator
   cannot scan their own screen.
 - **A challenge at sign-in.** A password alone leaves the session at `aal1` when
-  a factor is enrolled, so sign-in lands on `/login/verify` instead of the
+  a factor is enrolled, so sign-in lands on `/sign-in/verify` instead of the
   workspace.
 - **Enforcement.** Middleware sends any `aal1` session that owes a code back to
   the challenge, so it cannot be skipped by typing an address. `requireSession`

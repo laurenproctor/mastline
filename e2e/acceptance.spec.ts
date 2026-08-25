@@ -24,7 +24,7 @@ import {
  */
 
 test.describe("every documented route renders", () => {
-  const PUBLIC_ROUTES = ["/welcome", "/pricing", "/login", "/signup", "/reset-password"];
+  const PUBLIC_ROUTES = ["/welcome", "/pricing", "/sign-in", "/sign-up", "/reset-password"];
   const APP_ROUTES = [
     "/work",
     "/news",
@@ -65,7 +65,7 @@ test.describe("every documented route renders", () => {
 
 test.describe("layout holds at the required sizes", () => {
   test("public pages do not scroll sideways", async ({ page }) => {
-    for (const route of ["/welcome", "/pricing", "/login", "/signup"]) {
+    for (const route of ["/welcome", "/pricing", "/sign-in", "/sign-up"]) {
       await page.goto(route);
       const overflowing = await overflowingElements(page);
       expect(overflowing, `${route} overflows: ${overflowing.join(", ")}`).toEqual([]);
@@ -482,12 +482,12 @@ test.describe("the marketing site", () => {
     // every "Start free" has to land on it.
     await page.goto("/");
     await page.getByRole("link", { name: "Start free" }).first().click();
-    await expect(page).toHaveURL(/\/signup$/);
+    await expect(page).toHaveURL(/\/sign-up$/);
     await expect(page.getByRole("heading", { level: 1, name: "Start free" })).toBeVisible();
 
     // The old address still resolves rather than dead-ending.
     await page.goto("/early-access");
-    await expect(page).toHaveURL(/\/signup$/);
+    await expect(page).toHaveURL(/\/sign-up$/);
   });
 
   test("sign in reaches the sign-in screen", async ({ page }) => {
@@ -504,7 +504,7 @@ test.describe("the marketing site", () => {
       await page.locator(".mobilemenu").getByRole("link", { name: "Sign in" }).click();
     }
 
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).toHaveURL(/\/sign-in/);
     await expect(page.getByLabel("Email")).toBeVisible();
   });
 
@@ -586,20 +586,20 @@ test.describe("two-factor authentication", () => {
 
     try {
       await page.getByRole("button", { name: "Sign out" }).click();
-      await page.waitForURL(/\/login/);
+      await page.waitForURL(/\/sign-in/);
 
       // The password alone now stops at the challenge.
       await page.getByLabel("Email").fill(SEEDED.owner);
       await page.getByLabel("Password").fill(SEEDED.password);
       await page.getByRole("button", { name: /sign in/i }).click();
-      await page.waitForURL(/\/login\/verify/);
+      await page.waitForURL(/\/sign-in\/verify/);
 
       // A second factor that could be skipped by typing an address would not be
       // one. This is the assertion the feature exists for.
       await page.goto("/work");
-      await expect(page).toHaveURL(/\/login\/verify/);
+      await expect(page).toHaveURL(/\/sign-in\/verify/);
       await page.goto("/money");
-      await expect(page).toHaveURL(/\/login\/verify/);
+      await expect(page).toHaveURL(/\/sign-in\/verify/);
 
       lastCode = await freshTotp(secret, lastCode);
       await page.getByLabel("Six-digit code").fill(lastCode);
@@ -620,7 +620,7 @@ test.describe("two-factor authentication", () => {
   test("a required policy stops work until a factor exists", async ({ page }) => {
     await setWorkspaceMfaPolicy(true);
     try {
-      await page.goto("/login");
+      await page.goto("/sign-in");
       await page.getByLabel("Email").fill(SEEDED.owner);
       await page.getByLabel("Password").fill(SEEDED.password);
       await page.getByRole("button", { name: /sign in/i }).click();
@@ -669,11 +669,11 @@ test.describe("two-factor authentication", () => {
 
     // The phone is gone: the secret is of no use, only the paper is.
     await page.context().clearCookies();
-    await page.goto("/login");
+    await page.goto("/sign-in");
     await page.getByLabel("Email").fill(SEEDED.owner);
     await page.getByLabel("Password").fill(SEEDED.password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/login\/verify/);
+    await page.waitForURL(/\/sign-in\/verify/);
 
     await page.getByRole("button", { name: /Lost your device/ }).click();
     await page.getByLabel("Recovery code").fill(codes[0]);
@@ -688,7 +688,7 @@ test.describe("two-factor authentication", () => {
 
     // And that code is spent.
     await page.context().clearCookies();
-    await page.goto("/login");
+    await page.goto("/sign-in");
     await page.getByLabel("Email").fill(SEEDED.owner);
     await page.getByLabel("Password").fill(SEEDED.password);
     await page.getByRole("button", { name: /sign in/i }).click();
@@ -717,7 +717,7 @@ test.describe("signing up asks for a name in two fields", () => {
    * means they are known rather than inferred.
    */
   test("offers first and last name, not one box", async ({ page }) => {
-    await page.goto("/signup");
+    await page.goto("/sign-up");
 
     await expect(page.getByLabel("First name")).toBeVisible();
     await expect(page.getByLabel("Last name")).toBeVisible();
@@ -729,7 +729,7 @@ test.describe("signing up asks for a name in two fields", () => {
   });
 
   test("neither part is required, so a name never blocks an account", async ({ page }) => {
-    await page.goto("/signup");
+    await page.goto("/sign-up");
     await expect(page.getByLabel("First name")).not.toHaveAttribute("required", "");
     await expect(page.getByLabel("Last name")).not.toHaveAttribute("required", "");
     // Email and password still are.

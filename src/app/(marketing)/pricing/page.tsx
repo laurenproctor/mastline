@@ -407,7 +407,7 @@ export default function Page() {
               Pitch faster, sell smarter, get paid on time, and keep earning from the work
               you&apos;ve already done. Mastline runs the business so you can run the night.
             </p>
-            <Link className="btn light" href="/signup">
+            <Link className="btn light" href="/sign-up">
               Start your 30-day trial
             </Link>
           </div>

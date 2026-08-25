@@ -221,10 +221,10 @@ database rather than only the interface.
 
 | Route | Who |
 | --- | --- |
-| `/signup` | A new photographer creates an account |
+| `/sign-up` | A new photographer creates an account |
 | `/onboarding` | Signed in with no workspace yet: name your studio |
 | `/reset-password` | Request a link; `/reset-password/update` sets the new password |
-| `/login` | Everyone else |
+| `/sign-in` | Everyone else |
 
 A new account lands on a 30-day Pro trial with 25 GB of storage and no card.
 When the trial ends the workspace becomes **read-only**: everything stays

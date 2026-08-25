@@ -7,7 +7,7 @@ import "@/app/gate.css";
 export default function ResetPasswordLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`mkt gate-shell ${brandSans.variable} ${brandSerif.variable}`}>
-      <GateShell action={{ prompt: "Remembered it?", label: "Sign in", href: "/login" }}>
+      <GateShell action={{ prompt: "Remembered it?", label: "Sign in", href: "/sign-in" }}>
         {children}
       </GateShell>
     </div>
