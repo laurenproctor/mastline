@@ -584,10 +584,23 @@ button {
   min-height: 88px;
   resize: vertical;
 }
+/* The same focused-field treatment as the way-in screens: the footer's blue
+   gradient painted into the border box, because a gradient can be neither an
+   outline nor a shadow. The stops are repeated here rather than shared, since
+   marketing.css is not loaded on these routes; they are the one thing to keep
+   in step if that gradient ever changes.
+
+   1px to 2px on focus, with a pixel off the padding so the text does not move,
+   and the soft halo kept: the ring is a shape change, not only a hue change. */
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  border-color: var(--blue);
+  border-color: transparent;
+  border-width: 2px;
+  padding: 9px 10px;
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(180deg, #2b6bff 0%, #1240c9 45%, #071a66 100%) border-box;
   box-shadow: 0 0 0 2px #e7ebff;
 }
 .dropzone {

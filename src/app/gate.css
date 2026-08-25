@@ -260,10 +260,26 @@
   background: #fff;
   border: 1px solid var(--rule-2);
 }
+/* The focused field takes the footer's gradient as a border: the same
+   #2B6BFF -> #071A66 run, which is the blue this direction keeps for money and
+   machinery. A gradient cannot be an outline or a shadow, so it has to be
+   painted into the border box -- white clipped to the padding box, gradient
+   clipped to the border box, and the border itself made transparent to let it
+   through.
+
+   The border thickens from 1px to 2px, so the change is weight as well as hue,
+   and the padding drops by the same pixel so nothing under the cursor moves.
+   The transparent outline is not decoration: in forced-colours mode gradients
+   are dropped, and it is what still draws a ring there. */
 .gate-panel .field input:focus-visible {
-  outline: 2px solid var(--eblue);
-  outline-offset: 1px;
-  border-color: var(--eblue);
+  border-color: transparent;
+  border-width: 2px;
+  padding: 0 13px;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    var(--bgrad) border-box;
+  outline: 2px solid transparent;
+  outline-offset: 0;
 }
 .gate-panel .field small {
   font-size: 12.5px;
