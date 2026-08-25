@@ -22,7 +22,7 @@ export default function Page() {
               Start a Studio trial
             </Link>
             <a className="btn ghost" href="mailto:hello@mastline.co?subject=Agency%20plan">
-              Talk to us about Agency
+              Ask about Agency
             </a>
           </div>
         </div>
@@ -38,7 +38,7 @@ export default function Page() {
             <p className="lede">
               A lead shooter with two regulars. A husband-and-wife team that splits every night. A
               boutique agency with a desk, a dispatcher, and a dozen contributors on an Agency plan.
-              If more than one person touches the pictures or the money, this is for you.
+              Where more than one person touches the pictures or the money, this is the plan.
             </p>
           </div>
           <div className="wants">
@@ -88,8 +88,7 @@ export default function Page() {
             <div>
               <span className="mk-eyebrow">What a team gets</span>
               <h2>
-                Everything in Pro, plus the parts that only matter when there’s more than one
-                of you.
+                Everything in Pro, plus the parts that only matter with more than one shooter.
               </h2>
             </div>
           </div>
@@ -135,9 +134,9 @@ export default function Page() {
             <div>
               <h3>One shared archive</h3>
               <p>
-                Ten years of everyone’s frames, searchable by subject, watched by the news
-                radar, pitched under the team’s name, with the original shooter credited and
-                paid on every resale.
+                Ten years of everyone’s frames, searchable by subject, watched by the news radar,
+                pitched under the team’s name, with the original shooter credited and paid on every
+                resale.
               </p>
             </div>
             <div>
@@ -169,8 +168,8 @@ export default function Page() {
                   <li>
                     <span>
                       <strong>10:40 PM.</strong> The lead creates the shoot and assigns two shooters
-                      to the side entrances. The tip stays in the lead’s account; the crew sees
-                      the brief.
+                      to the side entrances. The tip stays in the lead’s account; the crew sees the
+                      brief.
                     </span>
                   </li>
                   <li>
@@ -183,8 +182,8 @@ export default function Page() {
                   <li>
                     <span>
                       <strong>11:14 PM.</strong> The dispatcher reviews one package, fixes a name,
-                      and sends six pitches under the agency’s name, with a 45-minute exclusive
-                      to two desks.
+                      and sends six pitches under the agency’s name, with a 45-minute exclusive to
+                      two desks.
                     </span>
                   </li>
                   <li>
@@ -222,8 +221,8 @@ export default function Page() {
               <h2>A tailored operating layer for larger operations.</h2>
             </div>
             <p className="lede">
-              Agency plans are built around how you already work: your contributor structure, your
-              outlet contracts, your accounting, and your archive.
+              Agency plans are built around how a crew already works: its contributor structure,
+              outlet contracts, accounting, and archive.
             </p>
           </div>
           <div className="principles">
@@ -237,7 +236,7 @@ export default function Page() {
             <div>
               <h3>High-volume archive migration</h3>
               <p>
-                We move your existing archive and metadata in, with tagging assistance and the
+                Mastline moves the existing archive and metadata in, with tagging assistance and the
                 original shooter preserved on every frame, so resale credits and pays the right
                 person.
               </p>
@@ -252,7 +251,7 @@ export default function Page() {
             <div>
               <h3>API access and integrations</h3>
               <p>
-                Connect Mastline to your own portal, accounting, storage, or rights-monitoring
+                Connect Mastline to an existing portal, accounting, storage, or rights-monitoring
                 service. Keep what works; replace what doesn’t.
               </p>
             </div>
@@ -260,14 +259,14 @@ export default function Page() {
               <h3>Agency-wide reporting and governance</h3>
               <p>
                 Asset, submission, and revenue reporting across the whole operation, with retention,
-                audit, and export controls your counsel will sign off on.
+                audit, and export controls counsel will sign off on.
               </p>
             </div>
             <div>
               <h3>Priority support and onboarding</h3>
               <p>
-                A named contact, onboarding for your desk and your contributors, and the same
-                night-hours support your shooters get.
+                A named contact, onboarding for the desk and its contributors, and the same
+                night-hours support every shooter gets.
               </p>
             </div>
           </div>
@@ -282,9 +281,9 @@ export default function Page() {
               <h2>Studio for crews. Agency for operations.</h2>
             </div>
             <p className="lede">
-              The 70/30 split works the same way for teams: nothing on sales you make yourselves,
-              30% only on sales Mastline creates, divided by your splits. Full detail on the{" "}
-              <Link href="/pricing">Pricing</Link> page.
+              The 70/30 split works the same way for teams: nothing on sales the crew makes itself,
+              30% only on sales Mastline creates, divided by the crew’s own splits. Full detail on
+              the <Link href="/pricing">Pricing</Link> page.
             </p>
           </div>
           <div className="vs">
@@ -321,15 +320,15 @@ export default function Page() {
               <span className="big">Custom</span>
               <p>
                 Custom team structure, high-volume archive migration, API access and integrations,
-                custom permissions, priority support, flexible storage. Priced around your
-                contributor count and archive volume.
+                custom permissions, priority support, flexible storage. Priced around contributor
+                count and archive volume.
               </p>
               <a
                 className="btn ghost"
                 href="mailto:hello@mastline.co?subject=Agency%20plan"
                 style={{ alignSelf: "flex-start", marginTop: "8px" }}
               >
-                Talk to us
+                Contact Mastline
               </a>
             </div>
           </div>
@@ -341,36 +340,36 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions from crews</span>
-              <h2 style={{ marginTop: "14px" }}>Before you bring the team over.</h2>
+              <h2 style={{ marginTop: "14px" }}>Before bringing a team over.</h2>
             </div>
             <div className="faq">
               <details open>
                 <summary>Who owns the pictures on a team account?</summary>
                 <p>
-                  Whoever your agreement says. Mastline records the shooter on every frame and never
-                  takes ownership itself. By default the account owner controls distribution and the
-                  shooter is credited; you can configure it to match your contracts.
+                  Whoever the crew’s agreement says. Mastline records the shooter on every frame and
+                  never takes ownership itself. By default the account owner controls distribution
+                  and the shooter is credited; it can be configured to match existing contracts.
                 </p>
               </details>
               <details>
                 <summary>Can a contributor take their work with them if they leave?</summary>
                 <p>
-                  That’s between you and them, and Mastline supports either answer. Per-shooter
-                  export is available when the owner allows it, and the shooter’s credit and
-                  provenance stay on the frames either way.
+                  That is between the crew and its shooters, and Mastline supports either answer.
+                  Per-shooter export is available when the owner allows it, and the shooter’s credit
+                  and provenance stay on the frames either way.
                 </p>
               </details>
               <details>
                 <summary>Can contributors keep their own Mastline accounts?</summary>
                 <p>
-                  Yes. A photographer can belong to a team for the work they do with you and keep a
+                  Yes. A photographer can belong to a team for the work they do with it and keep a
                   separate Solo or Pro account for their own work. The two never mix.
                 </p>
               </details>
               <details>
                 <summary>How do splits handle archive resales years later?</summary>
                 <p>
-                  The split on the original shoot applies unless you set a different archive rule.
+                  The split on the original shoot applies unless a different archive rule is set.
                   The original shooter is identified on every frame, so resale pays the right person
                   automatically.
                 </p>
@@ -383,13 +382,12 @@ export default function Page() {
                 </p>
               </details>
               <details>
-                <summary>We’re bigger than ten. Is that Agency?</summary>
+                <summary>Crews bigger than ten — is that Agency?</summary>
                 <p>
-                  Yes. Studio covers up to ten seats; beyond that, Agency is priced around your
+                  Yes. Studio covers up to ten seats; beyond that, Agency is priced around
                   contributor count and archive size. Email{" "}
-                  <a href="mailto:hello@mastline.co">hello@mastline.co</a> with your contributor
-                  count and archive size and we’ll tell you which plan fits and what migration
-                  looks like.
+                  <a href="mailto:hello@mastline.co">hello@mastline.co</a> with contributor count
+                  and archive size, and a reply says which plan fits and what migration looks like.
                 </p>
               </details>
             </div>
@@ -408,7 +406,7 @@ export default function Page() {
               Start a Studio trial
             </Link>
             <a className="btn outline" href="mailto:hello@mastline.co?subject=Agency%20plan">
-              Talk to us about Agency
+              Ask about Agency
             </a>
           </div>
         </div>

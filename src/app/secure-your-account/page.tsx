@@ -5,7 +5,7 @@ import { TwoFactor } from "@/app/settings/_components/two-factor";
 import { ACTIVE_WORKSPACE_COOKIE, getSession } from "@/lib/auth";
 import { mfaBlocksAccess, mfaStanding } from "@/lib/mfa";
 
-export const metadata = { title: "Secure your account — Mastline" };
+export const metadata = { title: "Add a second factor — Mastline" };
 
 /**
  * Where someone lands when their workspace requires a second factor and their
@@ -32,10 +32,10 @@ export default async function SecureYourAccountPage() {
     <main className="auth-page">
       <div className="auth-card">
         <Image alt="Mastline" height={30} priority src="/mastline-wordmark.png" width={174} />
-        <h1>Secure your account</h1>
+        <h1>Add a second factor</h1>
         <p className="section-note">
-          {session.activeWorkspace.name} requires a second factor for owners and finance. Set one up
-          to carry on.
+          {session.activeWorkspace.name} requires a second factor for owners and finance. Adding one
+          unlocks the workspace.
         </p>
         <div className="spacer" />
         <TwoFactor email={session.email} standing={standing} />

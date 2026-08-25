@@ -165,7 +165,7 @@ describe("what the workspace is told", () => {
   it("reads naturally on the last day", () => {
     const tomorrow = trialing("2026-08-22T12:00:00.000Z");
     expect(workspaceNotice(tomorrow, storageState(tomorrow, 0), NOW)?.headline).toBe(
-      "Your trial ends tomorrow",
+      "The trial ends tomorrow",
     );
   });
 

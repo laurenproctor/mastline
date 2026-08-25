@@ -14,7 +14,8 @@ export default function Page() {
           <h1>Terms of Service</h1>
           <p className="lede">
             The plain-English agreement between you and Mastline. The short version: your pictures
-            are yours, you pay for the software, and we earn a share only on sales we help create.
+            are yours, you pay for the software, and Mastline earns a share only on sales Mastline
+            helps create.
           </p>
         </div>
       </section>
@@ -25,23 +26,23 @@ export default function Page() {
 
             <h2>1. The agreement</h2>
             <p>
-              These Terms govern your use of the Mastline website and application (the
-              “Service”), operated by Storyworlding (“Mastline”). By creating an
-              account or using the Service you agree to these Terms and to our{" "}
-              <Link href="/privacy">Privacy Policy</Link>. If you use Mastline on behalf of a team
-              or agency, you confirm you have authority to bind it.
+              These Terms govern your use of the Mastline website and application (the “Service”),
+              operated by Storyworlding (“Mastline”). By creating an account or using the Service
+              you agree to these Terms and to Mastline’s <Link href="/privacy">Privacy Policy</Link>
+              . If you use Mastline on behalf of a team or agency, you confirm you have authority to
+              bind it.
             </p>
 
             <h2>2. Your content stays yours</h2>
             <p>
               You retain all copyright and other rights in the photographs, video, captions,
-              records, and other material you add to Mastline (“Your Content”). Mastline
-              does not acquire ownership of Your Content, ever. You grant Mastline a limited,
-              non-exclusive license to host, store, process, display, and transmit Your Content
-              solely to operate the Service for you and at your direction, for example to render
-              previews, generate watermarks, send pitches you approve, and deliver files under
-              licenses you accept. This license ends when you delete the content or close your
-              account, except for copies we must keep under Section 11.
+              records, and other material you add to Mastline (“Your Content”). Mastline does not
+              acquire ownership of Your Content, ever. You grant Mastline a limited, non-exclusive
+              license to host, store, process, display, and transmit Your Content solely to operate
+              the Service for you and at your direction, for example to render previews, generate
+              watermarks, send pitches you approve, and deliver files under licenses you accept.
+              This license ends when you delete the content or close your account, except for copies
+              Mastline must keep under Section 11.
             </p>
             <p>
               You are responsible for Your Content and confirm you have the rights needed to upload
@@ -57,20 +58,20 @@ export default function Page() {
               </li>
               <li>
                 <strong>Sales made through Mastline.</strong> When an image is licensed through a
-                Mastline opportunity, a pitch sent through the platform, or a buyer request Mastline
-                helps close (a “Mastline Sale”), you receive 70% and Mastline receives 30%
-                of the license fee, calculated after taxes, refunds, chargebacks, and discounts.
-                Standard payment-processing costs are paid from Mastline’s share.
+                Mastline opportunity, a pitch sent through the platform, or a buyer request it helps
+                close (a “Mastline Sale”), you receive 70% and Mastline receives 30% of the license
+                fee, calculated after taxes, refunds, chargebacks, and discounts. Standard
+                payment-processing costs are paid from Mastline’s share.
               </li>
               <li>
                 <strong>Licenses.</strong> You set the price and terms of every license. Mastline
-                generates the license document from your choices and records the buyer’s
-                acceptance. Mastline is not a party to the license between you and the buyer.
+                generates the license document from your choices and records the buyer’s acceptance.
+                Mastline is not a party to the license between you and the buyer.
               </li>
               <li>
-                <strong>Payouts.</strong> Where Mastline collects payment on your behalf, we remit
-                your share according to the payout schedule in your plan, less any amounts you owe
-                us.
+                <strong>Payouts.</strong> Where Mastline collects payment on your behalf, it remits
+                your share according to the payout schedule in your plan, less any amounts owed to
+                it.
               </li>
             </ul>
 
@@ -79,9 +80,9 @@ export default function Page() {
               Paid plans are billed monthly or annually in advance. Your 30-day trial converts to
               the plan you selected unless you cancel before it ends. You can change or cancel your
               plan at any time; changes take effect at the next billing cycle and annual plans are
-              prorated as described on our <Link href="/pricing">Pricing page</Link>. Fees are
-              non-refundable except where required by law. We may change prices with at least 30
-              days’ notice.
+              prorated as described on Mastline’s <Link href="/pricing">Pricing page</Link>. Fees
+              are non-refundable except where required by law. Mastline may change prices with at
+              least 30 days’ notice.
             </p>
 
             <h2>5. Acceptable use</h2>
@@ -106,15 +107,15 @@ export default function Page() {
                 editorial;
               </li>
               <li>
-                interfere with the Service, probe its security, or access another user’s
-                account or data without permission.
+                interfere with the Service, probe its security, or access another user’s account or
+                data without permission.
               </li>
             </ul>
             <p>
-              We may suspend or terminate accounts that violate these rules, and we will cooperate
-              with lawful requests from authorities in cases involving harm to any person. A
-              plain-language summary is at <Link href="/acceptable-use">Acceptable use</Link>;
-              copyright notices and counter-notices are handled under our{" "}
+              Mastline may suspend or terminate accounts that violate these rules, and Mastline will
+              cooperate with lawful requests from authorities in cases involving harm to any person.
+              A plain-language summary is at <Link href="/acceptable-use">Acceptable use</Link>;
+              copyright notices and counter-notices are handled under Mastline’s{" "}
               <Link href="/copyright">Copyright and DMCA Policy</Link>, including termination of
               repeat infringers.
             </p>
@@ -132,9 +133,9 @@ export default function Page() {
             <h2>7. Buyers and third parties</h2>
             <p>
               Editors and buyers who receive your pitches interact with Mastline through links you
-              send. They are not required to hold accounts. We are not responsible for a
-              buyer’s decisions, payment behavior, or use of licensed material beyond what
-              Mastline records. Third-party services you connect are governed by their own terms.
+              send. They are not required to hold accounts. Mastline is not responsible for a
+              buyer’s decisions, payment behavior, or use of licensed material beyond what Mastline
+              records. Third-party services you connect are governed by their own terms.
             </p>
 
             <h2>8. Teams</h2>
@@ -149,34 +150,34 @@ export default function Page() {
             <p>
               Mastline, its software, design, and trademarks belong to Mastline and its licensors.
               You may not copy, modify, reverse-engineer, or resell the Service. Feedback you give
-              us may be used without obligation to you.
+              Mastline may be used without obligation to you.
             </p>
 
             <h2>10. Availability and support</h2>
             <p>
-              We work hard to keep Mastline available, especially at night when you need it, but we
-              do not guarantee uninterrupted service. Support is available at{" "}
+              Mastline works hard to stay available, especially at night when it is needed, but does
+              not guarantee uninterrupted service. Support is available at{" "}
               <a href="mailto:support@mastline.co">support@mastline.co</a>.
             </p>
 
             <h2>11. Termination and your data</h2>
             <p>
-              You may close your account at any time. We may suspend or terminate your account for
-              breach of these Terms, with notice where practical. On termination, you can export all
-              of Your Content and records for 30 days, after which we delete them as described in
-              our Privacy Policy, except for license and provenance records we are required to keep
-              or that you ask us to preserve as evidence.
+              You may close your account at any time. Mastline may suspend or terminate your account
+              for breach of these Terms, with notice where practical. On termination, you can export
+              all of Your Content and records for 30 days, after which Mastline deletes them as
+              described in its Privacy Policy, except for license and provenance records it is
+              required to keep, or that you ask it to preserve as evidence.
             </p>
 
             <h2>12. Disclaimers and limitation of liability</h2>
             <p>
-              The Service is provided “as is” and “as available.” To the fullest
-              extent permitted by law, Mastline disclaims all warranties, express or implied, and is
-              not liable for indirect, incidental, special, consequential, or punitive damages, or
-              for lost profits, revenue, or data. Mastline’s total liability for any claim
-              arising from the Service will not exceed the greater of the fees you paid us in the
-              twelve months before the claim or US$100. Some jurisdictions do not allow these
-              limitations, in which case they apply to the maximum extent permitted.
+              The Service is provided “as is” and “as available.” To the fullest extent permitted by
+              law, Mastline disclaims all warranties, express or implied, and is not liable for
+              indirect, incidental, special, consequential, or punitive damages, or for lost
+              profits, revenue, or data. Mastline’s total liability for any claim arising from the
+              Service will not exceed the greater of the fees you paid Mastline in the twelve months
+              before the claim or US$100. Some jurisdictions do not allow these limitations, in
+              which case they apply to the maximum extent permitted.
             </p>
 
             <h2>13. Indemnity</h2>
@@ -195,9 +196,9 @@ export default function Page() {
 
             <h2>15. Changes to these Terms</h2>
             <p>
-              We may update these Terms. For material changes we will give at least 30 days’
-              notice by email or in the product. Continued use after the effective date means you
-              accept the new Terms.
+              Mastline may update these Terms. For material changes Mastline will give at least 30
+              days’ notice by email or in the product. Continued use after the effective date means
+              you accept the new Terms.
             </p>
 
             <h2>16. Contact</h2>

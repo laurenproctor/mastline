@@ -164,7 +164,7 @@ test.describe("pricing states the approved facts", () => {
     // start free, and this is a claim about what the four plans say.
     const plans = page.locator(".plans");
     await expect(plans.getByRole("link", { name: "Start free" })).toHaveCount(3);
-    await expect(plans.getByRole("link", { name: "Talk to us" })).toHaveCount(1);
+    await expect(plans.getByRole("link", { name: "Contact Mastline" })).toHaveCount(1);
 
     const body = (await page.locator("body").innerText()).toLowerCase();
     const durations = [...body.matchAll(/(\d+)\s+days?\s+free/g)].map((match) => match[1]);

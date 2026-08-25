@@ -18,7 +18,7 @@ export async function signIn(_previous: SignInState, formData: FormData): Promis
   const next = String(formData.get("next") ?? "/work");
 
   if (!email || !password) {
-    return { error: "Enter your email and password." };
+    return { error: "Enter an email address and password." };
   }
 
   const supabase = await createClient();
@@ -62,7 +62,7 @@ export async function verifySignIn(
 ): Promise<ChallengeState> {
   const code = normalizeTotpCode(String(formData.get("code") ?? ""));
   const next = String(formData.get("next") ?? "/work");
-  if (!code) return { error: "Enter the six-digit code from your authenticator app." };
+  if (!code) return { error: "Enter the six-digit code from the authenticator app." };
 
   const supabase = await createClient();
   const { data: factors } = await supabase.auth.mfa.listFactors();
@@ -71,7 +71,9 @@ export async function verifySignIn(
 
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (error) {
-    return { error: "That code was not right. Codes change every 30 seconds; try the current one." };
+    return {
+      error: "That code was not right. Codes change every 30 seconds; try the current one.",
+    };
   }
 
   revalidatePath("/", "layout");
@@ -95,7 +97,7 @@ export async function verifyWithRecoveryCode(
 ): Promise<ChallengeState> {
   const code = normalizeRecoveryCode(String(formData.get("code") ?? ""));
   const next = String(formData.get("next") ?? "/work");
-  if (!code) return { error: "Enter one of the recovery codes you saved." };
+  if (!code) return { error: "Enter one of the saved recovery codes." };
 
   const supabase = await createClient();
   const {

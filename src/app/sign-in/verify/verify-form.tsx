@@ -22,7 +22,7 @@ export function VerifyForm({ next }: { next: string }) {
         <Field
           autoComplete="one-time-code"
           autoFocus
-          hint="One of the codes you saved when you set this up. Each one works once."
+          hint="One of the codes saved when two-factor was switched on. Each works once."
           label="Recovery code"
           name="code"
           required
@@ -36,8 +36,8 @@ export function VerifyForm({ next }: { next: string }) {
           {recovering ? "Checking…" : "Use this code"}
         </button>
         <p className="gate-note">
-          Using a code turns two-factor authentication off, so you can sign in and set it up again
-          on your new device.
+          Using a code turns two-factor authentication off, so it can be set up again on the new
+          device.
         </p>
         <p className="gate-note">
           <button className="gate-switch" onClick={() => setUseRecovery(false)} type="button">
@@ -50,7 +50,7 @@ export function VerifyForm({ next }: { next: string }) {
 
   return (
     <form action={formAction} className="gate-form">
-      <h2>Enter your code</h2>
+      <h2>Enter the code</h2>
       <input name="next" type="hidden" value={next} />
       <Field
         autoComplete="one-time-code"
@@ -70,7 +70,7 @@ export function VerifyForm({ next }: { next: string }) {
       </button>
       <p className="gate-note">
         <button className="gate-switch" onClick={() => setUseRecovery(true)} type="button">
-          Lost your device? Use a recovery code
+          Lost the device? Use a recovery code
         </button>
       </p>
     </form>

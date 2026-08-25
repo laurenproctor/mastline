@@ -27,7 +27,7 @@ export default function Page() {
             <div>
               <h3>Discover the opportunity</h3>
               <p>
-                Monitor breaking news, scheduled appearances, locations, tips, and stories your
+                Monitor breaking news, scheduled appearances, locations, tips, and stories the
                 archive already covers.
               </p>
             </div>
@@ -103,13 +103,13 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">What you get back</span>
-              <h2>Every hour you spend shooting should pay you back. Now it does.</h2>
+              <span className="mk-eyebrow">What comes back</span>
+              <h2>Every hour spent shooting should pay for itself. Now it does.</h2>
             </div>
             <p className="lede">
-              Mastline turns the scattered parts of the job into one connected record, so you move
-              faster, sell to the right desks at the right price, get paid on time, and keep earning
-              from pictures you took years ago.
+              Mastline turns the scattered parts of the job into one connected record: faster moves,
+              the right desks at the right price, payment on time, and pictures shot years ago still
+              earning.
             </p>
           </div>
           <div className="friction">
@@ -139,8 +139,8 @@ export default function Page() {
             <div>
               <span className="was">Submissions disappear into portals and email threads.</span>
               <span className="now">
-                Submission records tied to assets and buyers, so follow-up is clear and sales teach
-                you something.
+                Submission records tied to assets and buyers, so follow-up is clear and every sale
+                teaches the next one.
               </span>
             </div>
             <div>
@@ -162,7 +162,7 @@ export default function Page() {
       <section className="spot">
         <div className="wrap">
           <div>
-            <span className="mk-eyebrow">Your first hour</span>
+            <span className="mk-eyebrow">The first hour</span>
             <h2 style={{ marginTop: "14px" }}>One live shoot, start to finish.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
               The first loop is designed to be fast enough to complete during real work. If Mastline
@@ -180,7 +180,7 @@ export default function Page() {
               </div>
             </div>
             <span className="mk-eyebrow" style={{ display: "block", marginTop: "28px" }}>
-              Your first weekend
+              The first weekend
             </span>
             <p
               style={{
@@ -190,10 +190,9 @@ export default function Page() {
                 maxWidth: "56ch",
               }}
             >
-              Point Mastline at your archive and let it import overnight. Existing captions and
-              keywords come in on their own; anything untagged waits in a queue you can clear in a
-              few short sessions. By Monday the news radar is watching every subject you’ve
-              ever shot.
+              Point Mastline at the archive and let it import overnight. Existing captions and
+              keywords come in on their own; anything untagged waits in a queue that clears in a few
+              short sessions. By Monday the news radar is watching every subject ever shot.
             </p>
           </div>
           <div className="shot">
@@ -238,11 +237,11 @@ export default function Page() {
             </div>
             <div>
               <b>Archive share of revenue</b>
-              <p>Work you already did, earning again</p>
+              <p>Work already done, earning again</p>
             </div>
             <div>
               <b>Rights matches recovered</b>
-              <p>Money you were owed</p>
+              <p>Money already owed</p>
             </div>
             <div>
               <b>Hours back each week</b>
@@ -256,13 +255,13 @@ export default function Page() {
           <div>
             <h2>Run the business behind every image.</h2>
             <p>
-              Thirty days free on any plan. Keep 100% of the sales you make yourself, and 70% of the
-              ones Mastline helps create.
+              Thirty days free on any plan. 100% of sales made directly, and 70% of the ones
+              Mastline helps create.
             </p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">
               See pricing

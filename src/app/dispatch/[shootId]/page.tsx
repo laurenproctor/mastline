@@ -221,10 +221,10 @@ export default async function DispatchPage({
                 />
               ) : (
                 <div className="side-card">
-                  <Badge tone="neutral">Not your role</Badge>
+                  <Badge tone="neutral">Another role</Badge>
                   <h3>Dispatch needs a dispatcher</h3>
                   <p>
-                    Your role can prepare a package but not send it. An owner or dispatcher approves
+                    This role can prepare a package but not send it. An owner or dispatcher approves
                     the dispatch.
                   </p>
                 </div>

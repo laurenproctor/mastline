@@ -130,7 +130,7 @@ export function planChangeEffect(
 
   if (nextStorage !== null && usage.storageBytes > nextStorage) {
     warnings.push(
-      "You are storing more than that plan includes. Nothing already stored is removed, but new imports will be refused until you free space.",
+      "This workspace stores more than that plan includes. Nothing already stored is removed, but new imports will be refused until space is freed.",
     );
   }
   if (nextSeats !== null && usage.seats > nextSeats) {
@@ -180,7 +180,7 @@ export function billingSummary(state: BillingState, now: Date): BillingSummary {
         headline: "Card on file",
         detail:
           days !== null && days > 0
-            ? `Your trial runs for another ${days} ${days === 1 ? "day" : "days"}. The first charge lands when it ends.`
+            ? `The trial runs for another ${days} ${days === 1 ? "day" : "days"}. The first charge lands when it ends.`
             : "The first charge lands when the trial ends.",
         tone: "info",
         needsCard: false,
@@ -190,8 +190,8 @@ export function billingSummary(state: BillingState, now: Date): BillingSummary {
     return {
       headline: writable ? "On trial" : "Trial ended",
       detail: writable
-        ? `${days} ${days === 1 ? "day" : "days"} left. Add a card whenever you like; it will not be charged until the trial ends.`
-        : "The workspace is read-only. Everything is still here and you can export all of it.",
+        ? `${days} ${days === 1 ? "day" : "days"} left. A card can be added at any point; it is not charged until the trial ends.`
+        : "The workspace is read-only. Everything is still here and all of it stays exportable.",
       tone: writable ? "info" : "danger",
       needsCard: true,
     };
@@ -203,7 +203,7 @@ export function billingSummary(state: BillingState, now: Date): BillingSummary {
       headline: remaining > 0 ? "Payment failed" : "Payment overdue",
       detail:
         remaining > 0
-          ? `We could not take the last payment. The workspace keeps working for another ${remaining} ${remaining === 1 ? "day" : "days"}. Update your card to avoid interruption.`
+          ? `The last payment did not go through. The workspace keeps working for another ${remaining} ${remaining === 1 ? "day" : "days"}. Updating the card avoids any interruption.`
           : "The workspace is read-only until a payment goes through. Everything is still here and exportable.",
       tone: remaining > 0 ? "warn" : "danger",
       needsCard: true,
@@ -214,7 +214,7 @@ export function billingSummary(state: BillingState, now: Date): BillingSummary {
     return {
       headline: state.status === "cancelled" ? "Subscription cancelled" : "Subscription ended",
       detail:
-        "The workspace is read-only. Your shoots, assets, and financial records are unchanged and you can export all of them.",
+        "The workspace is read-only. Shoots, assets and financial records are unchanged, and all of them stay exportable.",
       tone: "danger",
       needsCard: true,
     };
@@ -223,10 +223,10 @@ export function billingSummary(state: BillingState, now: Date): BillingSummary {
   return {
     headline: state.cancelAtPeriodEnd ? "Ends at the period end" : "Active",
     detail: state.cancelAtPeriodEnd
-      ? "Your subscription will not renew. The workspace becomes read-only when the period ends."
+      ? "This subscription will not renew. The workspace becomes read-only when the period ends."
       : state.currentPeriodEnd
         ? `Renews ${new Date(state.currentPeriodEnd).toISOString().slice(0, 10)}.`
-        : "Your subscription is active.",
+        : "This subscription is active.",
     tone: state.cancelAtPeriodEnd ? "warn" : "info",
     needsCard: false,
   };

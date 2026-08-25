@@ -61,7 +61,7 @@ export const EXPORT_MANIFEST_NOTE = [
   "activity.csv        the append-only operational record",
   "",
   "Confidential source notes are NOT included. Export them separately and",
-  "deliberately if you need them.",
+  "deliberately when they are needed.",
 ].join("\n");
 
 /** Build the export set from already-loaded records. */

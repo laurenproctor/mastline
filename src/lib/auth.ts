@@ -60,8 +60,6 @@ export interface WorkspaceSession extends Session {
 
 export const ACTIVE_WORKSPACE_COOKIE = "mastline-workspace";
 
-
-
 /** The signed-in user's workspaces, or null when not signed in. */
 export const getSession = cache(async (activeWorkspaceId?: string): Promise<Session | null> => {
   const supabase = await createClient();

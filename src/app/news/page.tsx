@@ -24,7 +24,7 @@ export default async function NewsPage() {
       <div className="page">
         <PageHeader
           action="Manage sources"
-          description="Prioritized by relevance, demand, timing, and the assets you already own."
+          description="Prioritized by relevance, demand, timing, and the assets already in the archive."
           eyebrow="Manual story entry · live feeds not yet connected"
           href="/settings"
           title="News opportunities"

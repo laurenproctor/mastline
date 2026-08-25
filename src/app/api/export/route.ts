@@ -25,7 +25,7 @@ export async function GET() {
     // A refusal is a 403 with an explanation, not a stack trace and a 500.
     if (error instanceof PermissionError) {
       return NextResponse.json(
-        { error: "Your role cannot export the workspace. Ask an owner or finance." },
+        { error: "This role cannot export the workspace. An owner or finance can." },
         { status: 403 },
       );
     }

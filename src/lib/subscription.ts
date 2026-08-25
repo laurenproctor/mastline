@@ -163,9 +163,9 @@ export function workspaceNotice(
     return {
       tone: "danger",
       headline:
-        subscription.status === "trialing" ? "Your trial has ended" : "This workspace is read-only",
+        subscription.status === "trialing" ? "The trial has ended" : "This workspace is read-only",
       detail:
-        "Everything is still here and you can export all of it. Importing, dispatching, and recording are paused until you choose a plan.",
+        "Everything is still here and all of it stays exportable. Importing, dispatching, and recording are paused until a plan is chosen.",
       action: { label: "See plans", href: "/pricing" },
     };
   }
@@ -174,7 +174,7 @@ export function workspaceNotice(
     return {
       tone: "danger",
       headline: "Storage is full",
-      detail: `You are using ${formatBytes(storage.usedBytes)} of ${formatBytes(storage.limitBytes ?? 0)}. New imports are paused until you free space or move up a plan. Nothing already stored is affected.`,
+      detail: `${formatBytes(storage.usedBytes)} of ${formatBytes(storage.limitBytes ?? 0)} used. New imports are paused until space is freed or the plan moves up. Nothing already stored is affected.`,
       action: { label: "See plans", href: "/pricing" },
     };
   }
@@ -183,10 +183,9 @@ export function workspaceNotice(
   if (subscription.status === "trialing" && remaining !== null && remaining <= 7) {
     return {
       tone: "warn",
-      headline:
-        remaining === 1 ? "Your trial ends tomorrow" : `Your trial ends in ${remaining} days`,
+      headline: remaining === 1 ? "The trial ends tomorrow" : `The trial ends in ${remaining} days`,
       detail:
-        "When it ends the workspace becomes read-only. Your shoots, assets, and records stay, and you can export everything at any time.",
+        "When it ends the workspace becomes read-only. Shoots, assets and records stay, and everything remains exportable.",
       action: { label: "See plans", href: "/pricing" },
     };
   }

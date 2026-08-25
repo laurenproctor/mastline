@@ -13,7 +13,9 @@ import "@/app/gate.css";
 export default function SignUpLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`mkt gate-shell ${brandSans.variable} ${brandSerif.variable}`}>
-      <GateShell action={{ prompt: "Already have an account?", label: "Sign in", href: "/sign-in" }}>
+      <GateShell
+        action={{ prompt: "Already have an account?", label: "Sign in", href: "/sign-in" }}
+      >
         {children}
       </GateShell>
     </div>

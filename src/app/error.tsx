@@ -31,7 +31,7 @@ export default function AppError({
       <ErrorState
         backHref="/settings"
         backLabel="Open settings"
-        detail="This workspace is read-only, so that change was not saved. Everything is still readable and you can export all of it."
+        detail="This workspace is read-only, so that change was not saved. Everything remains readable and exportable."
         digest={error.digest}
         title="This workspace is read-only"
       />
@@ -41,9 +41,9 @@ export default function AppError({
   if (isPermission) {
     return (
       <ErrorState
-        detail="Your role does not allow that. If you think it should, ask an owner to change your role."
+        detail="This role does not allow that. An owner can change it."
         digest={error.digest}
-        title="You do not have access to that"
+        title="No access to that"
       />
     );
   }

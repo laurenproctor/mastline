@@ -15,14 +15,14 @@ export default function Page() {
           </div>
           <h1>Photograph the moment. Get paid for what’s inside it.</h1>
           <p className="lede">
-            Every frame you shoot carries more than a face. The jacket, the sneakers, the bag, the
-            watch: each one is a product a brand wants seen and a reader wants to buy. Mastline
-            finds them, tells you who might pay, and gives you two ways to earn: license the picture
-            to the brand, or publish it as shoppable content and collect on every sale it drives.
+            Every frame carries more than a face. The jacket, the sneakers, the bag, the watch: each
+            one is a product a brand wants seen and a reader wants to buy. Mastline finds them,
+            names who might pay, and opens two ways to earn: license the picture to the brand, or
+            publish it as shoppable content and collect on every sale it drives.
           </p>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "24px" }}>
             <Link className="btn primary" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <a className="btn ghost" href="#co-flow">
               See how it works
@@ -58,8 +58,8 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Detected, not typed.</b> People, garments, and brands are identified for you;
-                  you confirm or correct in seconds.
+                  <b>Detected, not typed.</b> People, garments, and brands are identified
+                  automatically, then confirmed or corrected in seconds.
                 </span>
               </li>
               <li>
@@ -75,7 +75,7 @@ export default function Page() {
                 </svg>
                 <span>
                   <b>Buyers named.</b> Brand-side contacts and marketing buyers, ranked by fit,
-                  beside the editorial desks you already pitch.
+                  beside the editorial desks already on the list.
                 </span>
               </li>
               <li>
@@ -90,7 +90,7 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Rights checked first.</b> Every route is filtered by what your license, your
+                  <b>Rights checked first.</b> Every route is filtered by what the license, the
                   subject, and the law actually allow.
                 </span>
               </li>
@@ -131,8 +131,8 @@ export default function Page() {
               <h2>One upload. Two ways to earn.</h2>
             </div>
             <p className="lede">
-              The flow runs inside the Shoot Workspace you already use. Nothing is sent, published,
-              or linked until you say so.
+              The flow runs inside the Shoot Workspace already in use. Nothing is sent, published,
+              or linked without an explicit approval.
             </p>
           </div>
           <div className="coflow" aria-label="Commercial opportunities flow">
@@ -156,10 +156,10 @@ export default function Page() {
             <div className="farrow" aria-hidden="true"></div>
             <div className="fstep">
               <span className="n">3</span>
-              <h3>You confirm</h3>
+              <h3>A person confirms</h3>
               <p>
-                Approve, correct, or remove any detection. Your confirmation is what the system
-                sells from, not its guess.
+                Approve, correct, or remove any detection. The confirmation is what the system sells
+                from, not its guess.
               </p>
             </div>
             <div className="farrow" aria-hidden="true"></div>
@@ -167,8 +167,8 @@ export default function Page() {
               <span className="n">4</span>
               <h3>Rights and opportunity analysis</h3>
               <p>
-                Your license terms, subject rules, and brand policies are applied, and the
-                commercial value of each element is scored.
+                License terms, subject rules, and brand policies are applied, and the commercial
+                value of each element is scored.
               </p>
             </div>
             <div className="fsplit" aria-hidden="true"></div>
@@ -178,12 +178,12 @@ export default function Page() {
                 <h3>Pitch → Offer → License</h3>
                 <p>
                   A ranked list of brand and marketing buyers for the frame, with a suggested
-                  package and price. Pitch from the same composer you use for editors. The buyer
-                  accepts or counters with one tap; the license issues and the fee is attributed to
-                  the picture.
+                  package and price. Pitched from the same composer editors are pitched from. The
+                  buyer accepts or counters with one tap; the license issues and the fee is
+                  attributed to the picture.
                 </p>
                 <span className="foot">
-                  70% to you · 30% to Mastline, only when Mastline creates the sale
+                  70% to the photographer · 30% to Mastline, only when Mastline creates the sale
                 </span>
               </div>
               <div className="froute">
@@ -191,11 +191,11 @@ export default function Page() {
                 <h3>Publish → Track → Earn</h3>
                 <p>
                   Mastline assembles a shoppable package: the image, the products inside it, and
-                  affiliate links for exact matches or same-brand alternatives. Publish to your own
-                  site, a partner, or a social post. Every click and purchase is tracked back to the
-                  frame.
+                  affiliate links for exact matches or same-brand alternatives. Publish to a
+                  personal site, a partner, or a social post. Every click and purchase is tracked
+                  back to the frame.
                 </p>
-                <span className="foot">Net commissions paid to you · Attributed per image</span>
+                <span className="foot">Net commissions paid out · Attributed per image</span>
               </div>
             </div>
           </div>
@@ -207,11 +207,11 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Honest matching</span>
-              <h2>Every product is labeled by how sure we are.</h2>
+              <h2>Every product is labeled by how certain the match is.</h2>
             </div>
             <p className="lede">
-              Matching is assisted, not magic. Each item carries a label you and your readers can
-              trust, and nothing is presented as a certainty that isn’t one.
+              Matching is assisted, not magic. Each item carries a label a photographer and their
+              readers can trust, and nothing is presented as a certainty that isn’t one.
             </p>
           </div>
           <div className="matches">
@@ -219,7 +219,7 @@ export default function Page() {
               <span className="chip exact">Exact match</span>
               <h3>The product, confirmed</h3>
               <p>
-                Catalog match with high confidence, or confirmed by you. Eligible for brand
+                Catalog match with high confidence, or confirmed by hand. Eligible for brand
                 licensing pitches and direct affiliate links.
               </p>
             </div>
@@ -227,24 +227,24 @@ export default function Page() {
               <span className="chip probable">Probable match</span>
               <h3>Very likely, flagged as such</h3>
               <p>
-                Strong visual match with one or two open questions. Shown with a “likely”
-                label; you can promote it to exact in one tap.
+                Strong visual match with one or two open questions. Shown with a “likely” label, and
+                promoted to exact in one tap.
               </p>
             </div>
             <div className="match">
               <span className="chip alt">Same-brand alternative</span>
               <h3>The brand’s current equivalent</h3>
               <p>
-                The item is sold out or last season; the brand’s nearest in-stock piece is
-                offered, labeled as an alternative.
+                The item is sold out or last season; the brand’s nearest in-stock piece is offered,
+                labeled as an alternative.
               </p>
             </div>
             <div className="match">
               <span className="chip similar">Similar style</span>
               <h3>Get the look</h3>
               <p>
-                No brand identified, or the brand doesn’t sell online. Comparable items from
-                partner retailers, clearly marked as similar.
+                No brand identified, or the brand doesn’t sell online. Comparable items from partner
+                retailers, clearly marked as similar.
               </p>
             </div>
           </div>
@@ -260,8 +260,8 @@ export default function Page() {
               <ol>
                 <li>
                   <span>
-                    <strong>Buyers you didn’t know existed.</strong> The brand’s PR team,
-                    its agency, the retailer that stocks it, and the marketing desks that buy
+                    <strong>Buyers nobody thinks to pitch.</strong> The brand’s PR team, its agency,
+                    the retailer that stocks it, and the marketing desks that buy
                     celebrity-wearing-product imagery, ranked by how often they buy and what they
                     pay.
                   </span>
@@ -269,13 +269,13 @@ export default function Page() {
                 <li>
                   <span>
                     <strong>A suggested package and price.</strong> Built from the frame, the
-                    detected product, the subject’s demand, and what comparable licenses have
-                    closed for.
+                    detected product, the subject’s demand, and what comparable licenses have closed
+                    for.
                   </span>
                 </li>
                 <li>
                   <span>
-                    <strong>The same one-tap pitch.</strong> Watermarked preview, your caption, the
+                    <strong>The same one-tap pitch.</strong> Watermarked preview, the caption, the
                     price, the terms. Brand buyers accept or counter without creating an account.
                   </span>
                 </li>
@@ -287,8 +287,8 @@ export default function Page() {
                 </li>
                 <li>
                   <span>
-                    <strong>Money on the record.</strong> The fee lands in Revenue & Payments
-                    and on the Asset Record, beside every editorial sale of the same frame.
+                    <strong>Money on the record.</strong> The fee lands in Revenue & Payments and on
+                    the Asset Record, beside every editorial sale of the same frame.
                   </span>
                 </li>
               </ol>
@@ -300,12 +300,12 @@ export default function Page() {
                 <li>
                   <span>
                     <strong>A package, not a chore.</strong> The image, the confirmed products, the
-                    labels, and the affiliate links, assembled for you.
+                    labels, and the affiliate links, assembled ready to publish.
                   </span>
                 </li>
                 <li>
                   <span>
-                    <strong>Publish where you already are.</strong> An embeddable page for your
+                    <strong>Publish where the audience already is.</strong> An embeddable page for a
                     site, a partner feed, or a link for a social caption.
                   </span>
                 </li>
@@ -324,7 +324,7 @@ export default function Page() {
                 <li>
                   <span>
                     <strong>Paid with everything else.</strong> Net commissions arrive through the
-                    same payouts as your licensing revenue, with every line explained.
+                    same payouts as licensing revenue, with every line explained.
                   </span>
                 </li>
               </ol>
@@ -338,15 +338,15 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Built into Mastline</span>
-              <h2>It lives where your work already lives.</h2>
+              <h2>It lives where the work already lives.</h2>
             </div>
           </div>
           <div className="principles">
             <div>
               <h3>Work Queue</h3>
               <p>
-                High-value commercial matches appear as items to act on, prioritized with your
-                dispatches and follow-ups.
+                High-value commercial matches appear as items to act on, prioritized with dispatches
+                and follow-ups.
               </p>
             </div>
             <div>
@@ -366,7 +366,7 @@ export default function Page() {
             <div>
               <h3>News radar</h3>
               <p>
-                When a product, a collaboration, or a collection is in the news, your archive is
+                When a product, a collaboration, or a collection is in the news, the archive is
                 searched for frames that show it.
               </p>
             </div>
@@ -381,7 +381,7 @@ export default function Page() {
               <h3>Revenue & Payments</h3>
               <p>
                 License fees and affiliate commissions, attributed by image, product, and channel,
-                reconciled with the rest of your money.
+                reconciled with the rest of the money.
               </p>
             </div>
           </div>
@@ -391,9 +391,9 @@ export default function Page() {
       <section className="spot">
         <div className="wrap">
           <div>
-            <span className="mk-eyebrow">You stay in control</span>
+            <span className="mk-eyebrow">Nothing moves on its own</span>
             <h2 style={{ marginTop: "14px" }}>
-              Nothing is sold, published, or linked without you.
+              Nothing is sold, published, or linked without an approval.
             </h2>
             <ul>
               <li>
@@ -408,8 +408,8 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Confirm before anything moves.</b> Detections are suggestions until you approve
-                  them.
+                  <b>Confirm before anything moves.</b> Detections stay suggestions until someone
+                  approves them.
                 </span>
               </li>
               <li>
@@ -472,7 +472,7 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>You own the picture.</b> A brand license grants a use; it never transfers
+                  <b>The picture stays owned.</b> A brand license grants a use; it never transfers
                   copyright.
                 </span>
               </li>
@@ -493,20 +493,20 @@ export default function Page() {
                       marginLeft: "6px",
                     }}
                   >
-                    % to you
+                    % to the photographer
                   </small>
                 </span>
                 <p>
-                  The same split as every Mastline-created sale. Sales you make yourself with brands
-                  stay 100% yours; record them here and nothing is charged.
+                  The same split as every Mastline-created sale. Direct sales to brands stay whole;
+                  record them here and nothing is charged.
                 </p>
               </div>
               <div>
                 <span className="mk-eyebrow">Shoppable content</span>
                 <span className="big">Net</span>
                 <p>
-                  Affiliate commissions are paid to you net of the network’s fees, attributed
-                  per image and product, and shown line by line in Revenue & Payments.
+                  Affiliate commissions are paid out net of the network’s fees, attributed per image
+                  and product, and shown line by line in Revenue & Payments.
                 </p>
               </div>
             </div>
@@ -519,13 +519,13 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Questions</span>
-              <h2 style={{ marginTop: "14px" }}>Before you turn it on.</h2>
+              <h2 style={{ marginTop: "14px" }}>Before turning it on.</h2>
             </div>
             <div className="faq">
               <details open>
                 <summary>Does this change how I sell to editors?</summary>
                 <p>
-                  No. Commercial opportunities appear beside your editorial pitch, never instead of
+                  No. Commercial opportunities appear beside the editorial pitch, never instead of
                   it. Most sets still go to the desk first; the brand route and the shoppable route
                   are additional income from the same frames.
                 </p>
@@ -536,33 +536,32 @@ export default function Page() {
                 </summary>
                 <p>
                   Not through Mastline unless the rights analysis clears it. Commercial use of a
-                  person’s likeness often requires a release, and subjects who have opted out
-                  are excluded. Where a release is needed, Mastline says so before any pitch is
-                  sent.
+                  person’s likeness often requires a release, and subjects who have opted out are
+                  excluded. Where a release is needed, Mastline says so before any pitch is sent.
                 </p>
               </details>
               <details>
                 <summary>How accurate is the detection?</summary>
                 <p>
-                  Good enough to save you the typing, not good enough to act without you. That is
-                  why every item carries a confidence label and nothing is sold or linked until you
+                  Good enough to save the typing, not good enough to act alone. That is why every
+                  item carries a confidence label and nothing is sold or linked until someone
                   confirm it.
                 </p>
               </details>
               <details>
                 <summary>Where does shoppable content get published?</summary>
                 <p>
-                  Wherever you want: an embeddable page on your own site, a feed to a partner
-                  publication, or a link for a caption. Mastline tracks clicks and purchases back to
-                  the image regardless of where it ran.
+                  Anywhere: an embeddable page on a personal site, a feed to a partner publication,
+                  or a link for a caption. Mastline tracks clicks and purchases back to the image
+                  regardless of where it ran.
                 </p>
               </details>
               <details>
                 <summary>Which affiliate networks and brands are included?</summary>
                 <p>
                   Mastline connects to the major retail affiliate networks and a growing set of
-                  direct brand programs. If a brand isn’t in a program, you still get the
-                  licensing route and a “similar style” alternative for the shoppable one.
+                  direct brand programs. When a brand isn’t in a program, the licensing route stays
+                  open, with a “similar style” alternative for the shoppable one.
                 </p>
               </details>
               <details>
@@ -580,12 +579,12 @@ export default function Page() {
       <section className="cta-band">
         <div className="wrap">
           <div>
-            <h2>Your archive is full of products. Start getting paid for them.</h2>
+            <h2>Every archive is full of products. Time they paid.</h2>
             <p>Thirty days free on Pro. Upload a set and see what’s inside it.</p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <Link className="btn outline" href="/product">
               See the full product

@@ -123,7 +123,7 @@ export function OutcomePanel({
                 <Badge tone="blue">Sales Engine applies</Badge>
                 <dl className="confirm-list">
                   <div>
-                    <dt>You keep (70%)</dt>
+                    <dt>Photographer (70%)</dt>
                     <dd>{showsSplit ? `$${photographerShare.toFixed(2)}` : "—"}</dd>
                   </div>
                   <div>
@@ -136,7 +136,8 @@ export function OutcomePanel({
               <>
                 <Badge tone="neutral">No Mastline share</Badge>
                 <p className="section-note">
-                  Mastline takes 30% only on licenses it generated. This one is yours in full.
+                  Mastline takes 30% only on licenses it generated. This one goes to the
+                  photographer in full.
                 </p>
               </>
             )}

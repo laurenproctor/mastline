@@ -15,8 +15,8 @@ export default function Page() {
           <p className="lede">
             Stills and video, from the first tip to the last dollar. Know what’s worth shooting
             tonight. Get the package to the right desk in minutes. See who opened it, what they
-            paid, and what they still owe. Catch your pictures being used without a license. Sell
-            from your archive the moment a name is back in the news. One workspace, every picture
+            paid, and what they still owe. Catch pictures being used without a license. Sell from
+            the archive the moment a name is back in the news. One workspace, every picture
             remembered, nothing typed twice.
           </p>
         </div>
@@ -71,9 +71,8 @@ export default function Page() {
               <p className="q">What is becoming photographically or commercially relevant?</p>
               <p>
                 Breaking stories, entertainment news, public appearances, court activity, premieres,
-                and travel signals from sources you configure, scored against your geography,
-                archive, contacts, and buyer demand. Filter, save, connect to archive, create a
-                shoot.
+                and travel signals from configured sources, scored against geography, archive,
+                contacts, and buyer demand. Filter, save, connect to archive, create a shoot.
               </p>
               <span className="tag">Opportunity intelligence</span>
             </div>
@@ -109,7 +108,7 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Shoot planning and field operations</span>
-              <h2>Earn money from your photos, from anywhere.</h2>
+              <h2>Earn from every picture, from anywhere.</h2>
             </div>
           </div>
           <div className="areas">
@@ -127,7 +126,7 @@ export default function Page() {
                 </svg>
               </div>
               <h3>Create Shoot</h3>
-              <p className="q">What are we pursuing, where, when, and for whom?</p>
+              <p className="q">What is being pursued, where, when, and for whom?</p>
               <p>
                 A fast intake for subject, story angle, place, schedule, source or tip, priority,
                 collaborators, target buyers, expenses, and confidentiality. Reusable templates cut
@@ -269,11 +268,11 @@ export default function Page() {
                 Is someone using my picture without paying, and what happens next?
               </p>
               <p>
-                Mastline searches the web for your images and groups suspected uses by picture and
-                publisher, with a screenshot and URL saved as evidence, a confidence score, and a
-                check against your licenses. You decide what happens: ignore, watch, send a
-                licensing request, invoice from the same screen, or hand the file to your own
-                counsel. Recovery is included on Pro and above with no extra fee.
+                Mastline searches the web for the workspace’s images and groups suspected uses by
+                picture and publisher, with a screenshot and URL saved as evidence, a confidence
+                score, and a check against the licenses on file. Every outcome is a decision:
+                ignore, watch, send a licensing request, invoice from the same screen, or hand the
+                file to counsel. Recovery is included on Pro and above with no extra fee.
               </p>
               <span className="tag">Rights oversight</span>
             </div>
@@ -315,10 +314,11 @@ export default function Page() {
               <h3>Commercial Opportunities</h3>
               <p className="q">What inside this picture can I sell beyond the story?</p>
               <p>
-                Garments, accessories, and brands are detected in every set and confirmed by you.
-                Mastline names the brand buyers likely to license the frame, and builds shoppable
-                packages with affiliate links so the picture keeps earning after it runs. Every
-                dollar is attributed to the image. <Link href="/commercial">See how it works</Link>.
+                Garments, accessories, and brands are detected in every set and confirmed by a
+                person. Mastline names the brand buyers likely to license the frame, and builds
+                shoppable packages with affiliate links so the picture keeps earning after it runs.
+                Every dollar is attributed to the image.{" "}
+                <Link href="/commercial">See how it works</Link>.
               </p>
               <span className="tag">Brand licensing · Shoppable content</span>
             </div>
@@ -334,9 +334,9 @@ export default function Page() {
               <h2>Enter a fact once and it follows the picture everywhere.</h2>
             </div>
             <p className="lede">
-              You never re-enter the same fact twice. The shoot populates the asset; the asset
-              populates the dispatch; the submission populates the revenue record; the license
-              informs rights matching.
+              No fact is entered twice. The shoot populates the asset; the asset populates the
+              dispatch; the submission populates the revenue record; the license informs rights
+              matching.
             </p>
           </div>
           <div className="tablewrap">
@@ -394,14 +394,14 @@ export default function Page() {
         <div className="wrap">
           <div className="editors">
             <div>
-              <span className="mk-eyebrow">What your editors see</span>
+              <span className="mk-eyebrow">Editor experience</span>
               <h2 style={{ marginTop: "14px" }}>A link, a look, a tap. No account required.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
-                Every pitch is a single mobile page: watermarked previews, your caption, the price,
-                the terms, and a countdown if you’ve offered an exclusive. Editors accept or
-                counter with one tap and never create a login. The license and full-resolution files
-                are released to them the moment they accept, and every open and download is logged
-                for you.
+                Every pitch is a single mobile page: watermarked previews, the photographer’s
+                caption, the price, the terms, and a countdown when an exclusive is offered. Editors
+                accept or counter with one tap and never create a login. The license and
+                full-resolution files are released the moment they accept, and every open and
+                download is logged.
               </p>
             </div>
             <div className="edsteps">
@@ -409,7 +409,7 @@ export default function Page() {
                 <i>1</i>
                 <div>
                   <b>They get a link</b>
-                  <p>By email or text, from you. Opens on any phone.</p>
+                  <p>By email or text, from the photographer. Opens on any phone.</p>
                 </div>
               </div>
               <div>
@@ -442,15 +442,15 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Bring your archive in</span>
+              <span className="mk-eyebrow">Bringing an archive in</span>
               <h2>Ten years of hard drives, searchable by the weekend.</h2>
             </div>
             <p className="lede">
               The archive features only pay off if the archive is in. Import from Dropbox, Google
               Drive, external drives, or an agency export. Mastline reads the captions and keywords
-              already embedded in your files, groups frames into sets by time and place, and queues
-              anything untagged for quick, assisted tagging so every subject you’ve ever shot
-              becomes something it can watch the news for.
+              already embedded in the files, groups frames into sets by time and place, and queues
+              anything untagged for quick, assisted tagging, so every subject ever shot becomes
+              something it can watch the news for.
             </p>
           </div>
           <div className="principles">
@@ -464,21 +464,21 @@ export default function Page() {
             <div>
               <h3>Reads what’s already there</h3>
               <p>
-                IPTC captions, keywords, dates, and locations come in automatically. Nothing
-                you’ve typed before gets typed again.
+                IPTC captions, keywords, dates, and locations come in automatically. Nothing typed
+                before gets typed again.
               </p>
             </div>
             <div>
               <h3>Assisted tagging</h3>
               <p>
-                Untagged sets are grouped and suggested names offered from faces and context. You
-                confirm with a tap; twenty sets takes about six minutes.
+                Untagged sets are grouped and suggested names offered from faces and context. One
+                tap confirms each; twenty sets takes about six minutes.
               </p>
             </div>
             <div>
               <h3>Watching from day one</h3>
               <p>
-                As soon as a subject is tagged, the news radar is watching for them. Your first
+                As soon as a subject is tagged, the news radar is watching for them. The first
                 archive signal often arrives before the import finishes.
               </p>
             </div>
@@ -490,12 +490,12 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Works with the tools you already use</span>
-              <h2>Keep your editor. Keep your storage. Keep your accountant.</h2>
+              <span className="mk-eyebrow">Works with the tools already in use</span>
+              <h2>Same editor. Same storage. Same accountant.</h2>
             </div>
             <p className="lede">
-              Mastline is the business layer, not a replacement for how you shoot, edit, or do your
-              books.
+              Mastline is the business layer, not a replacement for how the shooting, editing or
+              bookkeeping already works.
             </p>
           </div>
           <div className="integrations">
@@ -521,7 +521,7 @@ export default function Page() {
             </div>
             <div>
               <b>QuickBooks & Xero</b>
-              <span>Invoices and payments sync to your books</span>
+              <span>Invoices and payments sync to the books</span>
             </div>
             <div>
               <b>Stripe</b>
@@ -539,20 +539,20 @@ export default function Page() {
         <div className="wrap">
           <div className="appblock">
             <div>
-              <span className="mk-eyebrow">On your phone</span>
+              <span className="mk-eyebrow">On a phone</span>
               <h3 style={{ marginTop: "10px" }}>
                 A web app that works anywhere, nothing to install.
               </h3>
               <p>
-                Open Mastline in the browser on your phone and upload from the camera roll or a card
-                reader, tag, pitch, accept a counter, and release files without opening a laptop.
-                Add it to your home screen and it behaves like an app. Everything is there on your
-                desktop for the desk work the next morning.
+                Mastline opens in a phone browser: upload from the camera roll or a card reader,
+                tag, pitch, accept a counter, and release files without opening a laptop. Added to
+                the home screen it behaves like an app, and everything is on the desktop for the
+                desk work the next morning.
               </p>
             </div>
             <div className="stores">
               <Link className="btn primary" href="/sign-up">
-                Start your 30-day trial
+                Start the 30-day trial
               </Link>
             </div>
           </div>
@@ -567,8 +567,8 @@ export default function Page() {
               <h2>Suggestions that show their work.</h2>
             </div>
             <p className="lede">
-              Mastline removes the repetitive work without touching your judgment, your contracts,
-              or your evidence. It makes suggestions, shows why, and leaves the final call to you.
+              Mastline removes the repetitive work without touching judgment, contracts or evidence.
+              It makes suggestions, shows why, and leaves the final call to a person.
             </p>
           </div>
           <div className="principles">
@@ -611,7 +611,7 @@ export default function Page() {
               <h3>Revenue intelligence</h3>
               <p>
                 Earnings patterns by subject, buyer, venue, format, turnaround time, and cost, so
-                you can decide where the next night is worth spending.
+                the next night is spent where it pays.
               </p>
             </div>
           </div>
@@ -622,13 +622,13 @@ export default function Page() {
           <div>
             <h2>Run the business behind every image.</h2>
             <p>
-              Thirty days free on any plan. Keep 100% of the sales you make yourself, and 70% of the
-              ones Mastline helps create.
+              Thirty days free on any plan. 100% of sales made directly, and 70% of the ones
+              Mastline helps create.
             </p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">
               See pricing

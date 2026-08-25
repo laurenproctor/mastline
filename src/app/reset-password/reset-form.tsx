@@ -13,7 +13,7 @@ export function ResetForm() {
   if (state.sent) {
     return (
       <div className="gate-sent" role="status">
-        <h2>Check your email</h2>
+        <h2>Check the inbox</h2>
         <p className="gate-note">
           If that address has an account, a reset link is on its way. The link works once and
           expires shortly.
@@ -27,7 +27,7 @@ export function ResetForm() {
 
   return (
     <form action={formAction} className="gate-form">
-      <h2>Reset your password</h2>
+      <h2>Reset password</h2>
       <Field autoComplete="email" autoFocus label="Email" name="email" required type="email" />
 
       {state.error && (
@@ -37,7 +37,7 @@ export function ResetForm() {
       )}
 
       <button className="btn primary" disabled={pending} type="submit">
-        {pending ? "Sending…" : "Send reset link"}
+        {pending ? "Sending…" : "Send link"}
       </button>
       <p className="gate-note">
         <Link className="gate-switch" href="/sign-in">

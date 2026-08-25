@@ -25,13 +25,13 @@ export default function Page() {
           </h1>
           <div className="row">
             <p className="lede">
-              Pitch the right desks in minutes, see what every picture earned, and let your archive
+              Pitch the right desks in minutes, see what every picture earned, and let the archive
               sell itself when a name is back in the news. For paparazzi, entertainment
               photographers, and small crews. Stills and video.
             </p>
             <div className="actions">
               <Link className="btn primary" href="/sign-up">
-                Start your 30-day trial{" "}
+                Start the 30-day trial{" "}
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -51,11 +51,11 @@ export default function Page() {
           <div className="money-strip">
             <div>
               <b>100%</b>
-              <span>of sales you make yourself. No commission, ever.</span>
+              <span>of sales made directly. No commission, ever.</span>
             </div>
             <div>
               <b>70%</b>
-              <span>of sales Mastline creates for you. We earn 30% only then.</span>
+              <span>of sales Mastline creates. It earns 30% only then.</span>
             </div>
             <div>
               <b>$0</b>
@@ -101,7 +101,7 @@ export default function Page() {
                   <em>11:08 PM</em>Set uploaded · Sunset Tower · 22 frames
                 </span>
                 <span>
-                  <em>11:09 PM</em>Captions drafted in your voice
+                  <em>11:09 PM</em>Captions drafted in the photographer’s voice
                 </span>
                 <span>
                   <em>11:11 PM</em>Suggested band $1,200–1,800
@@ -110,7 +110,7 @@ export default function Page() {
                   <em>11:14 PM</em>6 pitches sent · 2 exclusive
                 </span>
                 <span>
-                  <em>11:16 PM</em>Daily Mail opened your pitch
+                  <em>11:16 PM</em>Daily Mail opened the pitch
                 </span>
                 <span>
                   <em>11:23 PM</em>Counter received · $1,800 · 48h exclusive
@@ -137,7 +137,7 @@ export default function Page() {
                   <em>08:15 AM</em>Rights match · 3 unlicensed uses · evidence saved
                 </span>
                 <span className="hot">
-                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · you keep 70%
+                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · photographer keeps 70%
                 </span>
               </div>
               <div className="ticker-row" aria-hidden="true">
@@ -145,7 +145,7 @@ export default function Page() {
                   <em>11:08 PM</em>Set uploaded · Sunset Tower · 22 frames
                 </span>
                 <span>
-                  <em>11:09 PM</em>Captions drafted in your voice
+                  <em>11:09 PM</em>Captions drafted in the photographer’s voice
                 </span>
                 <span>
                   <em>11:11 PM</em>Suggested band $1,200–1,800
@@ -154,7 +154,7 @@ export default function Page() {
                   <em>11:14 PM</em>6 pitches sent · 2 exclusive
                 </span>
                 <span>
-                  <em>11:16 PM</em>Daily Mail opened your pitch
+                  <em>11:16 PM</em>Daily Mail opened the pitch
                 </span>
                 <span>
                   <em>11:23 PM</em>Counter received · $1,800 · 48h exclusive
@@ -181,7 +181,7 @@ export default function Page() {
                   <em>08:15 AM</em>Rights match · 3 unlicensed uses · evidence saved
                 </span>
                 <span className="hot">
-                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · you keep 70%
+                  <em data-tomorrow="upper">SEP 15</em>Paid · $1,800 · photographer keeps 70%
                 </span>
               </div>
             </div>
@@ -199,8 +199,8 @@ export default function Page() {
             <p style={{ marginTop: "18px" }}>
               Folders forget. Portals forget. Email definitely forgets. In Mastline every picture
               carries its own record of where it came from, where it went, what it earned, how it
-              may be used, and when it becomes valuable again. Nothing you’ve shot, sold, or
-              are owed can quietly disappear.
+              may be used, and when it becomes valuable again. Nothing shot, sold, or owed can
+              quietly disappear.
             </p>
           </div>
           <div className="memory" aria-label="What an asset record preserves">
@@ -247,9 +247,9 @@ export default function Page() {
             </div>
             <p className="lede">
               Every part of the job, from the tip to the bank, in one place that remembers
-              everything. Here are three of the tools you’ll use every night, plus a{" "}
+              everything. Here are three of the tools in use every night, plus a{" "}
               <Link href="/commercial">second market</Link>
-              {" for what's inside every frame: the brands and products your subjects wear."}
+              {" for what's inside every frame: the brands and products the subjects wear."}
             </p>
           </div>
           <div className="teaser">
@@ -318,7 +318,7 @@ export default function Page() {
             </div>
           </div>
           <Link className="more" href="/product">
-            See everything Mastline does for you{" "}
+            See everything Mastline does{" "}
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -340,14 +340,14 @@ export default function Page() {
               <span className="mk-eyebrow">Editor experience</span>
               <h2 style={{ marginTop: "14px" }}>Buyers don’t have to sign up.</h2>
               <p className="lede" style={{ marginTop: "18px" }}>
-                Editors don’t adopt new software. They open links. Every pitch you send is a
-                single page that works on a phone: watermarked previews, your caption, your price, a
-                countdown if it’s exclusive, and one button to accept. No account, no password,
-                no app. When they accept, the license and the full-resolution files arrive on their
-                side, and the sale lands on yours.
+                Editors don’t adopt new software. They open links. Every pitch is a single page that
+                works on a phone: watermarked previews, the photographer’s caption, the asking
+                price, a countdown if it’s exclusive, and one button to accept. No account, no
+                password, no app. When a desk accepts, the license and the full-resolution files
+                arrive on their side, and the sale lands on the shoot record.
               </p>
               <Link className="more" href="/editors">
-                What we tell editors{" "}
+                What editors are told{" "}
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -365,7 +365,10 @@ export default function Page() {
                 <i>1</i>
                 <div>
                   <b>They get a link</b>
-                  <p>By email or text, from you, in your voice. It opens instantly on any phone.</p>
+                  <p>
+                    By email or text, from the photographer, in their voice. It opens instantly on
+                    any phone.
+                  </p>
                 </div>
               </div>
               <div>
@@ -380,7 +383,7 @@ export default function Page() {
                 <div>
                   <b>They accept or counter</b>
                   <p>
-                    One tap to accept at asking, or a structured counter you can answer from your
+                    One tap to accept at asking, or a structured counter that can be answered from a
                     phone.
                   </p>
                 </div>
@@ -406,10 +409,10 @@ export default function Page() {
             <span className="mk-eyebrow">Archive opportunities</span>
             <h2 style={{ marginTop: "14px" }}>Turn today’s headlines into archive sales.</h2>
             <p className="lede" style={{ marginTop: "18px" }}>
-              Your archive is full of pictures that are worth nothing today and a lot tomorrow.
-              Mastline watches the news for the people in it. When a name spikes, the right sets
-              light up, the right buyers are named, and a pitch is ready to approve before anyone
-              else has found their hard drive.
+              An archive is full of pictures worth nothing today and a lot tomorrow. Mastline
+              watches the news for the people in them. When a name spikes, the right sets light up,
+              the right buyers are named, and a pitch is ready to approve before anyone else has
+              found their hard drive.
             </p>
             <ul>
               <li>
@@ -424,8 +427,7 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Who’s trending in your archive</b>, matched against what you actually have
-                  on file.
+                  <b>Who’s trending in the archive</b>, matched against what is actually on file.
                 </span>
               </li>
               <li>
@@ -440,8 +442,8 @@ export default function Page() {
                   <path d="M5 12l4 4L19 6" />
                 </svg>
                 <span>
-                  <b>Likely buyers and a price band</b>, drawn from your own sales, not a generic
-                  rate card.
+                  <b>Likely buyers and a price band</b>, drawn from the workspace’s own sales, not a
+                  generic rate card.
                 </span>
               </li>
               <li>
@@ -685,12 +687,12 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">From the photographers who built it with us</span>
+              <span className="mk-eyebrow">From the photographers who built it</span>
               <h2>Built on the sidewalks of Hollywood and New York.</h2>
             </div>
             <p className="lede">
-              Mastline was shaped by working paparazzi who still use it every night and still tell
-              us what’s wrong with it.
+              Mastline was shaped by working paparazzi who still use it every night and still say
+              what’s wrong with it.
             </p>
           </div>
           <div className="quotes">
@@ -752,13 +754,13 @@ export default function Page() {
           <div>
             <h2>Run the business behind every image.</h2>
             <p>
-              Thirty days free on any plan. Keep 100% of the sales you make yourself, and 70% of the
-              ones Mastline helps create.
+              Thirty days free on any plan. 100% of sales made directly, and 70% of the ones
+              Mastline helps create.
             </p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">
               See pricing

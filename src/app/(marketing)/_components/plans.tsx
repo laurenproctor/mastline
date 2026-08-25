@@ -84,7 +84,7 @@ export function Plans({ eyebrow, heading }: { eyebrow: string; heading: string }
                   <span>
                     built around
                     <br />
-                    your operation
+                    the operation
                   </span>
                 </div>
               ) : (

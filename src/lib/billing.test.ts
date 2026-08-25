@@ -182,7 +182,7 @@ describe("what the billing panel says", () => {
   it("tells a trialist a card will not be charged yet", () => {
     const summary = billingSummary(trialing(20), NOW);
     expect(summary.needsCard).toBe(true);
-    expect(summary.detail).toMatch(/not be charged until the trial ends/i);
+    expect(summary.detail).toMatch(/not charged until the trial ends/i);
   });
 
   it("confirms when a card is on file, without implying an early charge", () => {

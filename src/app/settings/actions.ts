@@ -120,7 +120,7 @@ export async function inviteMemberAction(
     userId = created.user.id;
   }
 
-  if (userId === actorId) return { error: "You are already in this workspace." };
+  if (userId === actorId) return { error: "That person is already in this workspace." };
 
   const { error: membershipError } = await admin.from("memberships").insert({
     organization_id: organizationId,
@@ -160,7 +160,7 @@ export async function removeMemberAction(
   const { organizationId, actorId } = await requireContext("member.invite");
 
   if (userId === actorId) {
-    return { error: "You cannot remove yourself and leave the workspace without an owner." };
+    return { error: "A workspace cannot be left without an owner." };
   }
 
   const supabase = await createClient();

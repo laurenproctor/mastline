@@ -7,7 +7,6 @@ import { type OnboardingState, createWorkspaceAction } from "./actions";
 
 const INITIAL: OnboardingState = {};
 
-
 export function WorkspaceForm({ suggestedName }: { suggestedName: string }) {
   const [state, formAction, pending] = useActionState(createWorkspaceAction, INITIAL);
 
@@ -15,7 +14,7 @@ export function WorkspaceForm({ suggestedName }: { suggestedName: string }) {
     <form action={formAction} className="auth-form">
       <Field
         defaultValue={suggestedName}
-        hint="Your studio or business name. You can change it later."
+        hint="The studio or business name. It can be changed later."
         label="Workspace name"
         name="name"
         required

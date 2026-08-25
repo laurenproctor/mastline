@@ -15,8 +15,7 @@ export default function Page() {
           <h1>Press and media kit.</h1>
           <p className="lede">
             Everything a journalist needs to cover Mastline accurately: what it is, who built it,
-            what it will and won’t do, approved language, logos, screenshots, and a person to
-            call.
+            what it will and won’t do, approved language, logos, screenshots, and a person to call.
           </p>
           <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "24px" }}>
             <a className="btn primary" href="mailto:press@mastline.co">
@@ -34,11 +33,11 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Boilerplate</span>
-              <h2>Describe us this way.</h2>
+              <h2>Describe Mastline this way.</h2>
             </div>
             <p className="lede">
-              Use either version verbatim. Please don’t shorten Mastline to “an app for
-              paparazzi”; the business layer is the point.
+              Use either version verbatim. Please don’t shorten Mastline to “an app for paparazzi”;
+              the business layer is the point.
             </p>
           </div>
           <div className="principles">
@@ -151,12 +150,12 @@ export default function Page() {
                 photographers themselves have run on memory, group chats, hard drives, and unpaid
                 invoices. Mastline was built to fix that, by sitting with working photographers in
                 Hollywood and New York and turning the questions they ask every night into screens:
-                what’s worth shooting, who will buy it, what’s it worth, did they pay, and
-                which of my old pictures just became valuable again.
+                what’s worth shooting, who will buy it, what’s it worth, did they pay, and which of
+                my old pictures just became valuable again.
               </p>
             </div>
             <div>
-              <span className="mk-eyebrow">Angles we’re glad to talk about</span>
+              <span className="mk-eyebrow">Angles Mastline is glad to discuss</span>
               <ol>
                 <li>
                   The economics of a night: what a set actually earns, and where the money has been
@@ -171,8 +170,8 @@ export default function Page() {
                   what photographers can do about it.
                 </li>
                 <li>
-                  The ethics line: what a tool like this should refuse to do, and why we say so
-                  publicly.
+                  The ethics line: what a tool like this should refuse to do, and why Mastline says
+                  so publicly.
                 </li>
                 <li>
                   Storyworlding: building a company by building the world around the people it
@@ -231,13 +230,15 @@ export default function Page() {
               <span className="mk-eyebrow">Approved quotes</span>
               <h2>Attributable to Lauren Proctor, founder.</h2>
             </div>
-            <p className="lede">Use as written, or contact us for a quote on a specific story.</p>
+            <p className="lede">
+              Use as written, or ask press@mastline.co for a quote on a specific story.
+            </p>
           </div>
           <div className="quotes">
             <blockquote className="quote">
               <p>
-                “Every picture a photographer takes should keep paying them. Most of the
-                industry is set up so it pays everyone else.”
+                “Every picture a photographer takes should keep paying them. Most of the industry is
+                set up so it pays everyone else.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -245,8 +246,8 @@ export default function Page() {
             </blockquote>
             <blockquote className="quote">
               <p>
-                “We built this with the people who stand on the sidewalk at one in the morning.
-                If it doesn’t make tonight easier, nothing else we do matters.”
+                “We built this with the people who stand on the sidewalk at one in the morning. If
+                it doesn’t make tonight easier, nothing else we do matters.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -254,8 +255,8 @@ export default function Page() {
             </blockquote>
             <blockquote className="quote">
               <p>
-                “Mastline helps photographers sell pictures taken in public. It is not a tool
-                for following people, and we say so in writing.”
+                “Mastline helps photographers sell pictures taken in public. It is not a tool for
+                following people, and we say so in writing.”
               </p>
               <cite>
                 <b>Lauren Proctor</b> · Founder, Mastline
@@ -273,8 +274,8 @@ export default function Page() {
               <h2>Please quote this directly when the question comes up.</h2>
             </div>
             <p className="lede">
-              We expect to be asked. These are product rules, written into our Terms and enforced in
-              the software.
+              These come up in every interview. They are product rules, written into the Terms and
+              enforced in the software.
             </p>
           </div>
           <div className="never">
@@ -286,8 +287,8 @@ export default function Page() {
             </div>
             <div>
               <span>
-                <b>No scraping of private accounts</b> or messages, and no storing of anyone’s
-                home address as a “signal.”
+                <b>No scraping of private accounts</b> or messages, and no storing of anyone’s home
+                address as a “signal.”
               </span>
             </div>
             <div>
@@ -331,8 +332,8 @@ export default function Page() {
             </div>
             <p className="lede">
               The mark is the M-and-frame symbol with the blue square; the wordmark is MASTLINE set
-              in its custom geometric letterforms. Don’t recolor, rotate, stretch, outline, or
-              add effects, and don’t set the name in another typeface.
+              in its custom geometric letterforms. Don’t recolor, rotate, stretch, outline, or add
+              effects, and don’t set the name in another typeface.
             </p>
           </div>
           <div className="principles">
@@ -454,11 +455,11 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">For reporters</span>
-              <h2 style={{ marginTop: "14px" }}>Things we get asked.</h2>
+              <h2 style={{ marginTop: "14px" }}>Things reporters ask.</h2>
             </div>
             <div className="faq">
               <details open>
-                <summary>How do you say the name?</summary>
+                <summary>How is the name said?</summary>
                 <p>
                   MAST-line, one word, capital M. It comes from masthead and byline, the two words
                   at the top of a page that say who made it.
@@ -491,15 +492,15 @@ export default function Page() {
               <details>
                 <summary>Can I speak to photographers who use it?</summary>
                 <p>
-                  Often, yes. Email press@mastline.co with the outlet and the angle; we’ll ask,
-                  and we’ll only connect you with photographers who want to talk.
+                  Often, yes. Email press@mastline.co with the outlet and the angle. Mastline asks
+                  first, and only connects reporters with photographers who want to talk.
                 </p>
               </details>
               <details>
                 <summary>Can I try the product?</summary>
                 <p>
                   Yes. Ask for a demo account at press@mastline.co. It comes loaded with fictional
-                  sets, buyers, and deals so you can see every screen without touching anyone’s
+                  sets, buyers, and deals, so every screen can be seen without touching anyone’s
                   real work.
                 </p>
               </details>
@@ -513,9 +514,8 @@ export default function Page() {
           <div>
             <h2>On deadline?</h2>
             <p>
-              Email press@mastline.co with “DEADLINE” in the subject line and we’ll
-              respond within the hour during New York business hours, and as fast as we can outside
-              them.
+              Email press@mastline.co with “DEADLINE” in the subject line. Replies come within the
+              hour during New York business hours, and as fast as possible outside them.
             </p>
           </div>
           <div className="actions">

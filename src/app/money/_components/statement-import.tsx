@@ -20,7 +20,7 @@ export function ImportStatement({ buyers }: { buyers: readonly { id: string; nam
         <h3>Import a statement</h3>
         <p>
           Drop in an agency CSV. Mastline reads the common column names and matches each line
-          against your submissions, then asks you to confirm.
+          against open submissions, then waits for a confirmation.
         </p>
         <button className="button" onClick={() => setOpen(true)} type="button">
           Import statement
@@ -72,8 +72,8 @@ export function ImportStatement({ buyers }: { buyers: readonly { id: string; nam
         </button>
       </div>
       <p className="section-note">
-        Importing reads the file and proposes matches. No money is recorded until you confirm each
-        line.
+        Importing reads the file and proposes matches. No money is recorded until a person confirms
+        each line.
       </p>
     </form>
   );

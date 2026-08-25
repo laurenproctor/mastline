@@ -13,8 +13,8 @@ export default function Page() {
           </div>
           <h1>Security at Mastline</h1>
           <p className="lede">
-            You are trusting us with unpublished pictures, confidential sources, buyer
-            relationships, and money. Here is how we protect them.
+            Mastline holds unpublished pictures, confidential sources, buyer relationships, and
+            money. Here is how it protects them.
           </p>
         </div>
       </section>
@@ -25,24 +25,24 @@ export default function Page() {
 
             <h2>Encryption</h2>
             <p>
-              All traffic between your devices, buyers’ devices, and Mastline is encrypted with
-              TLS 1.2 or higher. Your files and records are encrypted at rest using AES-256.
-              Encryption keys are managed through our cloud provider’s key-management service
-              and rotated on a schedule.
+              All traffic between photographers’ devices, buyers’ devices, and Mastline is encrypted
+              with TLS 1.2 or higher. Files and records are encrypted at rest using AES-256.
+              Encryption keys are managed through the cloud provider’s key-management service and
+              rotated on a schedule.
             </p>
 
             <h2>Originals are immutable</h2>
             <p>
-              The original file you upload is stored write-once. Every derivative, preview,
-              watermark, and edit is generated from it and recorded separately, so the original and
-              its capture metadata are always available as evidence of what you shot and when.
+              Every original is stored write-once. Every derivative, preview, watermark, and edit is
+              generated from it and recorded separately, so the original and its capture metadata
+              are always available as evidence of what was shot and when.
             </p>
 
             <h2>Full-resolution files are gated</h2>
             <p>
               Buyers see watermarked previews. Full-resolution files are released only through a
               time-limited link tied to an accepted license, and every download is logged with the
-              recipient, time, and IP address. You can see this log on the deal.
+              recipient, time, and IP address. The log sits on the deal.
             </p>
 
             <h2>Access control</h2>
@@ -69,7 +69,7 @@ export default function Page() {
             <p>
               Consequential actions, including sending a pitch, accepting a license, releasing
               files, issuing an invoice, and changing permissions, are written to an append-only
-              event log that cannot be edited or deleted by any user, including us.
+              event log that cannot be edited or deleted by any user, Mastline included.
             </p>
 
             <h2>Infrastructure</h2>
@@ -84,8 +84,8 @@ export default function Page() {
             <h2>Application security</h2>
             <p>
               Code changes are peer-reviewed and pass automated security checks before deployment.
-              Dependencies are scanned and patched continuously. We engage independent penetration
-              testers at least annually and fix findings on defined timelines.
+              Dependencies are scanned and patched continuously. Mastline engages independent
+              penetration testers at least annually and fix findings on defined timelines.
             </p>
 
             <h2>Payments</h2>
@@ -94,14 +94,14 @@ export default function Page() {
               Mastline never stores full card numbers.
             </p>
 
-            <h2>Your data, your control</h2>
+            <h2>The record, under its owner’s control</h2>
             <ul>
               <li>
                 Export everything, including originals, records, licenses, and invoices, at any time
                 from Settings.
               </li>
               <li>
-                Delete content or your entire account at any time; deletion propagates to backups
+                Delete content or an entire account at any time; deletion propagates to backups
                 within 90 days.
               </li>
               <li>Set retention rules for sensitive fields on team plans.</li>
@@ -109,18 +109,18 @@ export default function Page() {
 
             <h2>Incident response</h2>
             <p>
-              We maintain a written incident-response plan and rehearse it. If an incident affects
-              your data, we will notify you without undue delay and within any timeframe required by
-              law, tell you what happened and what we are doing, and give you what you need to
-              protect yourself.
+              Mastline maintains a written incident-response plan and rehearses it. If an incident
+              affects a workspace, it notifies the account without undue delay and within any
+              timeframe required by law, says what happened and what is being done, and provides
+              what is needed to respond.
             </p>
 
             <h2>Reporting a vulnerability</h2>
             <p>
-              If you believe you have found a security issue in Mastline, please email{" "}
-              <a href="mailto:security@mastline.co">security@mastline.co</a>. We read every report,
+              Security issues can be reported to{" "}
+              <a href="mailto:security@mastline.co">security@mastline.co</a>. Every report is read,
               respond within two business days, and will not pursue legal action against good-faith
-              researchers who respect user privacy and give us reasonable time to fix the issue.
+              researchers who respect user privacy and allow reasonable time for a fix.
             </p>
 
             <h2>Questions</h2>

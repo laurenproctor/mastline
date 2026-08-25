@@ -25,9 +25,9 @@ function RecoveryCodes({ codes }: { codes: readonly string[] }) {
   return (
     <div className="recovery-codes" role="group" aria-label="Recovery codes">
       <p className="section-note">
-        <strong>Save these now.</strong> Each one signs you in once if you lose your device, and
+        <strong>Save these now.</strong> Each one opens the account once if the device is lost, and
         they cannot be shown again. Print them, or put them somewhere that is not the phone holding
-        your authenticator.
+        the authenticator.
       </p>
       <ul className="recovery-code-list">
         {codes.map((code) => (
@@ -137,7 +137,7 @@ export function TwoFactor({
       <div className="panel-body">
         <Badge tone="good">Two-factor on</Badge>
         <p className="section-note">
-          Signing in on a new device needs a code from your authenticator app as well as your
+          Signing in on a new device needs a code from the authenticator app as well as the
           password.
         </p>
         <p className="section-note">{remainingCodes}</p>
@@ -163,7 +163,7 @@ export function TwoFactor({
           <form action={removeAction}>
             <Field
               autoComplete="one-time-code"
-              hint="Confirming with a current code means a borrowed session cannot strip this off your account."
+              hint="Confirming with a current code means a borrowed session cannot strip this off the account."
               inputMode="numeric"
               label="Current code"
               name="code"
@@ -199,7 +199,7 @@ export function TwoFactor({
       <p className="section-note">
         {standing === "required"
           ? "This workspace requires a second factor for owners and finance. Set one up to keep working."
-          : "Add a code from an authenticator app to your password. Recommended for anyone holding confidential sources."}
+          : "Adds a code from an authenticator app on top of the password. Recommended for anyone holding confidential sources."}
       </p>
 
       {!enrollment?.secret ? (
@@ -226,7 +226,7 @@ export function TwoFactor({
         <form action={confirmAction}>
           <input name="factorId" type="hidden" value={enrollment.factorId} />
           <p className="section-note">
-            Add this key to your authenticator app for <strong>{email}</strong>, then enter the code
+            Add this key to an authenticator app for <strong>{email}</strong>, then enter the code
             it shows.
           </p>
           <p className="mfa-secret">
@@ -236,7 +236,7 @@ export function TwoFactor({
             autoComplete="one-time-code"
             hint="Six digits. It changes every 30 seconds."
             inputMode="numeric"
-            label="Code from your app"
+            label="Code from the app"
             name="code"
             required
           />

@@ -19,7 +19,7 @@ export function AcceptTerms({ token }: { token: string }) {
     <form action={formAction} className="delivery-accept">
       <input name="token" type="hidden" value={token} />
       <label htmlFor="acceptedBy">
-        Your name
+        Name
         <input
           autoComplete="name"
           id="acceptedBy"
@@ -37,7 +37,7 @@ export function AcceptTerms({ token }: { token: string }) {
         {pending ? "Recording…" : "Accept these terms"}
       </button>
       <p className="section-note">
-        Accepting records your name, the time, and the terms above, and releases the
+        Accepting records the name entered, the time, and the terms above, and releases the
         full-resolution files.
       </p>
     </form>

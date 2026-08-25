@@ -59,8 +59,8 @@ export function BillingPanel({
 
       {!billingAvailable && (
         <p className="section-note">
-          Payments are not connected yet, so nothing can be charged. The plans below are shown so
-          you can see what is on offer.
+          Payments are not connected yet, so nothing can be charged. The plans below are shown for
+          reference.
         </p>
       )}
 
@@ -128,12 +128,12 @@ export function BillingPanel({
 
           {state.needsConfirmation && (
             <div className="billing-warning" role="alert">
-              <strong>Before you change plan</strong>
+              <strong>Before changing plan</strong>
               {(state.warnings ?? []).map((warning) => (
                 <p key={warning}>{warning}</p>
               ))}
               {(state.warnings ?? []).length === 0 && (
-                <p>A downgrade takes effect at the end of the period you have already paid for.</p>
+                <p>A downgrade takes effect at the end of the period already paid for.</p>
               )}
               <p className="section-note">Press the same button again to confirm.</p>
             </div>
@@ -146,7 +146,7 @@ export function BillingPanel({
           )}
 
           <p className="section-note">
-            Adding a card during a trial does not end it. Your trial runs its full course and the
+            Adding a card during a trial does not end it. The trial runs its full course and the
             first charge lands when it does.
           </p>
         </>

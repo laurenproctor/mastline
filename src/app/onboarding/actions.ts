@@ -27,7 +27,7 @@ export async function createWorkspaceAction(
   const name = String(formData.get("name") ?? "").trim();
   const timezone = String(formData.get("timezone") ?? "America/New_York");
 
-  if (!name) return { error: "Give your workspace a name." };
+  if (!name) return { error: "Give the workspace a name." };
   if (name.length > 120) return { error: "Keep the name under 120 characters." };
 
   await requireUser();

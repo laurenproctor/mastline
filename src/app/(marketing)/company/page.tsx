@@ -41,7 +41,7 @@ export default function Page() {
                 single product inside it. For Mastline, that meant starting with the people, not the
                 software: riding along on shoots, sitting at kitchen tables while invoices were
                 chased, and watching ten years of archive sit on hard drives earning nothing. Every
-                screen in Mastline answers a question a working photographer actually asked us.
+                screen in Mastline answers a question a working photographer actually asked.
               </p>
               <p
                 style={{
@@ -52,9 +52,9 @@ export default function Page() {
                 }}
               >
                 The photographers who helped shape it still use it every night, and they still tell
-                us what’s wrong with it. That’s the arrangement. Mastline exists to make
-                their business faster, more visible, and more valuable, and to give every picture
-                they take a memory that outlasts the news cycle.
+                what’s wrong with it. That’s the arrangement. Mastline exists to make their business
+                faster, more visible, and more valuable, and to give every picture they take a
+                memory that outlasts the news cycle.
               </p>
             </div>
           </div>
@@ -116,8 +116,8 @@ export default function Page() {
               <h2>Not unprecedented features. Shared context.</h2>
             </div>
             <p className="lede">
-              Mastline’s advantage is that its features share context across the full
-              commercial lifecycle and are designed for one highly specific form of work.
+              Mastline’s advantage is that its features share context across the full commercial
+              lifecycle and are designed for one highly specific form of work.
             </p>
           </div>
           <div className="tablewrap">
@@ -175,14 +175,14 @@ export default function Page() {
           <div className="faq-grid">
             <div>
               <span className="mk-eyebrow">Common questions</span>
-              <h2 style={{ marginTop: "14px" }}>Before you start.</h2>
+              <h2 style={{ marginTop: "14px" }}>Before starting.</h2>
             </div>
             <div className="faq">
               <details open>
                 <summary>Do I have to leave my agency?</summary>
                 <p>
-                  No. Keep every relationship you have. Record those sales in Mastline with no
-                  commission, and use Mastline’s own pitching and archive tools alongside them.
+                  No. Every existing relationship stays. Those sales are recorded in Mastline with
+                  no commission, and use Mastline’s own pitching and archive tools alongside them.
                 </p>
               </details>
               <details>
@@ -195,14 +195,14 @@ export default function Page() {
               <details>
                 <summary>Does it work on my phone?</summary>
                 <p>
-                  Yes. Mastline is a web app, so there is nothing to install: open it in your
-                  phone’s browser, add it to your home screen, and it works like an app. Most
+                  Yes. Mastline is a web app, so there is nothing to install: it opens in a phone’s
+                  browser and can be added to the home screen, where it works like an app. Most
                   photographers run the whole night from the phone and do the desk work on a laptop
                   the next day.
                 </p>
               </details>
               <details>
-                <summary>Which markets do you support?</summary>
+                <summary>Which markets does Mastline support?</summary>
                 <p>
                   Mastline is built in New York and used most heavily in New York, Los Angeles, and
                   London. Pitches, licenses, and invoices work in dollars, pounds, and euros, with
@@ -212,9 +212,9 @@ export default function Page() {
               <details>
                 <summary>What happens to my data if I leave?</summary>
                 <p>
-                  You export everything, including originals, records, licenses, and invoices, from
-                  Settings, with a 30-day window after closing your account. Your archive and your
-                  history never belong to us.
+                  Everything exports from Settings — originals, records, licenses and invoices —
+                  with a 30-day window after an account closes. The archive and its history never
+                  belong to Mastline.
                 </p>
               </details>
               <details>
@@ -238,8 +238,7 @@ export default function Page() {
               <h2>Talk to the team.</h2>
             </div>
             <p className="lede">
-              Press, partnerships, agencies, or just a photographer with an opinion: we want to hear
-              from you.
+              Press, partnerships, agencies, or a photographer with an opinion. All of it is read.
             </p>
           </div>
           <div className="actions" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>

@@ -125,8 +125,8 @@ export default async function RightsPage() {
             </div>
             <p className="section-note panel-body">
               Confidence is a machine observation and is stored separately from the human status. A
-              license check result of “no linked license found” is a fact about our records, not a
-              legal conclusion.
+              license check result of “no linked license found” is a fact about the Mastline record,
+              not a legal conclusion.
             </p>
           </Panel>
 

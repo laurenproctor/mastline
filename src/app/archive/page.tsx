@@ -69,7 +69,7 @@ export default async function ArchivePage({
           {filter !== "all" && <input name="filter" type="hidden" value={filter} />}
           <Field
             defaultValue={query}
-            hint={`${total} ${total === 1 ? "asset" : "assets"} in this workspace. Searched in the database, not in your browser.`}
+            hint={`${total} ${total === 1 ? "asset" : "assets"} in this workspace. Searched in the database, not in the browser.`}
             label="Search the archive"
             name="q"
             placeholder="Avery Hart, Hotel Chelsea, New York…"
@@ -172,8 +172,8 @@ export default async function ArchivePage({
         <div className="spacer" />
         <Badge tone="neutral">Private</Badge>
         <p className="section-note">
-          Previews are served through short-lived signed links, and only for the page you are
-          looking at. Originals are never publicly readable.
+          Previews are served through short-lived signed links, and only for the page being looking
+          at. Originals are never publicly readable.
         </p>
       </div>
     </AppShell>

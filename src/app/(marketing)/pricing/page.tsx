@@ -48,20 +48,20 @@ export default function Page() {
               <div className="pr-split-nums">
                 <div className="keep">
                   <b>70%</b>
-                  <span>You keep</span>
+                  <span>Photographer</span>
                 </div>
                 <div className="earn">
                   <b>30%</b>
-                  <span>We earn</span>
+                  <span>Mastline</span>
                 </div>
               </div>
             </div>
             <div>
-              <h2>We participate only when we create value.</h2>
+              <h2>Mastline earns only when it creates the sale.</h2>
               <p>
-                Every photo licensed through Mastline follows a 70/30 split. You receive 70% of the
-                license, while sales made through your own relationships outside Mastline stay 100%
-                yours.
+                Every photo licensed through Mastline follows a 70/30 split: 70% of the license to
+                the photographer. Sales made through a photographer’s own relationships, outside
+                Mastline, stay whole.
               </p>
             </div>
           </div>
@@ -70,9 +70,12 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <Plans eyebrow="Choose your operating level" heading="Built for the way you work now." />
+          <Plans
+            eyebrow="Choose an operating level"
+            heading="Built for the way the work happens now."
+          />
           <p className="pr-foot">
-            All paid plans include the optional Mastline Sales Engine. Our 70/30 share applies only
+            All paid plans include the optional Mastline Sales Engine. The 70/30 share applies only
             to licenses generated inside Mastline.
           </p>
         </div>
@@ -83,7 +86,7 @@ export default function Page() {
           <div className="head" style={{ alignItems: "end" }}>
             <span className="mk-eyebrow">Two lanes, no ambiguity</span>
             <h2 style={{ textAlign: "right" }}>
-              Your work remains <em className="serif-i">your work.</em>
+              The work stays <em className="serif-i">with the photographer.</em>
             </h2>
           </div>
           <div className="lanes">
@@ -93,13 +96,13 @@ export default function Page() {
                 <span>Outside Mastline</span>
               </div>
               <h3>
-                You create the sale.
+                The photographer creates the sale.
                 <br />
-                <b>You keep 100%.</b>
+                <b>They keep 100%.</b>
               </h3>
               <p>
                 Record it, invoice it and track it in Mastline. There is no sales commission on
-                business completed through your existing relationships or agencies.
+                business completed through existing relationships or agencies.
               </p>
             </div>
             <div className="lane hot">
@@ -108,9 +111,9 @@ export default function Page() {
                 <span>Through Mastline</span>
               </div>
               <h3>
-                We help create the sale.
+                Mastline helps create the sale.
                 <br />
-                <b>You keep 70%.</b>
+                <b>They keep 70%.</b>
               </h3>
               <p>
                 When a photo is licensed through a Mastline opportunity, pitch or buyer request,
@@ -126,10 +129,10 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Compared with an agency</span>
-              <h2>Keep your agency if you like. Keep a lot more of the money either way.</h2>
+              <h2>Agencies can stay. A lot more of the money stays too.</h2>
             </div>
             <p className="lede">
-              A typical agency takes a share of everything you sell through them, on every sale,
+              A typical agency takes a share of everything sold through them, on every sale,
               forever. Mastline takes a share only of the sales it creates, and nothing on the rest.
             </p>
           </div>
@@ -138,17 +141,18 @@ export default function Page() {
               <span className="mk-eyebrow">Typical agency</span>
               <span className="big">40–60%</span>
               <p>
-                Of every license they distribute, including the ones that came from your own
-                relationships. Your history and your buyer contacts stay inside their portal.
+                Of every license they distribute, including the ones that came from the
+                photographer’s own relationships. That history and those buyer contacts stay inside
+                the agency’s portal.
               </p>
             </div>
             <div className="m">
               <span className="mk-eyebrow">Mastline</span>
               <span className="big">0% or 30%</span>
               <p>
-                Nothing on sales you make yourself. 30% only when Mastline surfaced the opportunity,
-                sent the pitch, or closed the buyer. Your history and contacts are yours, exportable
-                any time.
+                Nothing on sales made directly. 30% only when Mastline surfaced the opportunity,
+                sent the pitch, or closed the buyer. History and contacts stay with the
+                photographer, exportable any time.
               </p>
             </div>
           </div>
@@ -196,7 +200,7 @@ export default function Page() {
               </div>
               <div className="calc-row">
                 <span>
-                  <i className="dot you"></i>Your share <small>70%</small>
+                  <i className="dot you"></i>Photographer <small>70%</small>
                 </span>
                 <b id="pr-you">$700</b>
               </div>
@@ -309,30 +313,31 @@ export default function Page() {
               <details open>
                 <summary>When does Mastline take 30%?</summary>
                 <p>
-                  Only when a photo is licensed through Mastline: an opportunity Mastline surfaces,
-                  a pitch sent through the platform, or a buyer request Mastline helps close.
+                  Only when a photo is licensed through Mastline: an opportunity it surfaces, a
+                  pitch sent through the platform, or a buyer request it helps close.
                 </p>
               </details>
               <details>
                 <summary>Do I pay commission on my existing sales?</summary>
                 <p>
-                  No. Sales you make through your own relationships, agencies, or portals can be
-                  recorded, invoiced, and tracked in Mastline with no commission. You keep 100%.
+                  No. Sales made through a photographer’s own relationships, agencies, or portals
+                  can be recorded, invoiced, and tracked in Mastline with no commission. They keep
+                  100%.
                 </p>
               </details>
               <details>
                 <summary>Who owns the copyright?</summary>
                 <p>
-                  You do, always. Mastline never takes ownership of your images. A license sold
-                  through Mastline grants the buyer the specific usage in the license and nothing
-                  more.
+                  The photographer does, always. Mastline never takes ownership of an image. A
+                  license sold through Mastline grants the buyer the specific usage in the license
+                  and nothing more.
                 </p>
               </details>
               <details>
                 <summary>What happens after the 30-day trial?</summary>
                 <p>
-                  Your trial converts to the plan you chose unless you cancel. Your records, assets,
-                  and history stay intact, and you can export everything at any time.
+                  The trial converts to the chosen plan unless it is cancelled. Records, assets and
+                  history stay intact, and everything remains exportable.
                 </p>
               </details>
               <details>
@@ -345,22 +350,22 @@ export default function Page() {
               <details>
                 <summary>Who collects the money from the buyer?</summary>
                 <p>
-                  Your choice per outlet. Mastline can invoice and collect on your behalf through
-                  Stripe, then pay out your share, or you can invoice the outlet directly from
-                  Mastline and record the payment when it lands. Either way the sale, the license,
-                  and the payment stay attached to the picture.
+                  It is a choice per outlet. Mastline can invoice and collect on the photographer’s
+                  behalf through Stripe, then pay out their share, or the outlet can be invoiced
+                  directly from Mastline and record the payment when it lands. Either way the sale,
+                  the license, and the payment stay attached to the picture.
                 </p>
               </details>
               <details>
                 <summary>How quickly do I get paid?</summary>
                 <p>
-                  When Mastline collects, your share is paid out within two business days of the
-                  buyer’s payment clearing. When you invoice directly, you’re paid on the
-                  outlet’s terms, and Mastline tracks and chases the invoice for you.
+                  When Mastline collects, the photographer’s share is paid out within two business
+                  days of the buyer’s payment clearing. When the outlet is invoiced directly,
+                  payment arrives on the outlet’s terms, and Mastline tracks and chases the invoice.
                 </p>
               </details>
               <details>
-                <summary>Do you work with buyers outside the US?</summary>
+                <summary>Does Mastline work with buyers outside the US?</summary>
                 <p>
                   Yes. Pitches, licenses, and invoices support US dollars, British pounds, and
                   euros, and license terms can be set by territory. London desks are a large part of
@@ -372,16 +377,16 @@ export default function Page() {
                 <p>
                   Brand-buyer matching, brand licensing pitches, and shoppable packages are included
                   in Pro and above. Brand licenses Mastline creates follow the same 70/30 split;
-                  affiliate commissions are paid to you net of network fees and attributed per
-                  image. See <Link href="/commercial">Commercial opportunities</Link>.
+                  affiliate commissions are paid out net of network fees and attributed per image.
+                  See <Link href="/commercial">Commercial opportunities</Link>.
                 </p>
               </details>
               <details>
                 <summary>Does rights recovery cost extra?</summary>
                 <p>
                   No. Finding unlicensed uses, saving the evidence, and sending licensing requests
-                  or invoices are included in Pro and above. If you choose to escalate a case to
-                  your own counsel, that relationship is yours; Mastline hands over the file.
+                  or invoices are included in Pro and above. Escalating a case to outside counsel is
+                  a separate, private arrangement; Mastline hands over the file.
                 </p>
               </details>
             </div>
@@ -404,11 +409,11 @@ export default function Page() {
               <em className="serif-i">paid in full.</em>
             </h2>
             <p>
-              Pitch faster, sell smarter, get paid on time, and keep earning from the work
-              you’ve already done. Mastline runs the business so you can run the night.
+              Pitch faster, sell smarter, get paid on time, and keep earning from work already done.
+              Mastline runs the business; the photographer runs the night.
             </p>
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
           </div>
         </div>

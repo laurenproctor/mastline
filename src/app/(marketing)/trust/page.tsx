@@ -79,7 +79,7 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <b>Your data, exportable</b>
+              <b>Exportable in full</b>
               <p>
                 The commercial record belongs to the photographer. It can be exported in full at any
                 time.
@@ -93,12 +93,12 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Where we draw the line</span>
+              <span className="mk-eyebrow">Where the line is drawn</span>
               <h2>What Mastline will never do.</h2>
             </div>
             <p className="lede">
-              Mastline helps you sell the pictures you take in public. It is not a tool for
-              following people, and outlets can accept pitches through it knowing that.
+              Mastline helps sell pictures taken in public. It is not a tool for following people,
+              and outlets can accept pitches through it knowing that.
             </p>
           </div>
           <div className="never">
@@ -117,8 +117,8 @@ export default function Page() {
             </div>
             <div>
               <span>
-                <b>No coordinating shooters onto a target.</b> Tips and locations you store are
-                yours alone and are never pooled across accounts.
+                <b>No coordinating shooters onto a target.</b> Stored tips and locations belong to
+                one workspace and are never pooled across accounts.
               </span>
             </div>
             <div>
@@ -135,15 +135,14 @@ export default function Page() {
             </div>
             <div>
               <span>
-                <b>No selling your data.</b> Not your images, not your contacts, not your deal
-                history, not to anyone.
+                <b>No selling data.</b> Not images, not contacts, not deal history, not to anyone.
               </span>
             </div>
           </div>
           <p style={{ marginTop: "18px", fontSize: "14px", color: "var(--ink-3)" }}>
             The short rules: <Link href="/acceptable-use">Acceptable use</Link>. For copyright
-            matters: <Link href="/copyright">Copyright and DMCA Policy</Link>. If you appear in a
-            photograph handled through Mastline: <Link href="/subjects">start here</Link>.
+            matters: <Link href="/copyright">Copyright and DMCA Policy</Link>. For anyone appearing
+            in a photograph handled through Mastline: <Link href="/subjects">start here</Link>.
           </p>
         </div>
       </section>
@@ -152,13 +151,13 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
-              <span className="mk-eyebrow">Support when you’re working</span>
+              <span className="mk-eyebrow">Support at working hours</span>
               <h2>A human at 1 a.m., because that’s when it matters.</h2>
             </div>
             <p className="lede">
               Live chat and phone support run [SUPPORT HOURS] every night of the week, staffed by
               people who know what an exclusive window is. Email is answered around the clock, and
-              anything that blocks a sale in progress is treated as urgent. Reach us at{" "}
+              anything that blocks a sale in progress is treated as urgent. Reach support at{" "}
               <a href="mailto:support@mastline.co">support@mastline.co</a>.
             </p>
           </div>
@@ -170,7 +169,7 @@ export default function Page() {
           <div className="head">
             <div>
               <span className="mk-eyebrow">Product principles</span>
-              <h2>What we hold ourselves to.</h2>
+              <h2>What Mastline holds itself to.</h2>
             </div>
           </div>
           <div className="principles">
@@ -183,8 +182,8 @@ export default function Page() {
             <div>
               <h3>One fact, entered once</h3>
               <p>
-                Records inherit context across the workflow instead of asking you to repeat
-                metadata.
+                Records inherit context across the workflow instead of asking for the same metadata
+                twice.
               </p>
             </div>
             <div>
@@ -202,7 +201,7 @@ export default function Page() {
             </div>
             <div>
               <h3>Automation remains accountable</h3>
-              <p>Suggestions carry confidence and evidence, and you make the final call.</p>
+              <p>Suggestions carry confidence and evidence; a person makes the final call.</p>
             </div>
             <div>
               <h3>Scope discipline</h3>
@@ -219,13 +218,13 @@ export default function Page() {
           <div>
             <h2>Run the business behind every image.</h2>
             <p>
-              Thirty days free on any plan. Keep 100% of the sales you make yourself, and 70% of the
-              ones Mastline helps create.
+              Thirty days free on any plan. 100% of sales made directly, and 70% of the ones
+              Mastline helps create.
             </p>
           </div>
           <div className="actions">
             <Link className="btn light" href="/sign-up">
-              Start your 30-day trial
+              Start the 30-day trial
             </Link>
             <Link className="btn outline" href="/pricing">
               See pricing

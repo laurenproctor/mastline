@@ -59,7 +59,7 @@ export function BuildPackage({
         </button>
         {blockedCount > 0 && (
           <p className="section-note">
-            You can build a package now, but it cannot be dispatched until the missing metadata is
+            A package can be built now, but it cannot be dispatched until the missing metadata is
             filled in.
           </p>
         )}

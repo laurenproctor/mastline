@@ -73,11 +73,7 @@ export function normalizeTotpCode(raw: string): string | null {
  * checked, and so a QR can be generated from a known-good string when the
  * provider's own is absent.
  */
-export function otpauthUri(input: {
-  secret: string;
-  account: string;
-  issuer?: string;
-}): string {
+export function otpauthUri(input: { secret: string; account: string; issuer?: string }): string {
   const issuer = input.issuer ?? "Mastline";
   const label = encodeURIComponent(`${issuer}:${input.account}`);
   const params = new URLSearchParams({

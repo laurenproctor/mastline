@@ -30,8 +30,8 @@ export default async function SignInPage({
         <span className="mk-eyebrow">Sign in</span>
         <h1>Back to work.</h1>
         <p className="lede">
-          Every shoot, submission and dollar is where you left it, private to you and the people you
-          invited.
+          Every shoot, submission and dollar where it was left, private to the workspace and the
+          people invited to it.
         </p>
       </div>
 
@@ -43,8 +43,8 @@ export default async function SignInPage({
         <h2 className="gate-support-head">Trouble getting in?</h2>
         <ul className="gate-outs">
           <li>
-            <Link href="/reset-password">Reset your password</Link> — a link to the address you
-            signed up with. It works once, and touches nothing in the workspace.
+            <Link href="/reset-password">Reset password</Link> — a link to the address on the
+            account. It works once, and touches nothing in the workspace.
           </li>
           <li>
             Still stuck? <a href="mailto:support@mastline.co">support@mastline.co</a>.

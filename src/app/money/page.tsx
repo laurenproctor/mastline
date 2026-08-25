@@ -282,7 +282,7 @@ export default async function MoneyPage() {
                         <th scope="col">Licensee</th>
                         <th scope="col">Origin</th>
                         <th scope="col">Sale base</th>
-                        <th scope="col">You keep</th>
+                        <th scope="col">Photographer</th>
                         <th scope="col">Mastline</th>
                       </tr>
                     </thead>
@@ -336,8 +336,8 @@ export default async function MoneyPage() {
                     Download workspace export
                   </a>
                   <p className="section-note">
-                    Confidential source notes are excluded. Export those deliberately if you need
-                    them.
+                    Confidential source notes are excluded. Exporting those is a deliberate,
+                    separate them.
                   </p>
                 </div>
               </Panel>

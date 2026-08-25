@@ -99,7 +99,7 @@ export const PLANS: readonly Plan[] = [
     annualMonthlyMajor: null,
     monthlyMajor: null,
     popular: false,
-    ctaLabel: "Talk to us",
+    ctaLabel: "Contact Mastline",
     features: [
       "Custom team structure",
       "High-volume archive migration",

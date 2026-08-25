@@ -95,11 +95,11 @@ export default function Page() {
                   faking provenance.
                 </li>
                 <li>
-                  Accessing another user’s account or data, probing the service, or abusing
-                  buyer contact information.
+                  Accessing another user’s account or data, probing the service, or abusing buyer
+                  contact information.
                 </li>
                 <li>
-                  Repeated copyright infringement, under our{" "}
+                  Repeated copyright infringement, under Mastline’s{" "}
                   <Link href="/copyright">Copyright Policy</Link>.
                 </li>
               </ul>
@@ -108,11 +108,11 @@ export default function Page() {
           <div className="legal" style={{ marginTop: "40px" }}>
             <h2>How enforcement works</h2>
             <p>
-              We review reports from buyers, subjects, other photographers, and our own systems.
-              Where a rule has been broken we may warn, restrict features, suspend, or terminate,
-              depending on severity, and we tell the account holder what happened and why. Serious
-              harm to any person is escalated immediately and, where required, reported to
-              authorities. Decisions can be appealed by email to{" "}
+              Mastline reviews reports from buyers, subjects, other photographers, and Mastline’s
+              own systems. Where a rule has been broken Mastline may warn, restrict features,
+              suspend, or terminate, depending on severity, and Mastline tells the account holder
+              what happened and why. Serious harm to any person is escalated immediately and, where
+              required, reported to authorities. Decisions can be appealed by email to{" "}
               <a href="mailto:legal@mastline.co">legal@mastline.co</a>.
             </p>
             <h2>Reporting a concern</h2>

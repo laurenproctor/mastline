@@ -82,7 +82,7 @@ export async function confirmEnrollmentAction(
   const code = normalizeTotpCode(String(formData.get("code") ?? ""));
 
   if (!factorId) return { error: "Start the setup again." };
-  if (!code) return { error: "Enter the six-digit code from your authenticator app." };
+  if (!code) return { error: "Enter the six-digit code from the authenticator app." };
 
   await requireSession();
   const supabase = await createClient();
@@ -91,7 +91,9 @@ export async function confirmEnrollmentAction(
   if (error) {
     // A wrong code and an expired code are the same mistake to the person
     // typing: look at the app again and use the number showing now.
-    return { error: "That code was not right. Codes change every 30 seconds; try the current one." };
+    return {
+      error: "That code was not right. Codes change every 30 seconds; try the current one.",
+    };
   }
 
   // Recovery codes are issued here rather than offered later, because the

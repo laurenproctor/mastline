@@ -14,8 +14,8 @@ export default function Page() {
           <h1>Copyright and DMCA Policy</h1>
           <p className="lede">
             Mastline stores and transmits photographs on behalf of the photographers who own them.
-            We respect copyright in both directions: we protect our photographers’ work, and we
-            respond promptly when someone believes their work has been used without permission.
+            Mastline respects copyright in both directions: it protects its photographers’ work, and
+            responds promptly when someone believes their work has been used without permission.
           </p>
         </div>
       </section>
@@ -60,8 +60,8 @@ export default function Page() {
               </li>
               <li>Identification of the copyrighted work you claim has been infringed.</li>
               <li>
-                Identification of the material you claim is infringing, with enough detail for us to
-                locate it, such as the Mastline pitch link, set reference, or URL.
+                Identification of the material you claim is infringing, with enough detail for
+                Mastline to locate it, such as the Mastline pitch link, set reference, or URL.
               </li>
               <li>Your name, mailing address, telephone number, and email address.</li>
               <li>
@@ -70,8 +70,8 @@ export default function Page() {
               </li>
               <li>
                 A statement, made under penalty of perjury, that the information in the notice is
-                accurate and that you are the copyright owner or authorized to act on the
-                owner’s behalf.
+                accurate and that you are the copyright owner or authorized to act on the owner’s
+                behalf.
               </li>
             </ul>
             <p>
@@ -80,24 +80,26 @@ export default function Page() {
               under Section 512(f).
             </p>
 
-            <h2>3. What happens when we receive a notice</h2>
+            <h2>3. What happens when Mastline receives a notice</h2>
             <ul>
-              <li>We acknowledge receipt, usually within one business day.</li>
+              <li>Mastline acknowledges receipt, usually within one business day.</li>
               <li>
-                If the notice is complete, we promptly disable access to the identified material on
-                Mastline, including pitch links and downloads, and record the action in the
-                image’s provenance log.
+                If the notice is complete, Mastline promptly disables access to the identified
+                material on Mastline, including pitch links and downloads, and record the action in
+                the image’s provenance log.
               </li>
               <li>
-                We notify the photographer whose account holds the material, provide a copy of the
-                notice, and explain the counter-notice process.
+                Mastline notifies the photographer whose account holds the material, provide a copy
+                of the notice, and explain the counter-notice process.
               </li>
-              <li>We retain the notice and our response as part of the asset record.</li>
+              <li>
+                Mastline retains the notice and Mastline’s response as part of the asset record.
+              </li>
             </ul>
             <p>
               Mastline cannot remove an image from a publication, website, or outlet that has
-              already licensed or published it. Our action is limited to material hosted on or
-              transmitted through Mastline.
+              already licensed or published it. Mastline’s action is limited to material hosted on
+              or transmitted through Mastline.
             </p>
 
             <h2>4. Counter-notice</h2>
@@ -123,20 +125,22 @@ export default function Page() {
               </li>
             </ul>
             <p>
-              On receiving a valid counter-notice we forward it to the original complainant. Unless
-              they notify us within 10 business days that they have filed a court action seeking to
-              restrain the use, we restore the material within 10 to 14 business days.
+              On receiving a valid counter-notice Mastline forwards it to the original complainant.
+              Unless they notify Mastline within 10 business days that they have filed a court
+              action seeking to restrain the use, Mastline restores the material within 10 to 14
+              business days.
             </p>
 
             <h2>5. Repeat infringers</h2>
             <p>
               Mastline terminates, in appropriate circumstances, the accounts of users who are
-              repeat infringers. We track notices against each account. Two substantiated notices
-              without a successful counter-notice within a 12-month period result in a review; a
-              third results in termination. We may act sooner where infringement is flagrant.
+              repeat infringers. Mastline tracks notices against each account. Two substantiated
+              notices without a successful counter-notice within a 12-month period result in a
+              review; a third results in termination. Mastline may act sooner where infringement is
+              flagrant.
             </p>
 
-            <h2>6. Protecting our photographers’ work</h2>
+            <h2>6. Protecting Mastline’s photographers’ work</h2>
             <p>
               The same rules protect the photographers who use Mastline. If you are a Mastline
               photographer and find your image used without a license, Rights Matches helps you
@@ -150,13 +154,14 @@ export default function Page() {
             <p>
               Every image on Mastline carries its original file hash, capture metadata, and an
               append-only history of pitches, licenses, and downloads. This record is available to
-              the photographer, and we provide it in response to lawful process, which makes
+              the photographer, and Mastline provides it in response to lawful process, which makes
               ownership disputes faster to resolve for everyone.
             </p>
 
             <h2>8. Changes</h2>
             <p>
-              We may update this policy. Material changes are noted here with a new effective date.
+              Mastline may update this policy. Material changes are noted here with a new effective
+              date.
             </p>
           </div>
         </div>

@@ -262,7 +262,7 @@ export default async function SubmissionPage({
                     <dd>{formatMoney(license.saleBase)}</dd>
                   </div>
                   <div>
-                    <dt>You keep</dt>
+                    <dt>Photographer</dt>
                     <dd>{formatMoney(license.photographerShare)}</dd>
                   </div>
                   <div>
@@ -273,7 +273,7 @@ export default async function SubmissionPage({
                 <p className="section-note">
                   {license.origin === "mastline_sales_engine"
                     ? "Generated inside Mastline, so the 70/30 share applies."
-                    : "Your own relationship, so Mastline takes nothing."}
+                    : "A direct relationship, so Mastline takes nothing."}
                 </p>
                 <Link className="text-link" href="/money">
                   Open money <span aria-hidden="true">→</span>

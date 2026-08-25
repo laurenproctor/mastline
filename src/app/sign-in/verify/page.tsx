@@ -1,6 +1,6 @@
 import { VerifyForm } from "./verify-form";
 
-export const metadata = { title: "Enter your code — Mastline" };
+export const metadata = { title: "Enter the code — Mastline" };
 
 export default async function VerifyPage({
   searchParams,
@@ -15,8 +15,8 @@ export default async function VerifyPage({
         <span className="mk-eyebrow">Second step</span>
         <h1>One more code.</h1>
         <p className="lede">
-          The password was accepted. Open your authenticator app and enter the six digits showing
-          now.
+          The password was accepted. The authenticator app is showing six digits; they change every
+          thirty seconds.
         </p>
       </div>
 
@@ -28,11 +28,11 @@ export default async function VerifyPage({
         <h2 className="gate-support-head">If the phone is gone</h2>
         <ul className="gate-outs">
           <li>
-            Use one of the recovery codes saved when two-factor authentication was switched on. Each
+            One of the recovery codes saved when two-factor authentication was switched on. Each
             works once.
           </li>
           <li>
-            A recovery code turns two-factor off as it signs you in, so the first thing to do
+            A recovery code turns two-factor off as it opens the account, so the first thing to do
             afterwards is set it up again on the new device.
           </li>
         </ul>

@@ -61,7 +61,7 @@ export function PackageDetails({
       <Field
         control="textarea"
         defaultValue={proposedTerms ?? ""}
-        hint="Frozen onto the submission when you dispatch."
+        hint="Frozen onto the submission at dispatch."
         label="Proposed terms"
         name="proposedTerms"
       />

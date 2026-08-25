@@ -13,7 +13,7 @@ export function SignUpForm() {
   if (state.checkEmail) {
     return (
       <div className="gate-sent" role="status">
-        <h2>Check your email</h2>
+        <h2>Check the inbox</h2>
         <p>
           A confirmation link is on its way to <strong>{state.email}</strong>. Open it and the
           workspace is waiting.
@@ -27,7 +27,7 @@ export function SignUpForm() {
 
   return (
     <form action={formAction} className="gate-form">
-      <h2>Create your account</h2>
+      <h2>Create an account</h2>
 
       <div className="gate-names">
         <Field autoComplete="given-name" label="First name" name="firstName" />
@@ -53,7 +53,7 @@ export function SignUpForm() {
       )}
 
       <button className="btn primary" disabled={pending} type="submit">
-        {pending ? "Creating your account…" : "Create account"}
+        {pending ? "Creating the account…" : "Create account"}
         <svg
           viewBox="0 0 24 24"
           fill="none"

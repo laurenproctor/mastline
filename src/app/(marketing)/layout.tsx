@@ -86,7 +86,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
                   <Link href="/press">Press</Link>
                 </li>
                 <li>
-                  <Link href="/subjects">If you appear in a photo</Link>
+                  <Link href="/subjects">Appearing in a photo</Link>
                 </li>
                 <li>
                   <Link href="/sign-up">Start free</Link>

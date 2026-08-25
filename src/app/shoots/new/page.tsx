@@ -17,7 +17,7 @@ export default async function CreateShootPage() {
       <AppShell active="Shoots">
         <div className="page">
           <PageHeader
-            description="Your role can view shoots but not create them."
+            description="This role can view shoots but not create them."
             eyebrow="Not available"
             title="Create shoot"
           />
@@ -25,7 +25,7 @@ export default async function CreateShootPage() {
             <div className="panel-body">
               <p className="section-note">
                 Creating a shoot needs an owner or editor role in this workspace. Ask an owner to
-                change your role, or open an existing shoot.
+                change the role, or open an existing shoot.
               </p>
               <div className="spacer" />
               <Link className="button" href="/shoots">

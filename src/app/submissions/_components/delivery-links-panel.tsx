@@ -139,7 +139,7 @@ export function DeliveryLinks({
           <form action={createAction}>
             <input name="submissionId" type="hidden" value={submissionId} />
             <Field
-              hint="A desk or a person. Recorded with the link so you know which one this was."
+              hint="A desk or a person. Recorded with the link, so the record shows which one this was."
               label="Recipient"
               name="recipientLabel"
             />
@@ -147,7 +147,7 @@ export function DeliveryLinks({
             <Field
               control="select"
               defaultValue={String(DEFAULT_DELIVERY_WINDOW)}
-              hint="After this the link stops opening. You can withdraw it sooner."
+              hint="After this the link stops opening. It can be withdrawn sooner."
               label="Stays open for"
               name="windowDays"
             >
@@ -171,7 +171,9 @@ export function DeliveryLinks({
                 Cancel
               </button>
             </div>
-            <p className="section-note">Nothing is sent. You get a link and pass it on yourself.</p>
+            <p className="section-note">
+              Nothing is sent. Mastline returns a link; passing it on is a separate, deliberate act.
+            </p>
           </form>
         ))}
     </div>

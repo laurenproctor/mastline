@@ -9,8 +9,8 @@ export default function UpdatePasswordPage() {
         <span className="mk-eyebrow">Password</span>
         <h1>Choose a new one.</h1>
         <p className="lede">
-          You followed a reset link, so the mailbox is yours. A link works a single time and expires
-          shortly — if this page says it has expired, ask for a fresh one.
+          A reset link was followed, which proves control of the mailbox. Links work a single time
+          and expire shortly — if this page says it has expired, request a fresh one.
         </p>
       </div>
 

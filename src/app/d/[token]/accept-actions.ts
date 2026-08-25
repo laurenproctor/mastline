@@ -24,7 +24,7 @@ export async function acceptDeliveryAction(
   const name = String(formData.get("acceptedBy") ?? "").trim();
 
   if (!isDeliveryToken(token)) return { error: "This link is not open." };
-  if (name.length < 2) return { error: "Enter your name, so the record says who accepted." };
+  if (name.length < 2) return { error: "Enter a name, so the record says who accepted." };
 
   const acceptedAt = await acceptDelivery(token, name, await headers());
   if (!acceptedAt) return { error: "This link is not open." };

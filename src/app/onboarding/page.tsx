@@ -5,7 +5,7 @@ import { TRIAL_DAYS, TRIAL_PLAN, TRIAL_STORAGE_BYTES, findPlan } from "@/lib/pri
 import { formatBytes } from "@/lib/subscription";
 import { WorkspaceForm } from "./workspace-form";
 
-export const metadata = { title: "Create your workspace — Mastline" };
+export const metadata = { title: "Name the workspace — Mastline" };
 
 export default async function OnboardingPage() {
   const session = await requireUser();
@@ -19,17 +19,17 @@ export default async function OnboardingPage() {
     <main className="auth-page">
       <div className="auth-card">
         <Image alt="Mastline" height={30} priority src="/mastline-wordmark.png" width={174} />
-        <h1>Name your workspace</h1>
+        <h1>Name the workspace</h1>
         <p className="section-note">
-          Everything you shoot, send, and get paid for lives inside a workspace. You can invite
-          people to it later.
+          Every shoot, dispatch and payment lives inside a workspace. Other people can be invited to
+          it later.
         </p>
         <div className="spacer" />
         <WorkspaceForm suggestedName={session.displayName ? `${session.displayName} Studio` : ""} />
       </div>
 
       <aside className="auth-aside">
-        <div className="eyebrow">Your trial</div>
+        <div className="eyebrow">The trial</div>
         <p className="section-note">
           {TRIAL_DAYS} days on <strong>{plan.name}</strong>, {formatBytes(TRIAL_STORAGE_BYTES)} of
           storage, no card.

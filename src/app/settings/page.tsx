@@ -105,7 +105,7 @@ export default async function SettingsPage({
             <div className="panel-body">
               <h3>{workspace.name}</h3>
               <p className="section-note">
-                {workspace.timezone} · {workspace.currency} · you are{" "}
+                {workspace.timezone} · {workspace.currency} · signed in as{" "}
                 {humanizeStatus(workspace.role)}
               </p>
               <p className="section-note">
@@ -347,7 +347,7 @@ export default async function SettingsPage({
               <p className="section-note">
                 No vendor lock-in. The export contains every asset record, its file hashes and
                 object keys, caption history, shoots, submissions, licenses, payments, allocations,
-                and the full activity record, as CSV you can open anywhere.
+                and the full activity record, as CSV that opens anywhere.
               </p>
               <p className="section-note">
                 Confidential source notes are deliberately excluded from a bulk export. Retention

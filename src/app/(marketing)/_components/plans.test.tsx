@@ -101,7 +101,7 @@ describe("approved pricing presentation", () => {
   it("offers Start free on the self-serve plans and Talk to us on Agency", () => {
     renderPlans();
     expect(screen.getAllByRole("link", { name: "Start free" })).toHaveLength(3);
-    expect(screen.getByRole("link", { name: "Talk to us" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Contact Mastline" })).toBeInTheDocument();
   });
 
   it("states the approved trial terms on every self-serve plan", () => {

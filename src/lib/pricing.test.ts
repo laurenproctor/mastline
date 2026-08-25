@@ -146,7 +146,7 @@ describe("presentation rules", () => {
       "pro",
       "studio",
     ]);
-    expect(findPlan("agency").ctaLabel).toBe("Talk to us");
+    expect(findPlan("agency").ctaLabel).toBe("Contact Mastline");
   });
 
   it("keeps trial terms out of per-plan copy so there is one place to change them", () => {

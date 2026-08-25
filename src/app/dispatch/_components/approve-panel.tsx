@@ -67,7 +67,7 @@ export function ApprovePanel({
         <button className="button blue" onClick={() => setConfirming(true)} type="button">
           Approve and record dispatch
         </button>
-        <p className="section-note">You will be asked to confirm before anything is recorded.</p>
+        <p className="section-note">Nothing is recorded without a confirmation step.</p>
       </div>
     );
   }

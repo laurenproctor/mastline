@@ -25,7 +25,7 @@ export default function SignUpPage() {
   return (
     <main className="gate-main" id="main">
       <div className="gate-lead">
-        <span className="mk-eyebrow">Create your account</span>
+        <span className="mk-eyebrow">Create an account</span>
         <h1>Start free</h1>
         <p className="lede">
           Long enough to run a shoot, dispatch it, record the sale, and watch the money land against
@@ -46,7 +46,7 @@ export default function SignUpPage() {
               <b>The whole of {plan.name}, not a sample.</b>
               <p>
                 {TRIAL_DAYS} days on the plan that carries the archive and rights intelligence, with{" "}
-                {formatBytes(TRIAL_STORAGE_BYTES)} of storage for the work you bring with you.
+                {formatBytes(TRIAL_STORAGE_BYTES)} of storage for the work that comes in with it.
               </p>
             </div>
           </li>
@@ -61,11 +61,10 @@ export default function SignUpPage() {
           </li>
           <li>
             <div>
-              <b>The record stays yours either way.</b>
+              <b>The record survives either way.</b>
               <p>
                 If the trial ends without a decision the workspace turns read-only. Everything
-                imported stays, everything remains visible, and all of it can be exported at any
-                time.
+                imported stays, everything remains visible, and all of it stays exportable.
               </p>
             </div>
           </li>

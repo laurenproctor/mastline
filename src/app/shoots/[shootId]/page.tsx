@@ -137,7 +137,7 @@ export default async function ShootWorkspacePage({
             <Panel title="No files yet">
               <div className="panel-body">
                 <p className="section-note">
-                  This shoot has no files. Your role can view the record but not import.
+                  This shoot has no files. This role can view the record but not import.
                 </p>
               </div>
             </Panel>

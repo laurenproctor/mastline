@@ -31,8 +31,8 @@ export function ErrorState({
       <h1>{title}</h1>
       <p>{detail}</p>
       <p className="section-note">
-        Nothing you have imported, sent, or recorded is affected. This is a problem displaying the
-        page, not with your records.
+        Nothing imported, sent or recorded is affected. This is a problem displaying the page, not a
+        problem with the records.
       </p>
 
       <div className="actions">
@@ -48,7 +48,7 @@ export function ErrorState({
 
       {digest && (
         <p className="section-note error-digest">
-          Reference <code>{digest}</code> — quote this if you report it.
+          Reference <code>{digest}</code> — quote this when reporting it.
         </p>
       )}
     </div>

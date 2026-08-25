@@ -101,7 +101,7 @@ export function AssetInspector({ asset, shootId }: { asset: InspectorAsset; shoo
       <p className="section-note">
         {asset.revisionCount > 0
           ? `${asset.revisionCount} earlier ${asset.revisionCount === 1 ? "version" : "versions"} kept.`
-          : "Earlier versions are kept when you edit."}{" "}
+          : "Earlier versions are kept on every edit."}{" "}
         Editing never destroys what was there before.
       </p>
     </form>

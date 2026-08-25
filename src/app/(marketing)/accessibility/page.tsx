@@ -13,8 +13,8 @@ export default function Page() {
           </div>
           <h1>Accessibility Statement</h1>
           <p className="lede">
-            Mastline is built for people working fast, often one-handed, often in the dark. We want
-            it to work for every photographer, including those who use assistive technology.
+            Mastline is built for people working fast, often one-handed, often in the dark. Mastline
+            wants it to work for every photographer, including those who use assistive technology.
           </p>
         </div>
       </section>
@@ -23,15 +23,16 @@ export default function Page() {
           <div className="legal">
             <p className="meta">Last updated August 21, 2026</p>
 
-            <h2>Our commitment</h2>
+            <h2>Mastline’s commitment</h2>
             <p>
               Mastline is committed to making its website and application accessible to the widest
-              possible audience, regardless of ability or technology. We aim to conform to the{" "}
-              <strong>Web Content Accessibility Guidelines (WCAG) 2.2, Level AA</strong>, and we
-              treat accessibility as part of product quality rather than a separate compliance task.
+              possible audience, regardless of ability or technology. Mastline aims to conform to
+              the <strong>Web Content Accessibility Guidelines (WCAG) 2.2, Level AA</strong>,
+              treating accessibility as part of product quality rather than a separate compliance
+              task.
             </p>
 
-            <h2>What we do</h2>
+            <h2>What Mastline does</h2>
             <ul>
               <li>
                 <strong>Keyboard access.</strong> Every feature, including pitching, accepting
@@ -72,26 +73,26 @@ export default function Page() {
               </li>
             </ul>
 
-            <h2>How we work</h2>
+            <h2>How Mastline works</h2>
             <p>
               Accessibility is reviewed at design, in code review, and before each release using
               automated checks and manual testing with keyboard navigation and screen readers
-              including VoiceOver, NVDA, and TalkBack. We periodically commission independent
-              accessibility audits and fix findings on defined timelines. Our team receives
+              including VoiceOver, NVDA, and TalkBack. Mastline periodically commissions independent
+              accessibility audits and fix findings on defined timelines. Mastline’s team receives
               accessibility training as part of onboarding.
             </p>
 
             <h2>Known limitations</h2>
-            <p>We are honest about where we are still improving. Currently:</p>
+            <p>Mastline is honest about where Mastline is still improving. Currently:</p>
             <ul>
               <li>
-                [KNOWN LIMITATION, e.g. “Some third-party embedded maps in Shoot Workspace are
-                not fully navigable by keyboard. We provide an accessible list view of the same
+                [KNOWN LIMITATION, e.g. “Some third-party embedded maps in Shoot Workspace are not
+                fully navigable by keyboard. Mastline provides an accessible list view of the same
                 locations and are working with the provider.”]
               </li>
               <li>[KNOWN LIMITATION]</li>
             </ul>
-            <p>We update this list as issues are resolved.</p>
+            <p>Mastline updates this list as issues are resolved.</p>
 
             <h2>Compatibility</h2>
             <p>
@@ -100,11 +101,11 @@ export default function Page() {
               may not perform optimally on browsers more than two major versions old.
             </p>
 
-            <h2>Tell us what’s not working</h2>
+            <h2>Tell Mastline what’s not working</h2>
             <p>
               If you encounter a barrier, or if you need any part of Mastline, including a license
-              or invoice, in an alternative format, please contact us. We aim to respond within two
-              business days and to resolve barriers as quickly as we can.
+              or invoice, in an alternative format, please contact Mastline. Mastline aims to
+              respond within two business days and to resolve barriers as quickly as Mastline can.
             </p>
             <p>
               Email: <a href="mailto:accessibility@mastline.co">accessibility@mastline.co</a>
@@ -116,9 +117,10 @@ export default function Page() {
 
             <h2>Formal complaints</h2>
             <p>
-              If you are not satisfied with our response, you may escalate to our Head of Product at{" "}
-              <a href="mailto:accessibility@mastline.co">accessibility@mastline.co</a>. You may also
-              have the right to raise a complaint with the relevant authority in your jurisdiction.
+              If you are not satisfied with Mastline’s response, you may escalate to Mastline’s Head
+              of Product at <a href="mailto:accessibility@mastline.co">accessibility@mastline.co</a>
+              . You may also have the right to raise a complaint with the relevant authority in your
+              jurisdiction.
             </p>
           </div>
         </div>

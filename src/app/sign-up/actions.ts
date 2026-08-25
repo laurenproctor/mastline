@@ -39,7 +39,7 @@ export async function signUpAction(
 
   if (!email || !email.includes("@")) return { error: "Enter a valid email address." };
   if (password.length < MIN_PASSWORD) {
-    return { error: `Use at least ${MIN_PASSWORD} characters for your password.` };
+    return { error: `Use at least ${MIN_PASSWORD} characters for the password.` };
   }
 
   const supabase = await createClient();

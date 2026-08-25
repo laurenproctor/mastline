@@ -53,8 +53,8 @@ export default function GlobalError({
             Mastline could not start
           </h1>
           <p style={{ lineHeight: 1.6, margin: "0 0 8px" }}>
-            Something failed before the page could load. Your shoots, assets, submissions, and
-            financial records are unaffected.
+            Something failed before the page could load. Shoots, assets, submissions and financial
+            records are unaffected.
           </p>
           <p style={{ fontSize: 12, color: "#6f6e68", lineHeight: 1.6 }}>
             Try reloading. If it keeps happening, quote this reference:{" "}

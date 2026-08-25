@@ -73,7 +73,7 @@ export async function recordSaleAction(
 
     const note =
       origin === "mastline_sales_engine"
-        ? `Sale recorded. Mastline share ${salesEngineShare.minor / 100}, you keep ${photographerShare.minor / 100}.`
+        ? `Sale recorded. Mastline share ${salesEngineShare.minor / 100}, photographer ${photographerShare.minor / 100}.`
         : "Sale recorded. No Mastline share: this licence was not generated inside Mastline.";
 
     revalidatePath("/money");
