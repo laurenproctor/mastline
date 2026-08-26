@@ -1,0 +1,31 @@
+-- Let the service role actually call the delivery purge.
+--
+-- purge_delivery_links() was written in the same shape as the other purge
+-- routines -- security definer, guarded by the mastline.allow_purge flag, and
+-- revoked from public, anon, and authenticated. It was never granted to
+-- service_role, which every one of its siblings is:
+--
+--   grant execute on function public.purge_organization_admin(uuid) to service_role;
+--   grant execute on function public.purge_asset_admin(uuid)        to service_role;
+--   grant execute on function public.purge_submission_admin(uuid)   to service_role;
+--
+-- On the image this was written against, `revoke ... from public` still left
+-- service_role holding EXECUTE through default privileges, so the omission was
+-- invisible. The current image no longer grants that, so the function's ACL is
+-- {postgres=X/postgres} and nothing but postgres can call it. Over PostgREST
+-- with the service role key it returns 403.
+--
+-- What that broke: the browser tests clear delivery links between cases through
+-- this function. The call has been refused and the refusal ignored, so links and
+-- acceptances accumulated across a run. By the third delivery test the panel
+-- listed three "Withdraw this link" buttons and two acceptances, and selectors
+-- written for one match failed on strict mode -- a test-isolation failure that
+-- looked like a product bug for as long as nobody read the status code.
+--
+-- Nothing about what the function does changes, and nothing else gains access.
+-- delivery_acceptances is not named in its body because submission_deliveries
+-- cascades into it; verified by running the function against real rows and
+-- watching all three tables go to zero.
+grant execute on function public.purge_delivery_links() to service_role;
+
+revoke all on all tables in schema public from anon;

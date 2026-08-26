@@ -105,7 +105,15 @@ test.describe("navigation is reachable", () => {
     await signIn(page);
     const nav = page.getByRole("navigation", { name: "Primary" });
 
-    for (const label of ["Work", "News radar", "Shoots", "Submissions", "Money", "Rights", "Archive"]) {
+    for (const label of [
+      "Work",
+      "News radar",
+      "Shoots",
+      "Submissions",
+      "Money",
+      "Rights",
+      "Archive",
+    ]) {
       await expect(nav.getByRole("link", { name: label })).toBeVisible();
     }
   });
@@ -133,7 +141,11 @@ test.describe("pricing states the approved facts", () => {
     for (const price of ["49", "99", "279"]) {
       await expect(page.getByText(price, { exact: true }).first()).toBeVisible();
     }
-    for (const total of ["$588 billed once a year", "$1,188 billed once a year", "$3,348 billed once a year"]) {
+    for (const total of [
+      "$588 billed once a year",
+      "$1,188 billed once a year",
+      "$3,348 billed once a year",
+    ]) {
       await expect(page.getByText(total)).toBeVisible();
     }
     await expect(page.getByText("Save up to 18%")).toBeVisible();
@@ -142,7 +154,9 @@ test.describe("pricing states the approved facts", () => {
   test("the toggle changes every non-custom price and no feature", async ({ page }) => {
     await page.goto("/pricing");
 
-    const proCard = page.locator("article").filter({ has: page.getByRole("heading", { name: "Pro" }) });
+    const proCard = page
+      .locator("article")
+      .filter({ has: page.getByRole("heading", { name: "Pro" }) });
     const featuresBefore = await proCard.getByRole("listitem").allTextContents();
 
     await page.getByRole("button", { name: /^monthly$/i }).click();
@@ -822,16 +836,16 @@ test.describe("sending a package to a picture desk", () => {
    * inside a single run. Naming the desk uniquely gives each test a handle on
    * the link it just made.
    */
-  const deskLabel = (info: { project: { name: string } }) =>
-    `NY picture desk ${info.project.name} ${Date.now()}`;
+  const deskLabel = (info: { project: { name: string } }, desk = "NY picture desk") =>
+    `${desk} ${info.project.name} ${Date.now()}`;
 
   test.beforeEach(async () => clearDeliveryLinks());
   test.afterEach(async () => clearDeliveryLinks());
 
-  test("a desk with no account opens it, and the record shows what they did", async (
-    { page, browser },
-    testInfo,
-  ) => {
+  test("a desk with no account opens it, and the record shows what they did", async ({
+    page,
+    browser,
+  }, testInfo) => {
     const recipient = deskLabel(testInfo);
     const fixtureKey = await putDeliveryFixture();
     try {
@@ -901,9 +915,9 @@ test.describe("sending a package to a picture desk", () => {
 
         // Before accepting: the frame can be judged, but not taken.
         await expect(deskPage.locator(".delivery-frame img").first()).toBeVisible();
-        await expect(
-          deskPage.getByRole("link", { name: /Download full resolution/ }),
-        ).toHaveCount(0);
+        await expect(deskPage.getByRole("link", { name: /Download full resolution/ })).toHaveCount(
+          0,
+        );
 
         const refused = await deskPage.request.get(`${path}/frame/${SEEDED_ASSET}`);
         expect(refused.status()).toBe(404);
@@ -935,16 +949,22 @@ test.describe("sending a package to a picture desk", () => {
     }
   });
 
-  test("what a desk sees is marked with their own name", async ({ page, browser }) => {
+  test("what a desk sees is marked with their own name", async ({ page, browser }, testInfo) => {
+    // The apostrophe is the point, not decoration: src/lib/watermark.ts escapes
+    // XML precisely because "O'Brien" produces invalid SVG and blanks the whole
+    // marked preview. escapeXml is unit tested, but this is the only place the
+    // character is carried through the real route to a rendered image.
+    const recipient = deskLabel(testInfo, "O'Brien Picture Desk");
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
       await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
       await page.getByRole("button", { name: "Create a delivery link" }).click();
-      await page.getByLabel("Recipient").fill("O'Brien Picture Desk");
+      await page.getByLabel("Recipient").fill(recipient);
       await page.getByRole("button", { name: "Create the link" }).click();
 
-      const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+      const made = page.locator(".delivery-link").filter({ hasText: recipient });
+      const url = (await made.locator(".delivery-link-url code").innerText()).trim();
       const path = new URL(url).pathname;
 
       const desk = await browser.newContext();
@@ -972,8 +992,12 @@ test.describe("sending a package to a picture desk", () => {
 
       // Withdrawn: the marked preview stops being served too, not just the
       // page. Waiting for the badge first, or the request races the withdrawal.
-      await page.getByRole("button", { name: "Withdraw this link" }).click();
-      await expect(page.locator(".delivery-link .badge")).toHaveText("Withdrawn");
+      // Scoped to the link this test made, so the assertion holds whatever else
+      // the submission has been sent to.
+      await made.getByRole("button", { name: "Withdraw this link" }).click();
+      await expect(
+        page.locator(".delivery-link").filter({ hasText: recipient }).locator(".badge"),
+      ).toHaveText("Withdrawn");
 
       const after = await page.request.get(`${path}/preview/${SEEDED_ASSET}`);
       expect(after.status()).toBe(404);
@@ -982,19 +1006,27 @@ test.describe("sending a package to a picture desk", () => {
     }
   });
 
-  test("a withdrawn link stops opening, and the attempt is recorded", async ({ page, browser }) => {
+  test("a withdrawn link stops opening, and the attempt is recorded", async ({
+    page,
+    browser,
+  }, testInfo) => {
+    const recipient = deskLabel(testInfo);
     await signIn(page, SEEDED.owner);
     await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
     await page.getByRole("button", { name: "Create a delivery link" }).click();
-    await page.getByLabel("Recipient").fill("A desk that changed its mind");
+    await page.getByLabel("Recipient").fill(recipient);
     await page.getByRole("button", { name: "Create the link" }).click();
 
-    const url = (await page.locator(".delivery-link-url code").first().innerText()).trim();
+    const made = page.locator(".delivery-link").filter({ hasText: recipient });
+    const url = (await made.locator(".delivery-link-url code").innerText()).trim();
     const path = new URL(url).pathname;
 
-    await page.getByRole("button", { name: "Withdraw this link" }).click();
-    // Scoped to the link's own badge: the activity feed also says "withdrawn".
-    await expect(page.locator(".delivery-link .badge")).toHaveText("Withdrawn");
+    await made.getByRole("button", { name: "Withdraw this link" }).click();
+    // Scoped to this link's own badge: the activity feed also says "withdrawn",
+    // and the submission may carry links from other cases.
+    await expect(
+      page.locator(".delivery-link").filter({ hasText: recipient }).locator(".badge"),
+    ).toHaveText("Withdrawn");
 
     const desk = await browser.newContext();
     const deskPage = await desk.newPage();
@@ -1028,4 +1060,3 @@ test.describe("sending a package to a picture desk", () => {
     }
   });
 });
-

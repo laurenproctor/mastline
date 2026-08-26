@@ -51,7 +51,12 @@ export async function overflowingElements(page: Page): Promise<string[]> {
       const clipped = (node: HTMLElement | null): boolean => {
         for (let el = node; el && el !== document.body; el = el.parentElement) {
           const overflowX = getComputedStyle(el).overflowX;
-          if (overflowX === "auto" || overflowX === "scroll" || overflowX === "hidden" || overflowX === "clip") {
+          if (
+            overflowX === "auto" ||
+            overflowX === "scroll" ||
+            overflowX === "hidden" ||
+            overflowX === "clip"
+          ) {
             return true;
           }
         }
@@ -60,10 +65,13 @@ export async function overflowingElements(page: Page): Promise<string[]> {
       if (clipped(element)) continue;
       if (box.right > width + 1) {
         const id = element.id ? `#${element.id}` : "";
-        const cls = element.className && typeof element.className === "string"
-          ? `.${element.className.trim().split(/\s+/).slice(0, 2).join(".")}`
-          : "";
-        guilty.push(`${element.tagName.toLowerCase()}${id}${cls} (right ${Math.round(box.right)} > ${width})`);
+        const cls =
+          element.className && typeof element.className === "string"
+            ? `.${element.className.trim().split(/\s+/).slice(0, 2).join(".")}`
+            : "";
+        guilty.push(
+          `${element.tagName.toLowerCase()}${id}${cls} (right ${Math.round(box.right)} > ${width})`,
+        );
       }
     }
     return [...new Set(guilty)].slice(0, 8);
@@ -76,8 +84,7 @@ export async function focusRingIsVisible(page: Page): Promise<boolean> {
     const active = document.activeElement as HTMLElement | null;
     if (!active || active === document.body) return false;
     const style = getComputedStyle(active);
-    const hasOutline =
-      style.outlineStyle !== "none" && parseFloat(style.outlineWidth || "0") > 0;
+    const hasOutline = style.outlineStyle !== "none" && parseFloat(style.outlineWidth || "0") > 0;
     const hasShadow = style.boxShadow !== "none" && style.boxShadow !== "";
     return hasOutline || hasShadow;
   });
@@ -180,7 +187,10 @@ export async function freshTotp(secret: string, previous?: string): Promise<stri
 function localEnv(name: string): string | undefined {
   try {
     const file = readFileSync(".env.local", "utf8");
-    return file.match(new RegExp(`^${name}=(.*)$`, "m"))?.[1]?.trim().replace(/^"|"$/g, "");
+    return file
+      .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1]
+      ?.trim()
+      .replace(/^"|"$/g, "");
   } catch {
     return undefined;
   }
@@ -310,17 +320,32 @@ export async function removeDeliveryFixture(objectKey: string): Promise<void> {
   });
 }
 
-/** Withdraw and delete every delivery link, so a run starts and ends clean. */
+/**
+ * Withdraw and delete every delivery link, so a run starts and ends clean.
+ *
+ * The response is checked. It was not, and the call had been returning 403 for
+ * want of an execute grant, so this cleanup quietly did nothing: links and
+ * acceptances piled up until the selectors in the delivery tests matched
+ * several elements and failed on strict mode. A cleanup that cannot report its
+ * own failure hides the state it was meant to remove, so a bad status here is
+ * an error rather than a shrug.
+ */
 export async function clearDeliveryLinks(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !key) throw new Error("No service role key: cannot reset delivery links.");
   const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
-  // Events first: they reference the links, and they are append-only, so this
-  // needs the purge flag the database exposes for exactly this.
-  await fetch(`${url}/rest/v1/rpc/purge_delivery_links`, {
+  // The events and acceptances reference the links and are append-only, so this
+  // needs the purge flag the database exposes for exactly this. Acceptances go
+  // with the links they belong to, by cascade.
+  const response = await fetch(`${url}/rest/v1/rpc/purge_delivery_links`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
     body: "{}",
   });
+  if (!response.ok) {
+    throw new Error(
+      `Could not clear delivery links (HTTP ${response.status}): ${await response.text()}`,
+    );
+  }
 }
