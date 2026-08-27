@@ -9,7 +9,6 @@ import { TRIAL_DAYS, TRIAL_STORAGE_BYTES } from "@/lib/pricing";
 import { PLAN_SEATS, TRIAL_PLAN } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import { type FieldErrors, type OnboardingInput, parseOnboarding } from "@/lib/validation";
-import { slugifyWorkspace } from "@/lib/validation";
 
 export interface OnboardingState {
   readonly error?: string;
@@ -58,38 +57,42 @@ export async function createWorkspaceAction(
     onboarding_version: ONBOARDING_VERSION,
   };
 
-  // The slug has to be unique across every workspace, so a collision retries
-  // with a suffix rather than failing in front of someone on their first screen.
-  let organizationId: string | null = null;
-  let lastError = "";
+  /*
+   * The address is the photographer's choice now, so a collision is reported
+   * rather than worked around.
+   *
+   * This used to retry with a random suffix, which was right while the slug was
+   * derived from the workspace name and nobody had seen it. It is the wrong
+   * thing to do to an address somebody typed on a step of its own: quietly
+   * handing them "hale-studio-k3f9" when they asked for "hale-studio" is a
+   * decision about their own URL made without them.
+   *
+   * 23505 covers both senses of unavailable -- held by another workspace now,
+   * or held by one at some point in the past, since an address is never
+   * released. Which of the two it is is not something to tell somebody who is
+   * not in that workspace, so both read the same way here.
+   */
+  const { data, error } = await supabase.rpc("create_workspace", {
+    workspace_name: input.name,
+    workspace_slug: input.workspaceSlug,
+    workspace_timezone: input.timezone,
+    trial_days: TRIAL_DAYS,
+    trial_storage_bytes: TRIAL_STORAGE_BYTES,
+    trial_seats: PLAN_SEATS[TRIAL_PLAN] ?? 1,
+    onboarding_profile: profile,
+  });
 
-  for (let attempt = 0; attempt < 4 && !organizationId; attempt += 1) {
-    const slug =
-      attempt === 0
-        ? slugifyWorkspace(input.name)
-        : `${slugifyWorkspace(input.name)}-${Math.random().toString(36).slice(2, 6)}`;
-
-    const { data, error } = await supabase.rpc("create_workspace", {
-      workspace_name: input.name,
-      workspace_slug: slug,
-      workspace_timezone: input.timezone,
-      trial_days: TRIAL_DAYS,
-      trial_storage_bytes: TRIAL_STORAGE_BYTES,
-      trial_seats: PLAN_SEATS[TRIAL_PLAN] ?? 1,
-      onboarding_profile: profile,
-    });
-
-    if (!error && data) {
-      organizationId = data as string;
-      break;
+  if (error || !data) {
+    if (error?.code === "23505") {
+      return {
+        error: "That workspace address is already taken.",
+        errors: { workspaceSlug: "Choose a different address." },
+      };
     }
-    lastError = error?.message ?? "Unknown error";
-    if (!lastError.includes("duplicate key")) break;
+    return { error: `Could not create the workspace: ${error?.message ?? "Unknown error"}` };
   }
 
-  if (!organizationId) {
-    return { error: `Could not create the workspace: ${lastError}` };
-  }
+  const organizationId = data as string;
 
   const cookieStore = await cookies();
   cookieStore.set(ACTIVE_WORKSPACE_COOKIE, organizationId, {

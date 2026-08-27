@@ -9,7 +9,9 @@ import {
   WORK_STYLES,
   specialtyLabel,
 } from "@/lib/onboarding";
+import { SLUG_MAX_LENGTH, slugProblem } from "@/lib/slug";
 import { DEFAULT_TIMEZONE, WORKSPACE_TIMEZONES, formatTimezone } from "@/lib/timezones";
+import { slugifyWorkspace } from "@/lib/validation";
 import { type OnboardingState, createWorkspaceAction } from "./actions";
 
 const INITIAL: OnboardingState = {};
@@ -17,6 +19,7 @@ const INITIAL: OnboardingState = {};
 const STEPS = [
   "Welcome",
   "Your work",
+  "Workspace URL",
   "Priorities",
   "First shoot",
   "Review",
@@ -102,6 +105,13 @@ export function OnboardingFlow({
   const [step, setStep] = useState(0);
   const [workspaceName, setWorkspaceName] = useState(suggestedName);
   const [timezone, setTimezone] = useState<WorkspaceTimezone>(DEFAULT_TIMEZONE);
+  const [slug, setSlug] = useState(() => slugifyWorkspace(suggestedName));
+  // Until the address is edited by hand it tracks the name, so somebody who
+  // renames their studio on the previous step does not find the old one here.
+  // After that it is theirs, and typing a new name must not overwrite it.
+  const [slugEdited, setSlugEdited] = useState(false);
+  const effectiveSlug = slugEdited ? slug : slugifyWorkspace(workspaceName);
+  const slugIssue = slugProblem(effectiveSlug);
   const [workStyle, setWorkStyle] = useState("independent");
   const [city, setCity] = useState("New York, NY");
   const [specialties, setSpecialties] = useState<string[]>(["celebrity", "street_style"]);
@@ -142,7 +152,15 @@ export function OnboardingFlow({
       if (specialties.length === 0) return "Choose at least one kind of work.";
       return null;
     }
-    if (current === 2 && goals.length === 0) return "Choose at least one priority.";
+    if (current === 2) {
+      if (!effectiveSlug) return "Choose a workspace address.";
+      if (slugIssue === "invalid") {
+        return `Use lowercase letters, numbers and hyphens, up to ${SLUG_MAX_LENGTH} characters.`;
+      }
+      if (slugIssue === "reserved") return "That address is reserved. Choose another.";
+      return null;
+    }
+    if (current === 3 && goals.length === 0) return "Choose at least one priority.";
     return null;
   }
 
@@ -290,10 +308,81 @@ export function OnboardingFlow({
         )}
 
         {step === 2 && (
+          <div className="onboarding-content split-content">
+            <div className="stage-intro">
+              <p className="onboarding-eyebrow">Workspace URL</p>
+              <h1 id="onboarding-title-2">Where your workspace lives.</h1>
+              <p>
+                This is the address you will work at, and the one you send people when you share a
+                shoot or a submission. It is yours: nobody else can take it, now or later.
+              </p>
+              <dl className="quiet-facts">
+                <div>
+                  <dt>Changeable</dt>
+                  <dd>Up to three times a year, in Settings</dd>
+                </div>
+                <div>
+                  <dt>Old links</dt>
+                  <dd>Keep working if you ever change it</dd>
+                </div>
+              </dl>
+            </div>
+            {/*
+              * .stage-form is a grid, and its rows stretch to fill the column.
+              * Every other step has enough fields that the rows come out at
+              * their natural height; this one has a single field, so without
+              * this the input grows to about a hundred pixels tall and the note
+              * beneath it drifts to the bottom of the screen.
+              */}
+            <div className="stage-form" style={{ alignContent: "start" }}>
+              <label className="onboarding-field" htmlFor="onboarding-slug">
+                <span>Workspace address</span>
+                <input
+                  aria-describedby="onboarding-slug-hint"
+                  aria-label="Workspace address"
+                  aria-invalid={slugIssue !== null}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  id="onboarding-slug"
+                  inputMode="url"
+                  maxLength={SLUG_MAX_LENGTH}
+                  onChange={(event) => {
+                    setSlugEdited(true);
+                    // Typed as it will be stored, so the preview underneath is
+                    // the address rather than an approximation of it.
+                    setSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
+                  }}
+                  required
+                  spellCheck={false}
+                  value={effectiveSlug}
+                />
+                <small id="onboarding-slug-hint">
+                  {slugIssue === "reserved" ? (
+                    <>That address is reserved. Choose another.</>
+                  ) : slugIssue === "invalid" ? (
+                    <>
+                      Lowercase letters, numbers and hyphens, up to {SLUG_MAX_LENGTH} characters.
+                    </>
+                  ) : (
+                    <>
+                      Your workspace will be at <strong>mastline.co/{effectiveSlug}</strong>
+                    </>
+                  )}
+                </small>
+              </label>
+              <p className="section-note">
+                Suggested from your workspace name. Change it to anything you would rather have —
+                your own name works well if you shoot under it.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
           <div className="onboarding-content">
             <div className="wide-intro">
               <p className="onboarding-eyebrow">Priorities</p>
-              <h1 id="onboarding-title-2">What should Mastline handle first?</h1>
+              <h1 id="onboarding-title-3">What should Mastline handle first?</h1>
               <p>
                 Select every job that matters. We will use the choices to order your workspace—not
                 hide anything from you.
@@ -317,11 +406,11 @@ export function OnboardingFlow({
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="shoot-first-layout">
             <aside className="stage-intro dark-intro">
               <p className="onboarding-eyebrow">First shoot</p>
-              <h1 id="onboarding-title-3">Start with one shoot.</h1>
+              <h1 id="onboarding-title-4">Start with one shoot.</h1>
               <p>
                 Give Mastline a recent folder, plan an upcoming job, or use the sample set to see
                 the workflow.
@@ -407,7 +496,7 @@ export function OnboardingFlow({
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="review-layout">
             <div className="review-visual">
               <div className="review-hero">
@@ -436,7 +525,7 @@ export function OnboardingFlow({
             </div>
             <div className="review-panel">
               <p className="onboarding-eyebrow">Review · demonstration</p>
-              <h1 id="onboarding-title-4">Here’s what Mastline found.</h1>
+              <h1 id="onboarding-title-5">Here’s what Mastline found.</h1>
               <p className="demo-banner" role="note">
                 A worked example on sample pictures. Nothing here is saved, and any brand named is a
                 suggestion for you to confirm on a real asset later — never recorded as fact.
@@ -490,11 +579,11 @@ export function OnboardingFlow({
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="onboarding-content rights-layout">
             <div className="stage-intro">
               <p className="onboarding-eyebrow">Rights and readiness</p>
-              <h1 id="onboarding-title-5">How can this work be used?</h1>
+              <h1 id="onboarding-title-6">How can this work be used?</h1>
               <p>
                 Mastline records the facts and routes decisions. It never turns a suggestion into a
                 legal conclusion.
@@ -575,11 +664,11 @@ export function OnboardingFlow({
           </div>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <div className="ready-layout">
             <div className="ready-copy">
               <p className="onboarding-eyebrow">Ready</p>
-              <h1 id="onboarding-title-6">Your first shoot is ready to work.</h1>
+              <h1 id="onboarding-title-7">Your first shoot is ready to work.</h1>
               <p>
                 The sample set above is a demonstration — no shoot, asset, or rights record is
                 created from it. Create the workspace and Mastline opens the real shoot intake,
@@ -587,6 +676,7 @@ export function OnboardingFlow({
               </p>
               <form action={formAction}>
                 <input name="name" type="hidden" value={workspaceName} />
+                <input name="workspaceSlug" type="hidden" value={effectiveSlug} />
                 <input name="timezone" type="hidden" value={timezone} />
                 <input name="workStyle" type="hidden" value={workStyle} />
                 <input name="baseCity" type="hidden" value={city} />
@@ -647,6 +737,10 @@ export function OnboardingFlow({
                   <dd>{workspaceName || "My Studio"}</dd>
                 </div>
                 <div>
+                  <dt>Address</dt>
+                  <dd>mastline.co/{effectiveSlug}</dd>
+                </div>
+                <div>
                   <dt>Based in</dt>
                   <dd>{city}</dd>
                 </div>
@@ -687,7 +781,7 @@ export function OnboardingFlow({
               onClick={next}
               type="button"
             >
-              {step === 5 ? "Review setup" : "Continue"}
+              {step === 6 ? "Review setup" : "Continue"}
               <Arrow />
             </button>
           </div>

@@ -26,7 +26,7 @@ describe("OnboardingFlow", () => {
   /** Step 0 through to the rights stage. */
   async function walkToRights(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       await user.click(screen.getByRole("button", { name: "Continue" }));
     }
   }
@@ -43,7 +43,7 @@ describe("OnboardingFlow", () => {
     await user.click(screen.getByRole("button", { name: "Review setup" }));
   }
 
-  it("carries a photographer through all seven stages", async () => {
+  it("carries a photographer through all eight stages", async () => {
     const user = userEvent.setup();
     render(
       <OnboardingFlow
@@ -59,6 +59,11 @@ describe("OnboardingFlow", () => {
 
     await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
     expect(screen.getByRole("heading", { name: "How do you work?" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(
+      screen.getByRole("heading", { name: "Where your workspace lives." }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(
@@ -135,6 +140,7 @@ describe("OnboardingFlow", () => {
 
     await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
     await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
 
     for (const label of [
       "Organize shoots and assets",
@@ -195,11 +201,117 @@ describe("OnboardingFlow", () => {
     renderFlow();
 
     await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    for (let i = 0; i < 4; i += 1) {
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+    }
 
     expect(screen.getByRole("note")).toHaveTextContent(/Nothing here is saved/);
+  });
+
+  /**
+   * The address step.
+   *
+   * Its whole job is to hand somebody a URL they will be living at, so the
+   * cases worth covering are the ones where it could quietly hand them a
+   * different one than they think.
+   */
+  describe("the workspace address", () => {
+    async function walkToAddress(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+    }
+
+    it("suggests one from the workspace name", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+      await walkToAddress(user);
+
+      expect(screen.getByLabelText("Workspace address")).toHaveValue("marcus-hale-studio");
+      expect(screen.getByText("mastline.co/marcus-hale-studio")).toBeInTheDocument();
+    });
+
+    it("follows the name until it is edited, and stops following after", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+
+      await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
+      const name = screen.getByLabelText("Workspace name");
+      await user.clear(name);
+      await user.type(name, "Hale Pictures");
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      const address = screen.getByLabelText("Workspace address");
+      expect(address, "an unedited address tracks the name").toHaveValue("hale-pictures");
+
+      await user.clear(address);
+      await user.type(address, "marcus");
+      await user.click(screen.getByRole("button", { name: "Back" }));
+
+      const renamed = screen.getByLabelText("Workspace name");
+      await user.clear(renamed);
+      await user.type(renamed, "Something Else Entirely");
+      await user.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(
+        screen.getByLabelText("Workspace address"),
+        "once chosen, the address is theirs and a new name must not overwrite it",
+      ).toHaveValue("marcus");
+    });
+
+    it("will not continue past a reserved address", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+      await walkToAddress(user);
+
+      const address = screen.getByLabelText("Workspace address");
+      await user.clear(address);
+      await user.type(address, "pricing");
+
+      expect(screen.getAllByText(/reserved/i).length).toBeGreaterThan(0);
+      expect(screen.getByRole("button", { name: /Continue/ })).toBeDisabled();
+    });
+
+    it("will not continue with an empty address", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+      await walkToAddress(user);
+
+      await user.clear(screen.getByLabelText("Workspace address"));
+      expect(screen.getByRole("button", { name: /Continue/ })).toBeDisabled();
+    });
+
+    it("keeps what is typed to what a URL can hold", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+      await walkToAddress(user);
+
+      const address = screen.getByLabelText("Workspace address");
+      await user.clear(address);
+      await user.type(address, "Marcus Hale!");
+
+      // Uppercase and punctuation would both be refused by the database, so
+      // they are never allowed into the field in the first place.
+      expect(address).toHaveValue("marcus-hale-");
+    });
+
+    it("sends the address to the server with everything else", async () => {
+      const user = userEvent.setup();
+      renderFlow();
+      await walkToAddress(user);
+
+      const address = screen.getByLabelText("Workspace address");
+      await user.clear(address);
+      await user.type(address, "hale-studio");
+
+      for (let i = 0; i < 4; i += 1) {
+        await user.click(screen.getByRole("button", { name: "Continue" }));
+      }
+      await user.click(screen.getByRole("button", { name: "Review setup" }));
+
+      expect(screen.getByText("mastline.co/hale-studio")).toBeInTheDocument();
+      const field = document.querySelector('input[name="workspaceSlug"]');
+      expect(field).toHaveValue("hale-studio");
+    });
   });
 
   it("offers no file input, because nothing here can import a file", async () => {

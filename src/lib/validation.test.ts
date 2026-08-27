@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isRecordId, slugifyWorkspace } from "./validation";
+import { isRecordId, parseOnboarding, slugifyWorkspace } from "./validation";
 
 describe("slugifyWorkspace", () => {
   it.each([
@@ -49,5 +49,58 @@ describe("isRecordId", () => {
     ["something SQL-shaped", "'; drop table assets; --"],
   ])("rejects %s", (_label, value) => {
     expect(isRecordId(value)).toBe(false);
+  });
+});
+
+/**
+ * The address arrives from a form, so it is checked here as well as on the
+ * step. A disabled Continue button is a courtesy; this is the control.
+ */
+describe("parseOnboarding: the workspace address", () => {
+  function form(overrides: Record<string, string> = {}): FormData {
+    const data = new FormData();
+    const fields: Record<string, string> = {
+      name: "Hale Studio",
+      workspaceSlug: "hale-studio",
+      timezone: "America/New_York",
+      workStyle: "independent",
+      baseCity: "New York, NY",
+      specialties: "celebrity",
+      goals: "organize",
+      ...overrides,
+    };
+    for (const [key, value] of Object.entries(fields)) data.set(key, value);
+    return data;
+  }
+
+  it("accepts a well-formed address", () => {
+    const parsed = parseOnboarding(form());
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value.workspaceSlug).toBe("hale-studio");
+  });
+
+  it("lowercases what it is given", () => {
+    const parsed = parseOnboarding(form({ workspaceSlug: "Hale-Studio" }));
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) expect(parsed.value.workspaceSlug).toBe("hale-studio");
+  });
+
+  it("refuses a reserved address even when the step let it through", () => {
+    const parsed = parseOnboarding(form({ workspaceSlug: "pricing" }));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.workspaceSlug).toMatch(/reserved/i);
+  });
+
+  it("refuses a malformed address", () => {
+    for (const slug of ["not kebab", "trailing-", "-leading", "under_score", "a".repeat(41)]) {
+      const parsed = parseOnboarding(form({ workspaceSlug: slug }));
+      expect(parsed.ok, `${slug} should be refused`).toBe(false);
+    }
+  });
+
+  it("refuses a missing address rather than inventing one", () => {
+    const parsed = parseOnboarding(form({ workspaceSlug: "" }));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.errors.workspaceSlug).toMatch(/choose/i);
   });
 });

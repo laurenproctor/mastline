@@ -16,6 +16,7 @@ import {
   isSpecialty,
   isWorkStyle,
 } from "./onboarding";
+import { SLUG_MAX_LENGTH, slugProblem } from "./slug";
 
 export type FieldErrors<T> = Partial<Record<keyof T | "_form", string>>;
 
@@ -238,6 +239,8 @@ export function slugifyWorkspace(name: string): string {
 
 export interface OnboardingInput {
   name: string;
+  /** The workspace's address: mastline.co/<workspaceSlug>. */
+  workspaceSlug: string;
   timezone: string;
   workStyle: WorkStyle;
   baseCity: string;
@@ -273,6 +276,28 @@ export function parseOnboarding(form: FormData): ParseResult<OnboardingInput> {
     errors.baseCity = `Keep this under ${MAX_CITY} characters.`;
   }
 
+  /*
+   * The address is chosen, not derived, so it is validated like anything else
+   * somebody typed. The same two rules run in the database -- a check
+   * constraint for the shape, a trigger for the reserved words -- and this copy
+   * exists so the answer arrives while they are still on the step rather than
+   * after they press the button.
+   *
+   * Whether it is already taken is not decided here. That can change between
+   * this moment and the insert, so the database is what answers it.
+   */
+  const workspaceSlug = text(form, "workspaceSlug").toLowerCase();
+  if (!workspaceSlug) errors.workspaceSlug = "Choose a workspace address.";
+  else {
+    const problem = slugProblem(workspaceSlug);
+    if (problem === "invalid") {
+      errors.workspaceSlug =
+        `Use lowercase letters, numbers and hyphens, up to ${SLUG_MAX_LENGTH} characters.`;
+    } else if (problem === "reserved") {
+      errors.workspaceSlug = "That address is reserved. Choose another.";
+    }
+  }
+
   const workStyleRaw = text(form, "workStyle");
   if (!isWorkStyle(workStyleRaw)) errors.workStyle = "Choose how you work.";
 
@@ -288,6 +313,7 @@ export function parseOnboarding(form: FormData): ParseResult<OnboardingInput> {
     ok: true,
     value: {
       name,
+      workspaceSlug,
       timezone: text(form, "timezone") || "America/New_York",
       workStyle: workStyleRaw as WorkStyle,
       baseCity,
