@@ -64,7 +64,12 @@ export default function Page() {
                 operating system, and approximate location derived from IP address.
               </li>
               <li>
-                <strong>Cookies and analytics:</strong> Mastline uses three analytics services, two
+                {/* The colon sits outside the tag on purpose. A space between a
+                    closing tag and text does not survive when the same run also
+                    contains a {" "}, and Prettier reformats an explicit one back
+                    to a plain space. Punctuation needs no space, so nothing is
+                    left to lose. */}
+                <strong>Cookies and analytics</strong>: Mastline uses three analytics services, two
                 of which are optional and can be turned off. Google Analytics, loaded through Google
                 Tag Manager, is used to understand how the site is used. Microsoft Clarity, provided
                 by Microsoft, records how pages are used &mdash; pointer movement, scrolling, and
@@ -130,10 +135,23 @@ export default function Page() {
                 history with another photographer in identifiable form.
               </li>
               <li>
-                Mastline does not show advertising, and Mastline does not let advertisers target you
-                based on your data.
+                Mastline does not show advertising in the product, does not sell access to you as an
+                audience, and does not use your pictures, your contacts, or your sales history to
+                target advertising anywhere.
               </li>
             </ul>
+            <p>
+              <strong>One exception, stated plainly</strong>. Microsoft Clarity, the optional
+              session-recording service described above, causes Microsoft to set third-party cookies
+              of its own whenever it runs. Microsoft&rsquo;s own documentation describes{" "}
+              <code>MUID</code>, which identifies unique browsers across Microsoft sites, as used
+              &ldquo;for advertising, site analytics, and other operational purposes&rdquo;, and{" "}
+              <code>CLID</code>, which identifies the first time Clarity saw your browser on any
+              site running Clarity. Mastline neither receives nor uses that data, and Mastline is
+              not in a position to promise what Microsoft does with it; Microsoft&rsquo;s privacy
+              statement governs that. Turning off Analytics stops Clarity and those cookies with it,
+              and in the EEA, the UK, and Switzerland Clarity never runs unless you accept.
+            </p>
 
             <h2>5. When Mastline shares information</h2>
             <ul>
@@ -145,7 +163,9 @@ export default function Page() {
               <li>
                 <strong>With service providers</strong> who help Mastline run Mastline, such as
                 cloud hosting, payment processing, email delivery, and image matching. They may use
-                your data only to provide services to Mastline.
+                your data only to provide services to Mastline. Microsoft Clarity is the one
+                exception, set out in section 4: Microsoft also acts for its own purposes, which is
+                why Clarity is optional and can be switched off.
               </li>
               <li>
                 <strong>Within your team,</strong> according to the roles and permissions you
