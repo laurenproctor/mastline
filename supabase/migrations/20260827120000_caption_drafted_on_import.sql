@@ -69,7 +69,7 @@
 -- It is a workspace decision rather than a per-person one because it spends
 -- the workspace's money and fills the workspace's records.
 alter table public.organizations
-  add column auto_caption_on_import boolean not null default true;
+  add column if not exists auto_caption_on_import boolean not null default true;
 
 comment on column public.organizations.auto_caption_on_import is
   'Whether the caption writer drafts a caption for each frame as it is imported. The draft is always marked unreviewed and never satisfies the dispatch gate on its own.';
@@ -82,31 +82,39 @@ alter table public.assets
   -- 'human' is the default because every caption that exists today was typed
   -- by one, and a backfill that guessed otherwise would mark real work as
   -- unread and block dispatches that were already approved.
-  add column caption_origin text not null default 'human'
+  add column if not exists caption_origin text not null default 'human'
     check (caption_origin in ('human', 'model')),
 
   -- When the model wrote it. Distinct from created_at, which is when the file
   -- arrived, and from updated_at, which moves for any edit at all.
-  add column caption_drafted_at timestamptz,
+  add column if not exists caption_drafted_at timestamptz,
 
   -- When a person read it and saved it. Set by the inspector's save, which is
   -- the confirm step in suggest -> explain -> confirm. Deliberately NOT set by
   -- a bulk metadata apply: filling a credit line across two hundred frames is
   -- not reading two hundred captions.
-  add column caption_reviewed_at timestamptz,
-  add column caption_reviewed_by uuid references auth.users(id),
+  add column if not exists caption_reviewed_at timestamptz,
+  add column if not exists caption_reviewed_by uuid references auth.users(id),
 
   -- What the draft was made from and how sure the model was, shown next to the
   -- field in the inspector. Kept after review as well: how a caption started is
   -- part of its history, and the caption revisions table records the text but
   -- not its provenance.
-  add column caption_basis text,
-  add column caption_confidence numeric(3, 2)
+  add column if not exists caption_basis text,
+  add column if not exists caption_confidence numeric(3, 2)
     check (caption_confidence is null or caption_confidence between 0 and 1),
-  add column caption_model text,
+  add column if not exists caption_model text;
 
-  -- Both or neither. A review with no reviewer is an audit record that cannot
-  -- answer the only question anyone asks of it.
+-- Both or neither. A review with no reviewer is an audit record that cannot
+-- answer the only question anyone asks of it.
+--
+-- Its own statement, dropped first, because ADD CONSTRAINT has no IF NOT
+-- EXISTS: this is the one part of the file that could not be made repeatable
+-- in place, and a constraint re-added from the same definition is identical to
+-- the one it replaces.
+alter table public.assets
+  drop constraint if exists assets_caption_review_is_attributable;
+alter table public.assets
   add constraint assets_caption_review_is_attributable
     check ((caption_reviewed_at is null) = (caption_reviewed_by is null));
 
@@ -116,7 +124,7 @@ alter table public.assets
 -- gate, the inspector, and the shoot header all need it, and the Data API can
 -- filter and count on it directly.
 alter table public.assets
-  add column caption_awaits_review boolean
+  add column if not exists caption_awaits_review boolean
     generated always as (
       caption_origin = 'model' and caption_reviewed_at is null
     ) stored;
