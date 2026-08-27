@@ -49,6 +49,22 @@ export { NavIcon };
  */
 const NAV_PROTOTYPE_COOKIE = "mastline_nav";
 
+/**
+ * Whether the prototype offers its own switch.
+ *
+ * The switch shipped ungated, so every signed-in person on mastline.co was
+ * being shown a dashed chip belonging to a question only we are asking. The
+ * bar itself was always inert without the cookie; the control that sets the
+ * cookie was not, and that is the half that reached real people.
+ *
+ * Opt-in by name rather than by NODE_ENV, because `next start` runs in
+ * production mode locally too and gating on that would have taken the switch
+ * away from the machine it is meant to be used on. Set
+ * NEXT_PUBLIC_NAV_PROTOTYPE=1 in .env.local, or on a preview deployment to try
+ * the bar on a real phone. Unset everywhere else, which includes production.
+ */
+const NAV_PROTOTYPE_OFFERED = process.env.NEXT_PUBLIC_NAV_PROTOTYPE === "1";
+
 const ROLE_LABELS: Record<string, string> = {
   owner: "Owner · all access",
   editor: "Editor · assets and dispatch",
@@ -179,7 +195,7 @@ export async function AppShell({
         {children}
       </main>
 
-      <NavPrototypeToggle mode={navMode} />
+      {NAV_PROTOTYPE_OFFERED && <NavPrototypeToggle mode={navMode} />}
     </div>
   );
 }
