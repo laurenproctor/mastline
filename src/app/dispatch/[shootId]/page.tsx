@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Badge, PageHeader, Panel, PhotoTile } from "@/components/primitives";
+import { Badge, PageHeader, Panel, PhotoTile, TableScroll } from "@/components/primitives";
 import { listAssets } from "@/lib/data/assets";
 import { listPackages } from "@/lib/data/packages";
 import { getShoot } from "@/lib/data/shoots";
@@ -121,7 +121,7 @@ export default async function DispatchPage({
               action={<span className="muted">{pkg.assets.length} in this package</span>}
               title="Exactly what will be sent"
             >
-              <div className="table-scroll">
+              <TableScroll label="Exactly what will be sent">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -167,7 +167,7 @@ export default async function DispatchPage({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
               <div className="thumb-strip panel-body">
                 {pkg.assets.slice(0, 5).map((entry, index) => (
                   <PhotoTile index={index + 1} key={entry.assetId} selected />

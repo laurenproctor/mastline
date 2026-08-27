@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel } from "@/components/primitives";
+import { Badge, Metric, PageHeader, Panel, TableScroll } from "@/components/primitives";
 import { listActivity } from "@/lib/data/activity";
 import { listDeliveryAttempts } from "@/lib/data/delivery";
 import { listAssets } from "@/lib/data/assets";
@@ -180,7 +180,7 @@ export default async function SubmissionPage({
               action={<span className="muted">{submission.manifest.length} versions</span>}
               title="Manifest"
             >
-              <div className="table-scroll">
+              <TableScroll label="Manifest">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -218,7 +218,7 @@ export default async function SubmissionPage({
                     })}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
               <p className="section-note panel-body">
                 This manifest is frozen. Editing what was sent is refused by the database.
               </p>

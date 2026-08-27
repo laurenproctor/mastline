@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, PageHeader, Panel } from "@/components/primitives";
+import { Badge, PageHeader, Panel, TableScroll } from "@/components/primitives";
 import { listLicenses } from "@/lib/data/money";
 import { listSubmissions } from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
@@ -51,7 +51,7 @@ export default async function SubmissionsPage() {
               </p>
             </div>
           ) : (
-            <div className="table-scroll">
+            <TableScroll label="Submissions">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -107,7 +107,7 @@ export default async function SubmissionsPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </Panel>
       </div>

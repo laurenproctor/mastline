@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel, PendingButton } from "@/components/primitives";
+import {
+  Badge,
+  Metric,
+  PageHeader,
+  Panel,
+  PendingButton,
+  TableScroll,
+} from "@/components/primitives";
 import { formatConfidence, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { getAsset } from "@/lib/data/assets";
@@ -83,7 +90,7 @@ export default async function RightsPage() {
                 </p>
               </div>
             )}
-            <div className="table-scroll">
+            <TableScroll label="Observed uses">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -122,7 +129,7 @@ export default async function RightsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             <p className="section-note panel-body">
               Confidence is a machine observation and is stored separately from the human status. A
               license check result of “no linked license found” is a fact about the Mastline record,

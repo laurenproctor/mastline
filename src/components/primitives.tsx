@@ -82,6 +82,21 @@ export function Panel({
   );
 }
 
+/**
+ * A wide table's scroll container.
+ *
+ * A table that has to be dragged sideways can only be read with a mouse or a
+ * finger; a keyboard has no gesture for it. Focusable, so arrow keys work, and
+ * named, so it is announced as something rather than as an unlabelled stop.
+ */
+export function TableScroll({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div aria-label={label} className="table-scroll" role="region" tabIndex={0}>
+      {children}
+    </div>
+  );
+}
+
 export function Progress({ value, label }: { value: number; label?: string }) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
   return (

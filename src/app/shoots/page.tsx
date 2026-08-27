@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, PageHeader, Panel, Progress } from "@/components/primitives";
+import { Badge, PageHeader, Panel, Progress, TableScroll } from "@/components/primitives";
 import { listAssets } from "@/lib/data/assets";
 import { listShoots } from "@/lib/data/shoots";
 import { formatDate, humanizeStatus } from "@/lib/format";
@@ -51,7 +51,7 @@ export default async function ShootsPage() {
               </p>
             </div>
           ) : (
-            <div className="table-scroll">
+            <TableScroll label="Shoots">
               <table className="data-table">
                 <thead>
                   <tr>
@@ -98,7 +98,7 @@ export default async function ShootsPage() {
                   })}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
           )}
         </Panel>
       </div>

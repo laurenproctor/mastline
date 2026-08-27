@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, PageHeader, Panel, PendingButton, PhotoTile } from "@/components/primitives";
+import {
+  Badge,
+  PageHeader,
+  Panel,
+  PendingButton,
+  PhotoTile,
+  TableScroll,
+} from "@/components/primitives";
 import { formatConfidence, formatElapsed, humanizeStatus } from "@/lib/format";
 import { formatMoneyRange } from "@/lib/money";
 import { DEMO_NOW } from "@/lib/mock/fixtures";
@@ -31,7 +38,7 @@ export default async function NewsPage() {
         />
 
         <Panel>
-          <div className="table-scroll">
+          <TableScroll label="News opportunities">
             <table className="data-table">
               <thead>
                 <tr>
@@ -83,7 +90,7 @@ export default async function NewsPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
 
           {selected && (
             <div className="opportunity-detail">

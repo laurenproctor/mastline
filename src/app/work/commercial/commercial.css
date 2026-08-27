@@ -3,7 +3,7 @@
 }
 .commercial-queue-layout {
   display: grid;
-  grid-template-columns: minmax(690px, 1fr) 360px;
+  grid-template-columns: minmax(724px, 1fr) 360px;
   border: 1px solid var(--line);
   background: var(--surface);
   min-height: 720px;
@@ -37,7 +37,7 @@
   padding: 0;
   white-space: nowrap;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 750;
 }
 .commercial-tabs button span {
@@ -79,7 +79,7 @@
   display: flex;
   gap: 9px;
   align-items: center;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .commercial-filter-popover input {
   accent-color: var(--blue);
@@ -104,7 +104,7 @@
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-size: 9px;
+  font-size: var(--fs-label);
   font-weight: 800;
 }
 .commercial-list {
@@ -136,7 +136,7 @@
 }
 .commercial-row > span,
 .commercial-row > strong {
-  font-size: 12px;
+  font-size: var(--fs-note);
   line-height: 1.4;
 }
 .commercial-person {
@@ -157,11 +157,11 @@
   min-width: 0;
 }
 .commercial-person strong {
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 .commercial-person small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-note);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -177,12 +177,12 @@
 }
 .commercial-potential small {
   color: var(--green);
-  font-size: 9px;
+  font-size: var(--fs-note);
 }
 .commercial-list-foot {
   padding: 13px 16px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-label);
 }
 .commercial-empty {
   min-height: 400px;
@@ -220,7 +220,7 @@
 .commercial-preview-head > span {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-label);
 }
 .commercial-preview-image {
   width: 100%;
@@ -238,7 +238,7 @@
   margin-right: auto;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-preview-score strong {
   font-family: Georgia, serif;
@@ -249,7 +249,7 @@
   margin-left: 8px;
   color: var(--green);
   font-style: normal;
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .commercial-preview-facts {
   margin: 13px 0;
@@ -263,11 +263,11 @@
 .commercial-preview-facts dt {
   color: var(--muted);
   text-transform: uppercase;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-preview-facts dd {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .commercial-rights-note {
   margin-top: auto;
@@ -287,7 +287,7 @@
   place-items: center;
   border: 1px solid var(--ink);
   border-radius: 50%;
-  font-size: 10px;
+  font-size: var(--fs-label);
   font-weight: 900;
 }
 .commercial-rights-note p > span:last-child {
@@ -295,11 +295,11 @@
   gap: 2px;
 }
 .commercial-rights-note strong {
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .commercial-rights-note small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--fs-note);
   line-height: 1.4;
 }
 .commercial-review-link {
@@ -331,7 +331,7 @@
   padding: 0 18px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: var(--fs-label);
 }
 .commercial-stage-toolbar > span {
   color: var(--muted);
@@ -365,14 +365,14 @@
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 8px;
+  font-size: var(--fs-label);
 }
 .commercial-asset-meta dd {
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 
 .commercial-review-inspector {
@@ -410,7 +410,7 @@
 .commercial-score-block span {
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-score-block strong {
   font-family: Georgia, serif;
@@ -421,7 +421,7 @@
 .commercial-score-block p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   line-height: 1.5;
 }
 .commercial-score-track {
@@ -441,7 +441,7 @@
   position: absolute;
   right: 0;
   top: 1px;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-product-heading {
   display: flex;
@@ -450,7 +450,7 @@
   border-bottom: 1px solid var(--line);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 9px;
+  font-size: var(--fs-label);
   font-weight: 800;
 }
 .commercial-product {
@@ -475,14 +475,14 @@
   gap: 3px;
 }
 .commercial-product-copy strong {
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .commercial-product-copy span {
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .commercial-product-copy small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--fs-note);
 }
 .commercial-product-copy label {
   display: flex;
@@ -490,14 +490,14 @@
   gap: 8px;
   margin-top: 3px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: var(--fs-label);
 }
 .commercial-product-copy select {
   min-height: 26px;
   max-width: 150px;
   border: 1px solid var(--line);
   background: #fff;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-product-decision {
   min-height: 83px;
@@ -514,7 +514,7 @@
 }
 .commercial-product-decision > span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-product-decision .button {
   width: 100%;
@@ -549,7 +549,7 @@
 .commercial-guardrails p {
   margin: 7px 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--fs-note);
   line-height: 1.5;
 }
 .commercial-guardrails p span {
@@ -596,12 +596,12 @@
   margin-bottom: 5px;
   color: var(--muted);
   text-transform: uppercase;
-  font-size: 8px;
+  font-size: var(--fs-label);
 }
 .commercial-shop-panel dd {
   margin: 0;
   font-weight: 750;
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .commercial-disclosure {
   margin-bottom: 13px;
@@ -610,12 +610,12 @@
 }
 .commercial-disclosure strong {
   text-transform: uppercase;
-  font-size: 8px;
+  font-size: var(--fs-label);
 }
 .commercial-disclosure p {
   margin: 6px 0 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: var(--fs-note);
   line-height: 1.5;
 }
 .commercial-shop-panel > .button {
@@ -625,7 +625,7 @@
 .commercial-drawer-backdrop {
   position: fixed;
   z-index: 50;
-  inset: 0;
+  inset: 0 0 var(--consent-inset, 0px);
   display: flex;
   justify-content: flex-end;
   background: rgba(17, 17, 15, 0.36);
@@ -667,22 +667,22 @@
   margin-bottom: 5px;
   color: var(--muted);
   text-transform: uppercase;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .commercial-pitch-recipient dd {
   margin: 0;
   font-weight: 750;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .commercial-pitch-copy {
   padding: 22px 0;
   font-family: Georgia, serif;
-  font-size: 16px;
+  font-size: var(--fs-lead);
   line-height: 1.55;
 }
 .commercial-pitch-copy strong {
   font-family: Inter, ui-sans-serif, sans-serif;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .commercial-license-scope {
   display: grid;
@@ -697,28 +697,42 @@
 .commercial-pitch-drawer > .button {
   width: 100%;
 }
+/* Above the consent banner, which is drawn over it, and never wider than the
+   window it is centred in. */
 .commercial-toast {
   position: fixed;
   z-index: 70;
   left: 50%;
   bottom: -90px;
   transform: translateX(-50%);
-  min-width: 340px;
+  min-width: min(340px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   padding: 14px 20px;
   background: var(--ink);
   color: #fff;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   transition: bottom 0.2s ease;
 }
 .commercial-toast.visible {
-  bottom: 24px;
+  bottom: calc(24px + var(--consent-inset, 0px));
 }
 
-@media (max-width: 1260px) {
+/*
+ * The queue's column floors, and the layout's, are one number in two places.
+ *
+ * The row grid needs 696px of tracks plus 28px of padding, and the preview
+ * beside it needs 360px, so the pair cannot be drawn under 1084px of page --
+ * which is a 1388px window once the rail and the page gutters are taken out.
+ * The layout used to claim it fitted from 1081px, and between there and
+ * 1354px the queue quietly pushed the whole page sideways.
+ *
+ * Each step below narrows the row tracks first and only then the layout, so
+ * the two never disagree again.
+ */
+@media (max-width: 1388px) {
   .commercial-queue-layout {
-    grid-template-columns: minmax(600px, 1fr) 320px;
+    grid-template-columns: minmax(637px, 1fr) 320px;
   }
   .commercial-tabs {
     gap: 15px;
@@ -738,9 +752,9 @@
   }
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1300px) {
   .commercial-queue-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .commercial-queue-panel {
     border-right: 0;
@@ -760,7 +774,12 @@
   }
 }
 
-@media (max-width: 760px) {
+/*
+ * Below this the queue row stops being a table and becomes a card. 760px was
+ * the wrong place for it: the compact tracks still need 637px, and a 768px
+ * tablet has only 604px of page once the rail and the gutters are gone.
+ */
+@media (max-width: 820px) {
   .commercial-toolbar {
     align-items: center;
     padding-block: 8px;

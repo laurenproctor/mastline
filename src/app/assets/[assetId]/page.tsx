@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel } from "@/components/primitives";
+import { Badge, Metric, PageHeader, Panel, TableScroll } from "@/components/primitives";
 import { getAsset } from "@/lib/data/assets";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { listLicenses, listPayments } from "@/lib/data/money";
@@ -143,7 +143,7 @@ export default async function AssetPage({ params }: { params: Promise<{ assetId:
                   <p className="section-note">This frame has not been sent or licensed yet.</p>
                 </div>
               ) : (
-                <div className="table-scroll">
+                <TableScroll label="Commercial history">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -176,7 +176,7 @@ export default async function AssetPage({ params }: { params: Promise<{ assetId:
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               )}
             </Panel>
 

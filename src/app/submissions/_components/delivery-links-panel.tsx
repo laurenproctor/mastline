@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Badge, Field } from "@/components/primitives";
+import { Badge, Field, TableScroll } from "@/components/primitives";
 import { DELIVERY_WINDOWS_DAYS, DEFAULT_DELIVERY_WINDOW, deliveryStanding } from "@/lib/delivery";
 import type { AcceptanceRecord, AccessEvent, DeliveryLink } from "@/lib/data/delivery-links";
 import {
@@ -102,7 +102,7 @@ export function DeliveryLinks({
       ))}
 
       {events.length > 0 && (
-        <div className="table-scroll">
+        <TableScroll label="What the recipient did">
           <table className="data-table">
             <caption className="visually-hidden">What the recipient did</caption>
             <thead>
@@ -127,7 +127,7 @@ export function DeliveryLinks({
               ))}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       )}
 
       {canSend &&

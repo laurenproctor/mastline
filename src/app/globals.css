@@ -1,14 +1,38 @@
 :root {
   --ink: #11110f;
-  --muted: #6f6e68;
+  /*
+   * Secondary ink, for prose that should recede without becoming hard work.
+   * Measured against the warm surfaces below rather than picked by eye.
+   */
+  --ink-2: #33322d;
+  /*
+   * Every colour that carries text is measured against the surface it is
+   * printed on, and the weakest pairing in the set clears 4.5:1. The previous
+   * --muted (#6f6e68) came to 4.37:1 on the sidebar's paper, and the previous
+   * red and amber came to 3.99:1 and 3.26:1 -- all of them below the line, and
+   * all of them used at ten and eleven pixels where it mattered most.
+   *
+   * --amber and --acid stay as they were: neither is ever printed as text.
+   * They are rules, fills, and marks, where the bar is 3:1 and both clear it.
+   * --amber-ink is the one to use when the same state has to be written down.
+   */
+  --muted: #5f5e58; /* 6.23:1 on surface, 5.56:1 on the sidebar's paper */
   --paper: #f4f2ec;
   --surface: #fbfaf6;
   --line: #d8d5cc;
-  --blue: #1f48ff;
+  /*
+   * The border of a control the operator is meant to find and click. A
+   * hairline is right for a table rule, which is decoration, and wrong for the
+   * edge of an input, which is the component itself and owes 3:1.
+   */
+  --field-line: #8a857a; /* 3.67:1 on white */
+  --blue: #1f48ff; /* 5.86:1 on surface */
   --acid: #c7f000;
-  --red: #e8382f;
-  --amber: #c77900;
-  --green: #287a52;
+  --red: #cc2418; /* 5.25:1 on surface, 5.48:1 under white text */
+  --amber: #c77900; /* rules and fills only: 3.26:1 */
+  --amber-ink: #8d5700; /* 5.75:1 on surface, for the same state in words */
+  --green: #227048; /* 5.78:1 on surface */
+  --track: #e6e4dd; /* the unfilled part of a progress bar */
   --sidebar: 224px;
   --radius: 3px;
   /*
@@ -18,9 +42,33 @@
    * were silently not being drawn. Aliasing here fixes all of them in one
    * place; renaming the call sites instead would be a large diff over working
    * intent.
+   *
+   * --ink-3 was the same fault one sheet further along: the buyer's delivery
+   * page borrowed it from marketing.css, which that route does not load.
    */
   --rule: var(--line);
   --paper-2: #efede7;
+  --ink-3: var(--muted);
+
+  /*
+   * The type ramp.
+   *
+   * Sizes are in rem so that a person who has raised their browser's default
+   * text size gets a bigger interface, which px silently refuses to do. The
+   * root stays at the browser default -- nothing here rescales it -- so 1rem
+   * is 16px unless the reader has said otherwise.
+   *
+   * The floor is --fs-label at 11px, and it is reserved for uppercase tracked
+   * labels, which are read as landmarks rather than sentences. Anything that
+   * forms a sentence starts at --fs-note. The screens used to run prose at 10
+   * and 11px and badges at 8 and 9px.
+   */
+  --fs-label: 0.6875rem; /* 11px - uppercase labels, badges, table headers */
+  --fs-micro: 0.75rem; /* 12px - dense figures and captions */
+  --fs-note: 0.8125rem; /* 13px - secondary prose */
+  --fs-body: 0.875rem; /* 14px - table cells and dense body */
+  --fs-base: 0.9375rem; /* 15px - default interface text */
+  --fs-lead: 1rem; /* 16px - lead paragraphs, and every form control */
 }
 
 * {
@@ -39,11 +87,20 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  font-size: 14px;
+  font-size: var(--fs-base);
+  line-height: 1.5;
 }
 a {
   color: inherit;
   text-decoration: none;
+}
+/*
+ * The browser's own rule for <small> is 0.8em, which compounds: inside a label
+ * already set at 11px it produced nine-pixel text. The floor holds regardless
+ * of what it is nested in.
+ */
+small {
+  font-size: max(0.9em, var(--fs-micro));
 }
 button,
 input,
@@ -117,12 +174,14 @@ button {
   border-left-color: var(--blue);
   font-weight: 700;
 }
-/* An SVG now, not a glyph in a monospace box. */
+/* An SVG now, not a glyph in a monospace box.
+   0.62 faded the stroke to about 2.6:1 against the sidebar, and in the
+   collapsed rail the icon is the only thing the link draws. */
 .nav-icon {
   flex: 0 0 auto;
   width: 18px;
   height: 18px;
-  opacity: 0.62;
+  opacity: 0.85;
 }
 .nav-link.active .nav-icon,
 .nav-link:hover .nav-icon {
@@ -156,7 +215,7 @@ button {
   place-items: center;
   color: white;
   background: #222;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 .workspace {
@@ -195,12 +254,12 @@ button {
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 10px;
+  font-size: var(--fs-label);
   color: var(--muted);
   font-weight: 800;
 }
 .button {
-  min-height: 40px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -226,9 +285,9 @@ button {
   border-color: var(--acid);
 }
 .button.small {
-  min-height: 32px;
-  padding: 0 11px;
-  font-size: 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: var(--fs-note);
 }
 .text-link {
   font-weight: 750;
@@ -248,7 +307,7 @@ button {
   gap: 20px;
 }
 .panel-head h2 {
-  font-size: 14px;
+  font-size: var(--fs-base);
   margin: 0;
 }
 .panel-body {
@@ -273,6 +332,19 @@ button {
 .table-scroll {
   max-width: 100%;
   overflow-x: auto;
+}
+/*
+ * A commercial table has a floor, and below it the columns stop being columns.
+ *
+ * This used to apply only under 680px, so between there and about 1090px --
+ * every tablet, and a laptop the moment the full rail comes back and takes
+ * 224px with it -- the columns compressed instead of scrolling: shoot titles
+ * broke over three lines, the readiness bar shrank to a ten-pixel stub, and
+ * the row action was pushed under the scroller's own edge. Scrolling a table
+ * sideways is a fair ask; guessing at a squeezed one is not.
+ */
+.data-table {
+  min-width: 720px;
 }
 .three-col {
   display: grid;
@@ -299,7 +371,7 @@ button {
 }
 .metric > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .metric strong {
   font-family: Georgia, serif;
@@ -325,7 +397,7 @@ button {
   border: 1px solid var(--line);
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  font-size: 9px;
+  font-size: var(--fs-label);
   font-weight: 850;
 }
 .badge.good {
@@ -334,7 +406,7 @@ button {
   border-color: #b9d9c6;
 }
 .badge.warn {
-  color: #8d5700;
+  color: var(--amber-ink);
   background: #fff5db;
   border-color: #efd495;
 }
@@ -364,16 +436,16 @@ button {
 }
 .list-row h3 {
   margin: 0 0 4px;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .list-row p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .list-row .age {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   text-align: right;
 }
 .list-row .row-action {
@@ -405,12 +477,12 @@ button {
 }
 .side-card h3 {
   margin: 0 0 6px;
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 .side-card p {
   margin: 0 0 14px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   line-height: 1.6;
 }
 .mini-photo,
@@ -433,24 +505,49 @@ button {
   inset: auto 14px 12px auto;
   color: rgba(255, 255, 255, 0.75);
   letter-spacing: 0.14em;
-  font-size: 8px;
+  font-size: var(--fs-label);
 }
+/*
+ * Label, bar, figure -- but the label is optional, and as a three-column grid
+ * this quietly broke without one: the bar dropped into the `auto` track meant
+ * for the label and rendered as a two-pixel stub next to its own percentage.
+ * Flex places them by what they are rather than by what position they landed
+ * in, so the bar keeps its floor either way.
+ */
 .progress-wrap {
-  display: grid;
-  grid-template-columns: auto minmax(80px, 1fr) auto;
+  display: flex;
   gap: 9px;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--fs-label);
   color: var(--muted);
 }
+.progress-wrap > span,
+.progress-wrap > small {
+  flex: 0 0 auto;
+}
+/*
+ * Acid on a near-white track came to 1.03:1 -- two colours that differ in hue
+ * and in nothing else, so in greyscale, or to a red-green eye, the bar was one
+ * flat strip and the figure printed beside it was carrying the whole meaning.
+ *
+ * Darkening the track would have fixed the ratio and broken the reading: an
+ * empty bar would then be a solid dark one, which is what a full bar looks
+ * like. So the track stays pale, the bar states its own extent with a border,
+ * and the boundary between done and not-done is drawn in ink. At 0% that
+ * leaves a 2px tick at the start, which is true.
+ */
 .progress {
-  background: #dfddd6;
-  height: 3px;
+  flex: 1 1 auto;
+  min-width: 80px;
+  background: var(--track);
+  border: 1px solid var(--field-line);
+  height: 8px;
 }
 .progress i {
   display: block;
   height: 100%;
   background: var(--acid);
+  border-right: 2px solid var(--ink);
 }
 .data-table {
   width: 100%;
@@ -459,7 +556,7 @@ button {
 .data-table th {
   color: var(--muted);
   text-align: left;
-  font-size: 9px;
+  font-size: var(--fs-label);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 11px 12px;
@@ -469,7 +566,7 @@ button {
   padding: 15px 12px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .data-table tbody tr:last-child td {
   border-bottom: 0;
@@ -518,7 +615,7 @@ button {
 }
 .detail-block p {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   line-height: 1.6;
 }
 .thumb-strip {
@@ -569,7 +666,7 @@ button {
   background: rgba(0, 0, 0, 0.6);
   color: white;
   padding: 3px 5px;
-  font-size: 9px;
+  font-size: var(--fs-label);
 }
 .select-mark,
 .warning-mark {
@@ -582,7 +679,7 @@ button {
   display: grid;
   place-items: center;
   background: var(--acid);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 900;
 }
 .warning-mark {
@@ -593,7 +690,7 @@ button {
   position: absolute;
   left: 7px;
   top: 7px;
-  font-size: 9px;
+  font-size: var(--fs-label);
   background: #fff;
   padding: 3px 5px;
   font-style: normal;
@@ -611,7 +708,7 @@ button {
   grid-column: 1 / -1;
 }
 .field label {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -624,7 +721,7 @@ button {
 }
 .required-legend {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 /* The inline "add a buyer" form, nested inside a larger form. Indented and
    ruled so it reads as a sub-decision rather than more of the same brief. */
@@ -661,18 +758,29 @@ button {
 }
 .suggestion-note p {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--fs-note);
   line-height: 1.6;
   color: var(--ink);
 }
+/*
+ * The edge of a control is the component, not decoration, so it is drawn in
+ * --field-line rather than the table hairline. At 1.41:1 the old border was
+ * invisible against white on a phone held outdoors, which is where these forms
+ * are filled in.
+ *
+ * 16px is not a taste decision: Safari on iOS zooms the whole page in when a
+ * control smaller than that takes focus, and then leaves it zoomed, which
+ * knocks the rest of the layout off screen mid-form.
+ */
 .field input,
 .field select,
 .field textarea {
   width: 100%;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   background: white;
-  min-height: 42px;
-  padding: 10px 11px;
+  min-height: 46px;
+  padding: 10px 12px;
+  font-size: var(--fs-lead);
   outline: none;
 }
 .field textarea {
@@ -692,7 +800,7 @@ button {
 .field textarea:focus {
   border-color: transparent;
   border-width: 2px;
-  padding: 9px 10px;
+  padding: 9px 11px;
   background:
     linear-gradient(white, white) padding-box,
     linear-gradient(180deg, #2b6bff 0%, #1240c9 45%, #071a66 100%) border-box;
@@ -776,7 +884,7 @@ button {
 .stat-line {
   display: flex;
   gap: 18px;
-  font-size: 11px;
+  font-size: var(--fs-note);
   color: var(--muted);
 }
 .shoot-layout {
@@ -798,14 +906,17 @@ button {
 .inspector .field {
   margin-bottom: 12px;
 }
+/* #3b3c3f against the panel behind it was 1.41:1 -- a field you had to know
+   was there. #6a6b6e clears the 3:1 a control's own edge owes. */
 .inspector .field input,
-.inspector .field textarea {
+.inspector .field textarea,
+.inspector .field select {
   background: #232426;
   color: white;
-  border-color: #3b3c3f;
+  border-color: #6a6b6e;
 }
 .inspector .field label {
-  color: #a6a6a3;
+  color: #b8b8b4;
 }
 .dark-toolbar {
   padding: 12px;
@@ -818,7 +929,13 @@ button {
 }
 .dark-toolbar .button {
   color: white;
-  border-color: #666;
+  border-color: #7c7d80;
+}
+/* The toolbar paints its buttons white, which on an acid fill is 1.32:1 --
+   the label was very nearly not there. Acid keeps its own ink. */
+.dark-toolbar .button.acid,
+.shoot-layout .button.acid {
+  color: #111;
 }
 .checklist {
   display: grid;
@@ -843,16 +960,16 @@ button {
 }
 .check-row.warn .check-icon {
   background: #fff0d7;
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 .check-row h3 {
   margin: 0 0 3px;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .check-row p {
   margin: 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-note);
 }
 .timeline {
   position: relative;
@@ -884,12 +1001,12 @@ button {
 }
 .timeline-item h3 {
   margin: 0 0 4px;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .timeline-item p {
   margin: 0;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .key-value {
   display: grid;
@@ -906,11 +1023,12 @@ button {
 }
 .key-value dt {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-note);
 }
+/* The value is the thing being read; the term beside it is the signpost. */
 .key-value dd {
   font-weight: 650;
-  font-size: 12px;
+  font-size: var(--fs-body);
 }
 .split-heading {
   display: flex;
@@ -929,7 +1047,14 @@ button {
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
+/*
+ * A block, because it is an <a> wrapping two block children. Left inline, the
+ * browser split the anchor around them and painted the left and right edges of
+ * its border as two stray vertical ticks in the gutter beside every card --
+ * plus a pixel and a half of baseline leading under each one.
+ */
 .asset-card {
+  display: block;
   border: 1px solid var(--line);
   background: var(--surface);
 }
@@ -943,7 +1068,10 @@ button {
 .asset-card-body strong {
   display: block;
 }
+/* Two <small> siblings, and inline they ran into each other: every card in
+   the archive read "1 packageAug 19, 2026". */
 .asset-card-body small {
+  display: block;
   color: var(--muted);
 }
 .marketing {
@@ -1036,7 +1164,7 @@ button {
 .feature-card .number {
   font-family: ui-monospace, monospace;
   color: var(--blue);
-  font-size: 11px;
+  font-size: var(--fs-micro);
 }
 .feature-card h3,
 .price-card h3 {
@@ -1060,7 +1188,7 @@ button {
 }
 .price small {
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--fs-base);
   color: var(--muted);
 }
 .price-card ul {
@@ -1105,7 +1233,7 @@ button {
   flex-wrap: wrap;
 }
 .section-note {
-  font-size: 11px;
+  font-size: var(--fs-note);
   color: var(--muted);
   line-height: 1.6;
 }
@@ -1115,28 +1243,57 @@ button {
 
 @media (max-width: 1000px) {
   :root {
-    --sidebar: 78px;
+    --sidebar: 96px;
   }
+  /*
+   * The full wordmark cropped to 44px was an unreadable smudge, and a square
+   * crop cut the mark itself in half. The mark is 290x180 in the source, so
+   * the window it is shown through has to be wider than it is tall.
+   */
   .brand img {
-    width: 44px;
-    object-position: left;
+    width: 48px;
+    height: 28px;
+    object-position: left center;
     object-fit: cover;
   }
+  /*
+   * The label goes out of sight, NOT out of the accessibility tree.
+   *
+   * `display: none` here left eight links whose only content was an
+   * aria-hidden SVG, so every destination in the rail announced itself as an
+   * unnamed link and the rail was unusable by voice control or a screen
+   * reader at any tablet width. Clipping the text keeps the name attached to
+   * the link and costs nothing visually.
+   */
   .nav-link span:last-child,
-  .profile span:last-child {
-    display: none;
+  .sidebar .profile span:last-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .nav-link {
     justify-content: center;
+    gap: 0;
     padding: 0;
   }
   .nav-icon {
-    width: auto;
+    width: 20px;
+    height: 20px;
   }
-  .profile {
+  .sidebar .profile {
     justify-content: center;
     padding-left: 0;
     padding-right: 0;
+  }
+  .signout {
+    text-align: center;
+    padding: 8px 2px;
+    white-space: nowrap;
   }
   .panel-grid,
   .three-col,
@@ -1173,73 +1330,193 @@ button {
   .app-shell {
     display: block;
   }
+  /*
+   * On a phone the rail lies down across the top of the page.
+   *
+   * It stays in document order -- wordmark, workspace, destinations, account
+   * -- so what a keyboard tabs through is what the eye reads, and it is not
+   * pinned: this is a header you scroll past once, not a bar that spends the
+   * whole session eating a quarter of a 390px screen.
+   *
+   * Every destination stays on screen. A phone is where a photographer checks
+   * whether a payment landed while standing on a kerb, and a queue of
+   * destinations hidden behind a scroll or a toggle is the wrong trade for
+   * about eighty pixels.
+   */
   .sidebar {
     position: static;
     width: 100%;
     height: auto;
-    padding: 12px;
+    padding: 10px 12px 12px;
   }
   .brand {
-    padding: 3px 8px 12px;
+    padding: 2px 4px 10px;
   }
   .brand img {
-    width: 150px;
+    width: 148px;
+    height: auto;
     object-fit: contain;
   }
   .sidebar nav {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
   }
-  .nav-link {
-    min-height: 38px;
+  /* Icon over label, so "Submissions" fits a quarter of a 390px screen at a
+     readable size instead of being shrunk to fit beside its icon. */
+  .sidebar nav .nav-link {
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 56px;
+    padding: 6px 2px;
+    text-align: center;
+    border-left: 0;
+    border-bottom: 2px solid transparent;
   }
+  .sidebar nav .nav-link.active {
+    border-bottom-color: var(--blue);
+  }
+  /* There is room for the labels again, so undo the rail's clipping in full.
+     Resetting `display` alone would leave them one pixel square. */
   .nav-link span:last-child {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
     display: block;
-    font-size: 10px;
+    font-size: var(--fs-label);
+    line-height: 1.25;
   }
+  /* Settings, the photograph, and the way out, on one line under the grid. */
   .sidebar-foot {
     margin-top: 10px;
     border-top: 1px solid var(--line);
-    padding-top: 10px;
+    padding-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .sidebar-foot .nav-link {
     justify-content: flex-start;
+    min-height: 44px;
+    padding: 0 10px;
   }
-  .profile {
+  .sidebar-foot form {
+    margin-left: auto;
+  }
+  .sidebar .profile {
     border-top: 0;
     margin-top: 0;
-    padding-top: 8px;
+    margin-left: auto;
+    padding: 0;
+    min-width: 0;
+  }
+  /* The name and role stay clipped rather than removed, as in the rail: there
+     is no room for them beside the wordmark, and a screen reader still needs
+     to be told whose workspace this is. */
+  .signout {
+    margin-top: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    font-size: var(--fs-note);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
   .page {
     padding: 24px 16px;
   }
+  /*
+   * The header's action sits under the title rather than beside it. The
+   * buttons are nowrap by design, so "Manage sources" next to a heading was
+   * three pixels wider than an iPhone and took the whole page sideways with
+   * it. Full width is also the easiest thing on the page to hit.
+   */
   .page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
     margin: -24px -16px 20px;
     padding: 24px 16px;
     min-height: auto;
   }
   .page-header h1 {
-    font-size: 36px;
+    font-size: 34px;
   }
-  .metrics,
+  .page-header > .button {
+    width: 100%;
+    min-height: 46px;
+  }
   .form-grid,
   .archive-grid,
   .feature-cards,
   .pricing-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Four figures stacked one per row pushed the queue itself below two
+     screens of scrolling. They are short enough to read two at a time. */
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .metric {
+    min-height: 84px;
+    padding: 14px;
+  }
+  .metric:nth-child(odd) {
+    border-right: 1px solid var(--line);
+  }
+  .metric:nth-child(even) {
     border-right: 0;
+  }
+  .metric:not(:nth-last-child(-n + 2)) {
     border-bottom: 1px solid var(--line);
   }
-  .list-row {
-    grid-template-columns: 70px 1fr;
+  .metric strong {
+    font-size: 24px;
   }
-  .list.activity .list-row {
-    grid-template-columns: 96px minmax(0, 1fr);
-    gap: 14px;
+  /*
+   * A queue row becomes a small card.
+   *
+   * Two columns used to leave the fourth child -- the action, the only thing
+   * on the row anybody presses -- wrapping into the 70px badge column, where
+   * "Continue" broke across two lines and sat right-aligned under the badge.
+   * Stacking states the row in the order it is read: what kind of thing, what
+   * happened, how old, what to do about it.
+   */
+  .list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 16px;
+  }
+  .list-row > .badge {
+    justify-self: start;
   }
   .list-row .age {
-    display: none;
+    text-align: left;
+    order: 1;
+  }
+  .list-row .row-action {
+    order: 2;
+    justify-self: start;
+    text-align: left;
+    color: var(--blue);
+    /* Flex swallows the space between the label and its arrow. */
+    gap: 6px;
+    /* A tap target, not a line of text: 44px is the smallest square a thumb
+       lands on reliably. */
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* The activity feed has no action to press, so its rows stay compact. */
+  .list.activity .list-row {
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 6px 14px;
+    padding: 13px 16px;
+  }
+  .list.activity .list-row .age {
+    grid-column: 2;
   }
   .panel-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1263,11 +1540,54 @@ button {
   .pricing-note {
     display: block;
   }
-  .data-table {
-    min-width: 760px;
-  }
   .table-scroll {
     overflow: auto;
+  }
+  /* A term and its value read as two lines rather than two columns; 150px of
+     label beside 200px of value was where long place names went to break. */
+  .key-value {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .key-value dt {
+    padding-bottom: 0;
+  }
+  .key-value dd {
+    padding-top: 4px;
+  }
+  .panel-body,
+  .side-card {
+    padding: 16px;
+  }
+  .panel-head {
+    padding: 10px 16px;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+  .split-heading {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .workspace-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .stat-line {
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+  .inspector-head,
+  .sheet-header,
+  .attempt-head {
+    flex-wrap: wrap;
+  }
+  /* An allocation form nested in a table cell had a 240px floor that a 358px
+     phone could not always give it. */
+  .allocate-form {
+    min-width: 0;
+  }
+  .profile-photo {
+    flex-wrap: wrap;
   }
 }
 
@@ -1349,7 +1669,7 @@ button {
   color: white;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  font-size: 10px;
+  font-size: var(--fs-label);
   font-weight: 850;
   padding: 11px 22px;
 }
@@ -1358,7 +1678,7 @@ button {
   text-transform: uppercase;
   letter-spacing: 0.11em;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 .price-card-detailed h2 {
@@ -1369,7 +1689,7 @@ button {
 }
 .plan-description {
   min-height: 72px;
-  font-size: 15px;
+  font-size: var(--fs-lead);
   line-height: 1.55 !important;
   color: #484741 !important;
 }
@@ -1396,7 +1716,7 @@ button {
 .plan-cta {
   width: 100%;
   min-height: 58px;
-  font-size: 16px;
+  font-size: var(--fs-lead);
 }
 .plan-divider {
   border-top: 1px solid var(--line);
@@ -1413,7 +1733,7 @@ button {
   position: relative;
   padding-left: 24px;
   color: #4a4944 !important;
-  font-size: 14px;
+  font-size: var(--fs-base);
   line-height: 1.4 !important;
 }
 .check-list li::before {
@@ -1426,7 +1746,7 @@ button {
 .sales-engine-note {
   text-align: center;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
   margin: 24px auto 0;
   max-width: 980px;
 }
@@ -1469,7 +1789,7 @@ button {
   .billing-toggle button span {
     margin-left: 5px;
     padding: 3px 6px;
-    font-size: 10px;
+    font-size: var(--fs-label);
   }
   .price-card-detailed {
     min-height: auto;
@@ -1534,10 +1854,92 @@ button {
   }
 }
 
-/* A control that is not wired up yet must not look or behave like a live one. */
-.button[aria-disabled="true"] {
-  opacity: 0.55;
+/* A control that is not wired up yet, or not available yet, must not look or
+   behave like a live one -- but it still has to be readable, or nobody can
+   tell what it is they cannot press. Left to the browser, a disabled button
+   greyed its own label to 1.99:1; this states the treatment instead. */
+.button[aria-disabled="true"],
+.button:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
+}
+.button:disabled {
+  color: var(--ink);
+  border-color: var(--field-line);
+  background: var(--paper-2);
+}
+.button.primary:disabled,
+.button.blue:disabled {
+  color: #fff;
+}
+.button.primary:disabled {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.button.blue:disabled {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+/*
+ * A wide table inside a scroller can only be read by dragging it, which is a
+ * mouse gesture and a trackpad gesture and nothing a keyboard has. Making the
+ * container focusable gives it arrow keys, and the shadow on its right edge is
+ * what tells anybody there is more table over there.
+ */
+.table-scroll {
+  background:
+    linear-gradient(to right, var(--surface) 30%, rgba(251, 250, 246, 0)) left center,
+    linear-gradient(to left, var(--surface) 30%, rgba(251, 250, 246, 0)) right center,
+    radial-gradient(farthest-side at 0 50%, rgba(17, 17, 15, 0.16), transparent) left center,
+    radial-gradient(farthest-side at 100% 50%, rgba(17, 17, 15, 0.16), transparent) right center;
+  background-repeat: no-repeat;
+  background-size:
+    32px 100%,
+    32px 100%,
+    12px 100%,
+    12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+.table-scroll:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+/*
+ * Touch.
+ *
+ * Everything the operator presses gets to 44px on a touch screen, which is
+ * roughly the contact patch of a thumb. On a mouse the same controls stay
+ * dense, because a pointer is precise and this is meant to be an operating
+ * console rather than a phone app wearing a desktop.
+ */
+@media (pointer: coarse) {
+  .button.small,
+  .billing-toggle button,
+  .package-tab {
+    min-height: 44px;
+  }
+  .nav-link,
+  .signout,
+  .row-action {
+    min-height: 44px;
+  }
+  .row-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* Not 44px: a filter pill sitting in a row of pills would become a slab.
+     Padding buys the reachable area instead. */
+  a.badge {
+    min-height: 32px;
+    padding: 0 12px;
+  }
+  .data-table td,
+  .data-table th {
+    padding-block: 14px;
+  }
 }
 
 /* --- Structures introduced when the screens were wired to real records ------ */
@@ -1580,7 +1982,7 @@ button {
 }
 .pulse-list dt {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   margin: 0;
 }
 .pulse-list dd {
@@ -1604,8 +2006,12 @@ button {
   font-weight: 400;
   font-size: 17px;
 }
+/* Clear of the figure above it: Georgia sets old-style numerals, so the 3, 4,
+   5, 7 and 9 in an amount drop below the baseline and the bar was drawn
+   through them. */
 .source-bar {
-  height: 3px;
+  height: 4px;
+  margin-top: 9px;
   background: var(--blue);
   min-width: 4px;
 }
@@ -1621,15 +2027,21 @@ button {
 .plan-annual-total {
   margin: -6px 0 18px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .plan-trial-note {
   margin: 8px 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 
-/* Dark workspace panels keep their own heading treatment. */
+/* Dark workspace panels keep their own heading treatment. --muted is picked
+   for warm paper and comes to 2.68:1 on the sheet's near-black. */
+.shoot-layout .muted,
+.shoot-layout .section-note,
+.shoot-layout small {
+  color: #b8b8b4;
+}
 .shoot-layout .panel-head h2 {
   color: #f4f4f2;
 }
@@ -1701,7 +2113,7 @@ button {
   min-height: 48px;
 }
 .auth-submit[disabled] {
-  opacity: 0.6;
+  opacity: 0.75;
   cursor: progress;
 }
 .auth-error {
@@ -1710,7 +2122,7 @@ button {
   border-left: 2px solid var(--red);
   background: #fff0ed;
   color: #8f231c;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .auth-aside {
   border-left: 1px solid var(--line);
@@ -1723,7 +2135,7 @@ button {
 }
 .auth-aside code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: var(--fs-micro);
   background: #ecebe4;
   padding: 1px 4px;
 }
@@ -1734,10 +2146,11 @@ button {
   padding: 0 8px 18px;
 }
 .workspace-switcher select {
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-line);
   background: #fff;
-  min-height: 34px;
-  padding: 0 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: var(--fs-lead);
   width: 100%;
 }
 .workspace-switcher .button {
@@ -1750,7 +2163,7 @@ button {
   background: transparent;
   padding: 6px 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   text-align: left;
 }
@@ -1813,7 +2226,7 @@ button {
 }
 .import-progress h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-base);
 }
 .import-list {
   list-style: none;
@@ -1829,7 +2242,7 @@ button {
   align-items: baseline;
   padding: 11px 18px;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .import-row:last-child {
   border-bottom: 0;
@@ -1843,7 +2256,7 @@ button {
 .import-size,
 .import-state {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .import-state {
   text-align: right;
@@ -1851,7 +2264,7 @@ button {
 .import-detail {
   grid-column: 1 / -1;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 /* State is carried by the label text; the rule is a secondary signal. */
 .import-row.done {
@@ -1905,7 +2318,7 @@ button {
   text-align: center;
 }
 .frame-placeholder small {
-  font-size: 9px;
+  font-size: var(--fs-label);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1920,7 +2333,7 @@ button {
   pointer-events: none;
 }
 .frame.pending {
-  opacity: 0.5;
+  opacity: 0.65;
 }
 .frame:focus-visible {
   outline: 3px solid var(--acid);
@@ -1933,7 +2346,7 @@ button {
   background: rgba(0, 0, 0, 0.65);
   color: #fff;
   padding: 3px 5px;
-  font-size: 9px;
+  font-size: var(--fs-label);
   max-width: calc(100% - 12px);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1944,7 +2357,7 @@ button {
   right: 6px;
   bottom: 5px;
   color: var(--acid);
-  font-size: 10px;
+  font-size: var(--fs-label);
   letter-spacing: -1px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
@@ -1952,7 +2365,7 @@ button {
   padding: 40px 18px;
   text-align: center;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 
 .inspector-head {
@@ -1967,7 +2380,7 @@ button {
   padding: 8px 10px;
   border-left: 2px solid var(--amber);
   background: rgba(199, 121, 0, 0.12);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .inspector-actions {
   margin: 16px 0 10px;
@@ -1980,11 +2393,11 @@ button {
   padding: 8px 10px;
   border-left: 2px solid var(--green);
   background: rgba(40, 122, 82, 0.12);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .field-error {
   color: var(--red);
-  font-size: 11px;
+  font-size: var(--fs-note);
   font-weight: 650;
 }
 
@@ -1997,24 +2410,27 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: var(--fs-note);
   text-transform: none;
   letter-spacing: 0;
   font-weight: 500;
   color: var(--ink);
 }
+/* Big enough to hit with a thumb, and to see that it is ticked. */
 .checkbox input {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   min-height: 0;
   margin: 0;
+  accent-color: var(--blue);
+  flex: 0 0 auto;
 }
 .buyer-picker {
   border: 1px solid var(--line);
   padding: 12px 14px;
 }
 .buyer-picker legend {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -2026,7 +2442,7 @@ button {
   margin: 0 0 12px;
   padding-left: 18px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-note);
   line-height: 1.7;
 }
 
@@ -2069,11 +2485,11 @@ button {
   display: grid;
   gap: 2px;
   font-weight: 650;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .package-tab small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -2094,12 +2510,12 @@ button {
 }
 .check-row.warn .check-icon {
   background: #fff5db;
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 .check-remedy {
   margin: 5px 0 0 !important;
   color: var(--ink) !important;
-  font-size: 11px;
+  font-size: var(--fs-note);
   font-weight: 600;
 }
 .check-row.blocked .check-remedy {
@@ -2123,13 +2539,13 @@ button {
 }
 .confirm-list dt {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   margin: 0;
 }
 .confirm-list dd {
   margin: 0;
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--fs-note);
   text-align: right;
 }
 
@@ -2168,7 +2584,7 @@ button {
 }
 .package-list small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 
 .archive-search {
@@ -2233,7 +2649,7 @@ a.badge:hover {
   border: 1px solid var(--line);
   background: #fff;
   border-left-width: 2px;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 /* Status is stated in words; the rule is a secondary signal. */
 .attempt.delivered {
@@ -2254,26 +2670,26 @@ a.badge:hover {
 .attempt-head span {
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  font-size: 9px;
+  font-size: var(--fs-label);
   font-weight: 850;
   color: var(--muted);
 }
 .attempt small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
 }
 .attempt-error {
   margin: 6px 0 0;
-  font-size: 11px;
+  font-size: var(--fs-note);
   color: #8f231c;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* A file input should not look like a text field. */
 .field input[type="file"] {
-  padding: 8px;
+  padding: 9px;
   background: #fff;
-  font-size: 12px;
+  font-size: var(--fs-body);
 }
 .field input[type="file"]::file-selector-button {
   border: 1px solid var(--ink);
@@ -2307,7 +2723,7 @@ a.button {
   gap: 9px;
 }
 .auth-aside .check-list li {
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 
 /* One notice, and it carries its meaning in words as well as colour. */
@@ -2331,12 +2747,12 @@ a.button {
 }
 .workspace-banner strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-body);
   margin-bottom: 3px;
 }
 .workspace-banner p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-note);
   color: #4a4944;
   max-width: 900px;
 }
@@ -2385,12 +2801,12 @@ a.button {
 }
 .billing-status strong {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-body);
   margin-bottom: 3px;
 }
 .billing-status p {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-note);
   color: #4a4944;
 }
 
@@ -2420,13 +2836,13 @@ a.button {
   border-left: 2px solid var(--blue);
 }
 .plan-option strong {
-  font-size: 13px;
+  font-size: var(--fs-body);
   margin-right: 7px;
 }
 .plan-option small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-note);
   margin-top: 3px;
 }
 .plan-option-price {
@@ -2449,12 +2865,12 @@ a.button {
 }
 .billing-warning strong {
   display: block;
-  font-size: 12px;
+  font-size: var(--fs-note);
   margin-bottom: 5px;
 }
 .billing-warning p {
   margin: 0 0 6px;
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 
 @media (max-width: 680px) {
@@ -2548,10 +2964,10 @@ a.button {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--fs-note);
 }
 .button.disabled {
-  opacity: 0.45;
+  opacity: 0.7;
   pointer-events: none;
 }
 
@@ -2570,8 +2986,9 @@ a.button {
   .skeleton-header {
     margin: 0 -16px 20px;
   }
+  /* The skeleton has to match what arrives, or the page jumps when it does. */
   .skeleton-metrics {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .pagination {
     flex-direction: column;
@@ -2601,7 +3018,7 @@ img.avatar {
 .profile-photo .avatar {
   width: 56px;
   height: 56px;
-  font-size: 16px;
+  font-size: var(--fs-lead);
 }
 .profile-photo .section-note {
   margin-top: 0;
@@ -2638,7 +3055,7 @@ img.avatar {
 }
 .mfa-secret code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px;
+  font-size: var(--fs-lead);
   letter-spacing: 0.08em;
   word-break: break-all;
 }
@@ -2678,7 +3095,7 @@ img.avatar {
   background: var(--paper-2);
 }
 .delivery-terms h2 {
-  font-size: 14px;
+  font-size: var(--fs-base);
   margin: 0 0 8px;
 }
 .delivery-frames {
@@ -2706,7 +3123,7 @@ img.avatar {
   justify-content: center;
   min-height: 150px;
   color: var(--ink-3);
-  font-size: 13px;
+  font-size: var(--fs-body);
   background: var(--paper-2);
 }
 .delivery-frame-body {
@@ -2745,7 +3162,7 @@ img.avatar {
 }
 .recovery-code-list code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 15px;
+  font-size: var(--fs-lead);
   letter-spacing: 0.06em;
 }
 @media (max-width: 480px) {
@@ -2768,7 +3185,7 @@ img.avatar {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: var(--ink-2);
   width: 100%;
@@ -2780,7 +3197,7 @@ img.avatar {
   border-radius: 6px;
   padding: 0 12px;
   font: inherit;
-  font-size: 15px;
+  font-size: var(--fs-lead);
   background: var(--paper);
 }
 .delivery-accepted {

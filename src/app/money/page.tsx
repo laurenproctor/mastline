@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel } from "@/components/primitives";
+import { Badge, Metric, PageHeader, Panel, TableScroll } from "@/components/primitives";
 import { getMoneySummary, getRevenueBySource, listLicenses, listPayments } from "@/lib/data/money";
 import { listSubmissions } from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
@@ -109,7 +109,7 @@ export default async function MoneyPage() {
                 action={<span className="muted">{openLines.length} lines</span>}
                 title="Statement lines awaiting confirmation"
               >
-                <div className="table-scroll">
+                <TableScroll label="Statement lines awaiting confirmation">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -148,7 +148,7 @@ export default async function MoneyPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
                 <p className="section-note panel-body">
                   Every proposed match states its basis. Confirming a line creates a payment and
                   attributes it; the imported figures are never rewritten.
@@ -167,7 +167,7 @@ export default async function MoneyPage() {
                   </p>
                 </div>
               ) : (
-                <div className="table-scroll">
+                <TableScroll label="Reconciliation queue">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -221,12 +221,12 @@ export default async function MoneyPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               )}
             </Panel>
 
             <Panel title="Recent payments">
-              <div className="table-scroll">
+              <TableScroll label="Recent payments">
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -262,7 +262,7 @@ export default async function MoneyPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
               <p className="section-note panel-body">
                 Gross, deductions, the Sales Engine share, tax, and net stay separately inspectable.
                 The 30% share applies only to a license generated inside Mastline.
@@ -275,7 +275,7 @@ export default async function MoneyPage() {
                   <p className="section-note">No licenses recorded yet.</p>
                 </div>
               ) : (
-                <div className="table-scroll">
+                <TableScroll label="Licenses">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -312,7 +312,7 @@ export default async function MoneyPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
               )}
             </Panel>
           </div>
