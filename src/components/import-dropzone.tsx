@@ -4,20 +4,11 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   finishImportAction,
-  prepareUploadAction,
   registerImportAction,
   registerPreviewAction,
 } from "@/app/[workspace]/shoots/actions";
-import { createClient } from "@/lib/supabase/client";
-import {
-  formatBytes,
-  hasBrowserPreview,
-  hashFile,
-  likelyCapturedAt,
-  makePreview,
-  readDimensions,
-  uploadToken,
-} from "@/lib/upload";
+import { stageOriginal, stagePreview } from "@/components/upload-staging";
+import { formatBytes, hasBrowserPreview } from "@/lib/upload";
 
 type FileState = "queued" | "hashing" | "uploading" | "recording" | "done" | "failed";
 
@@ -107,32 +98,25 @@ export function ImportDropzone({
   const importOne = useCallback(
     async (entry: QueuedFile): Promise<"imported" | "duplicate" | "failed"> => {
       const { id, file } = entry;
-      const supabase = createClient();
 
       try {
-        update(id, { state: "hashing" });
-        const sha256 = await hashFile(file);
-        const dimensions = await readDimensions(file);
-
-        update(id, { state: "uploading" });
-        const { stagingKey } = await prepareUploadAction(workspaceSlug, uploadToken());
-        const upload = await supabase.storage.from("originals").upload(stagingKey, file, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        });
-        if (upload.error) throw new Error(upload.error.message);
+        // Hashing and the upload are one call now, shared with the creation
+        // page, which reports each phase back rather than swallowing it.
+        const staged = await stageOriginal(workspaceSlug, file, (phase) =>
+          update(id, { state: phase }),
+        );
 
         update(id, { state: "recording" });
         const result = await registerImportAction(workspaceSlug, {
           shootId,
-          filename: file.name,
-          sha256,
-          bytes: file.size,
-          mimeType: file.type || "application/octet-stream",
-          capturedAt: likelyCapturedAt(file),
-          width: dimensions?.width,
-          height: dimensions?.height,
-          stagingKey,
+          filename: staged.filename,
+          sha256: staged.sha256,
+          bytes: staged.bytes,
+          mimeType: staged.mimeType,
+          capturedAt: staged.capturedAt,
+          width: staged.width,
+          height: staged.height,
+          stagingKey: staged.stagingKey,
         });
 
         if (!result.ok || !result.assetId) throw new Error(result.error ?? "Import failed.");
@@ -140,24 +124,16 @@ export function ImportDropzone({
         // A preview makes the contact sheet usable, and for a clip it is the
         // poster frame. Its absence never fails the import: the original is
         // already safely recorded.
-        if (hasBrowserPreview(file.type)) {
-          const preview = await makePreview(file);
-          if (preview) {
-            const previewKey = `${stagingKey}-preview`;
-            const previewUpload = await supabase.storage
-              .from("derivatives")
-              .upload(previewKey, preview.blob, { contentType: "image/jpeg", upsert: true });
-            if (!previewUpload.error) {
-              await registerPreviewAction(workspaceSlug, {
-                assetId: result.assetId,
-                sha256: await hashFile(preview.blob),
-                bytes: preview.blob.size,
-                width: preview.width,
-                height: preview.height,
-                stagingKey: previewKey,
-              });
-            }
-          }
+        const preview = await stagePreview(file, staged.stagingKey);
+        if (preview) {
+          await registerPreviewAction(workspaceSlug, {
+            assetId: result.assetId,
+            sha256: preview.sha256,
+            bytes: preview.bytes,
+            width: preview.width,
+            height: preview.height,
+            stagingKey: preview.stagingKey,
+          });
         }
 
         update(id, {

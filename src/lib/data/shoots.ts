@@ -5,7 +5,7 @@ import type { Id, Shoot, ShootStatus } from "../domain";
 import type { ShootBriefInput } from "../validation";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
-import { recordEvent } from "./activity";
+import { recordEvent, recordEventWith } from "./activity";
 
 /**
  * Shoots, read and written against the database.
@@ -145,19 +145,68 @@ export async function getSensitiveNote(
 }
 
 /**
+ * A shoot this actor already created with this form token, if there is one.
+ *
+ * The creation page mints one token per form and sends it with every attempt,
+ * so a double click, a retried request, or a back-button re-post finds the
+ * shoot the first attempt made instead of making a second one. There is no
+ * table for this: `shoot.created` is already written to the append-only
+ * activity record, so the token rides in its event data and this reads it back.
+ *
+ * Scoped to the actor as well as the organization, because two people briefing
+ * two shoots is not a repeat submission however the tokens happen to fall.
+ *
+ * This is a check before an insert, so two genuinely simultaneous submissions
+ * could still both miss. The disabled button is what makes that vanishingly
+ * unlikely; this covers everything slower than a race.
+ */
+export async function shootCreatedWithToken(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  clientToken: string;
+}): Promise<Id | null> {
+  const { organizationId, actorId, clientToken } = input;
+  if (!clientToken) return null;
+
+  const supabase = input.client ?? (await createClient());
+  const { data } = await supabase
+    .from("activity_events")
+    .select("entity_id")
+    .eq("organization_id", organizationId)
+    .eq("actor_id", actorId)
+    .eq("action", "shoot.created")
+    .eq("event_data->>client_token", clientToken)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data?.entity_id as string | undefined) ?? null;
+}
+
+/**
  * Create a shoot from a brief.
  *
  * A shoot starts in `draft` and needs no files: the brief often exists before
- * anyone has left the house. The confidential note is written to its own table
- * so that finance and dispatch roles never see it.
+ * anyone has left the house. It also STAYS in `draft` when files arrive with
+ * it, because a draft is what the creation page promises -- private, editable,
+ * and sent nowhere. `preparing` is what importing into an existing shoot moves
+ * it to, and dispatch is a separate gate again.
+ *
+ * The confidential note is written to its own table so that finance and
+ * dispatch roles never see it.
  */
 export async function createShoot(input: {
+  /** The caller's client, when they already hold one. See createPackageFromSelection. */
+  client?: SupabaseClient;
   organizationId: Id;
   actorId: Id;
   brief: ShootBriefInput;
+  /** Idempotency key from the creation form. See shootCreatedWithToken. */
+  clientToken?: string;
 }): Promise<{ id: Id }> {
-  const { organizationId, actorId, brief } = input;
-  const supabase = await createClient();
+  const { organizationId, actorId, brief, clientToken } = input;
+  const supabase = input.client ?? (await createClient());
 
   const { data, error } = await supabase
     .from("shoots")
@@ -197,13 +246,16 @@ export async function createShoot(input: {
     }
   }
 
-  await recordEvent({
+  await recordEventWith(supabase, {
     organizationId,
     actorId,
     entityType: "shoot",
     entityId: shootId,
     action: "shoot.created",
-    data: { summary: `Shoot created: ${brief.title}` },
+    data: {
+      summary: `Shoot created: ${brief.title}`,
+      ...(clientToken ? { client_token: clientToken } : {}),
+    },
   });
 
   return { id: shootId };
