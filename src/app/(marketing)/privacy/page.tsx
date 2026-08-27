@@ -68,8 +68,8 @@ export default function Page() {
                 of which are optional and behind your choice. Google Analytics, loaded through
                 Google Tag Manager, is used to understand how the site is used. Microsoft Clarity,
                 provided by Microsoft, records how pages are used &mdash; pointer movement,
-                scrolling, and clicks &mdash; to show where the site is confusing; it sets the{" "}
-                <code>_clck</code> and <code>_clsk</code> cookies, and Microsoft may set cookies of
+                scrolling, and clicks &mdash; to show where the site is confusing; it sets the
+                cookies <code>_clck</code> and <code>_clsk</code>, and Microsoft may set cookies of
                 its own once it runs. Neither is loaded, and no cookie of either is set, unless you
                 turn on Analytics, and you can change that choice at any time from &ldquo;Cookie
                 choices&rdquo; in the footer. Vercel Analytics, provided by Mastline&rsquo;s hosting
