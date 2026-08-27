@@ -37,11 +37,11 @@ Selected detail: story summary, related topics, top archive matches, asset/licen
 
 No automatic buyer contact. First release may use manually entered stories so the archive-matching workflow can be tested before live feeds.
 
-## Commercial Opportunities — `/commercial`
+## Commercial Opportunities — `/work/commercial`
 
 Question answered: **Which assets have credible brand-licensing or commerce potential, and what needs human review next?**
 
-The queue is the full review list. It shows the subject, leading detected item and brand, match class, rights state, opportunity score, workflow stage, and age. Selecting a row updates an adjacent preview; opening it leads to `/commercial/[opportunityId]`.
+The queue is the full review list. It shows the subject, leading detected item and brand, match class, rights state, opportunity score, workflow stage, and age. Selecting a row updates an adjacent preview; opening it leads to `/work/commercial/[opportunityId]`.
 
 The single-opportunity review keeps the source asset beside its suggested product matches. A reviewer can correct each match class, confirm products individually or together, and then choose one of two routes:
 

@@ -74,7 +74,7 @@ export function OpportunityReview({ opportunity }: { opportunity: CommercialOppo
       <div className="commercial-review-shell">
         <section className="commercial-asset-stage" aria-label="Asset under review">
           <div className="commercial-stage-toolbar">
-            <Link className="text-link" href="/commercial">
+            <Link className="text-link" href="/work/commercial">
               <span aria-hidden="true">←</span> Back to review list
             </Link>
             <span>{opportunity.assetId}</span>

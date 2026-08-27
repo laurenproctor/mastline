@@ -86,9 +86,9 @@ final result: passed
 
 ## Flow acceptance
 
-- PASS — Commercial is a native Mastline sidebar destination at `/commercial`.
+- PASS — Commercial is a native Mastline sidebar destination at `/work/commercial`.
 - PASS — Selecting a queue row updates the adjacent preview.
-- PASS — The primary preview action opens `/commercial/[opportunityId]`.
+- PASS — The primary preview action opens `/work/commercial/[opportunityId]`.
 - PASS — Each detected product can be reclassified and confirmed independently.
 - PASS — Pitch and Shop-the-Look drafts require all product matches to be confirmed.
 - PASS — Pitch preparation creates a reviewable draft and never sends it.
@@ -99,7 +99,7 @@ final result: passed
 
 - PASS — The queue keeps the first reference's list-and-preview hierarchy while using Mastline's existing sidebar and page header.
 - PASS — The review keeps the second reference's photo-led split view, oversized score, product rows, and acid confirmation action.
-- PASS — New styles are route-scoped in `src/app/commercial/commercial.css`; the global Mastline stylesheet is unchanged.
+- PASS — New styles are route-scoped in `src/app/work/commercial/commercial.css`; the global Mastline stylesheet is unchanged.
 - PASS — Generated people and product imagery is optimized to WebP and displayed at stable aspect ratios.
 
 ## Verification
@@ -108,4 +108,4 @@ final result: passed
 - ESLint: passed.
 - Component tests: 3 passed for confirmation, pitch, and Shop-the-Look gating.
 - Full available suite: 407 passed; database-backed tests skip without the local Supabase stack.
-- Production build: passed with `/commercial` and `/commercial/[opportunityId]` included.
+- Production build: passed with `/work/commercial` and `/work/commercial/[opportunityId]` included.

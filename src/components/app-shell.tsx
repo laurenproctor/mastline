@@ -57,7 +57,7 @@ const NAV = [
   { href: "/news", icon: "news", label: "News radar" },
   { href: "/shoots", icon: "shoots", label: "Shoots" },
   { href: "/submissions", icon: "submissions", label: "Submissions" },
-  { href: "/commercial", icon: "commercial", label: "Commercial" },
+  { href: "/work/commercial", icon: "commercial", label: "Commercial" },
   { href: "/money", icon: "money", label: "Money" },
   { href: "/rights", icon: "rights", label: "Rights" },
   { href: "/archive", icon: "archive", label: "Archive" },

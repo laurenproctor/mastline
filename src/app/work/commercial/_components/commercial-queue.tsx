@@ -242,7 +242,7 @@ export function CommercialQueue({
             </p>
           </div>
 
-          <Link className="button acid commercial-review-link" href={`/commercial/${selected.id}`}>
+          <Link className="button acid commercial-review-link" href={`/work/commercial/${selected.id}`}>
             Review this opportunity <span aria-hidden="true">→</span>
           </Link>
         </aside>
