@@ -75,11 +75,23 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  /**
+   * Where to come back to after signing in.
+   *
+   * The query is part of the destination, not decoration: a dispatch screen is
+   * reached as /dispatch/<id>?package=<id>, and dropping the query lands
+   * somebody on a page that cannot show what they clicked. `safeNextPath`
+   * reads this back at the far end.
+   */
+  const returnTo = `${pathname}${request.nextUrl.search}`;
+
   if (!user && isProtected(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
-    // Come back here after signing in.
-    url.searchParams.set("next", pathname);
+    // Cleared first: the destination's own query belongs in `next`, not spread
+    // across the sign-in screen's address.
+    url.search = "";
+    url.searchParams.set("next", returnTo);
     return NextResponse.redirect(url);
   }
 
@@ -93,7 +105,7 @@ export async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/sign-in/verify";
       url.search = "";
-      url.searchParams.set("next", pathname);
+      url.searchParams.set("next", returnTo);
       return NextResponse.redirect(url);
     }
   }

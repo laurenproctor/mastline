@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { normalizeTotpCode } from "@/lib/mfa";
+import { DEFAULT_SIGNED_IN_PATH, safeNextPath } from "@/lib/routes";
 import { normalizeRecoveryCode } from "@/lib/recovery-codes";
 import { recoveryCodeMatches } from "@/lib/recovery-codes.server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ export interface SignInState {
 export async function signIn(_previous: SignInState, formData: FormData): Promise<SignInState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/work");
+  const next = String(formData.get("next") ?? DEFAULT_SIGNED_IN_PATH);
 
   if (!email || !password) {
     return { error: "Enter an email address and password." };
@@ -34,7 +35,7 @@ export async function signIn(_previous: SignInState, formData: FormData): Promis
   // reports that aal2 is expected, so send them to the challenge rather than on
   // to the workspace.
   const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  const destination = next.startsWith("/") ? next : "/work";
+  const destination = safeNextPath(next);
 
   revalidatePath("/", "layout");
 
@@ -61,13 +62,13 @@ export async function verifySignIn(
   formData: FormData,
 ): Promise<ChallengeState> {
   const code = normalizeTotpCode(String(formData.get("code") ?? ""));
-  const next = String(formData.get("next") ?? "/work");
+  const next = String(formData.get("next") ?? DEFAULT_SIGNED_IN_PATH);
   if (!code) return { error: "Enter the six-digit code from the authenticator app." };
 
   const supabase = await createClient();
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const factor = factors?.totp?.find((entry) => entry.status === "verified");
-  if (!factor) redirect(next.startsWith("/") ? next : "/work");
+  if (!factor) redirect(safeNextPath(next));
 
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (error) {
@@ -77,7 +78,7 @@ export async function verifySignIn(
   }
 
   revalidatePath("/", "layout");
-  redirect(next.startsWith("/") ? next : "/work");
+  redirect(safeNextPath(next));
 }
 
 /**
@@ -96,7 +97,7 @@ export async function verifyWithRecoveryCode(
   formData: FormData,
 ): Promise<ChallengeState> {
   const code = normalizeRecoveryCode(String(formData.get("code") ?? ""));
-  const next = String(formData.get("next") ?? "/work");
+  const next = String(formData.get("next") ?? DEFAULT_SIGNED_IN_PATH);
   if (!code) return { error: "Enter one of the saved recovery codes." };
 
   const supabase = await createClient();
@@ -146,5 +147,9 @@ export async function verifyWithRecoveryCode(
   await supabase.auth.refreshSession();
 
   revalidatePath("/", "layout");
-  redirect(`${next.startsWith("/") ? next : "/work"}?recovered=1`);
+  // Built through URL rather than string concatenation: `next` may already
+  // carry a query, and a second "?" would bury it rather than add to it.
+  const destination = new URL(safeNextPath(next), "https://internal.invalid");
+  destination.searchParams.set("recovered", "1");
+  redirect(`${destination.pathname}${destination.search}`);
 }
