@@ -23,10 +23,20 @@ import { createClient } from "@/lib/supabase/server";
 
 export default async function ShootWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; shootId: string }>;
+  searchParams: Promise<{ created?: string; importFailed?: string }>;
 }) {
   const { workspace: requestedWorkspace, shootId } = await params;
+  /*
+   * Set by the redirect createShootAction performs, so the confirmation lands
+   * on the record itself rather than on a screen between the form and the work.
+   * A reload drops it, which is right: it confirms an action, it is not a fact
+   * about the shoot.
+   */
+  const { created: justCreated, importFailed } = await searchParams;
+  const failedImports = Number.parseInt(importFailed ?? "", 10);
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);
   /*
@@ -114,6 +124,27 @@ export default async function ShootWorkspacePage({
           eyebrow={humanizeStatus(shoot.status)}
           title={shoot.title}
         />
+
+        {justCreated === "1" && (
+          <Panel className="created-notice">
+            <div className="panel-body" role="status">
+              <Badge tone="good">Draft</Badge>
+              <h2>Shoot created as a draft</h2>
+              <p className="section-note">
+                It is private to this workspace. Nothing has been sent, published, or offered to a
+                buyer, and nothing will be until you approve a dispatch.
+              </p>
+              {Number.isFinite(failedImports) && failedImports > 0 && (
+                <p className="auth-error" role="alert">
+                  {failedImports} {failedImports === 1 ? "file" : "files"} could not be imported and{" "}
+                  {failedImports === 1 ? "was" : "were"} not saved. Add{" "}
+                  {failedImports === 1 ? "it" : "them"} again below.
+                </p>
+              )}
+            </div>
+          </Panel>
+        )}
+
 
         <div className="metrics">
           <div className="metric">

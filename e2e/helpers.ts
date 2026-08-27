@@ -519,6 +519,52 @@ export async function deleteShoot(shootId: string): Promise<void> {
   if (!response.ok) throw new Error(`Could not delete shoot ${shootId}: ${await response.text()}`);
 }
 
+/** The assets on a shoot: id and the fields the creation flow should have set. */
+export async function assetsOnShoot(shootId: string): Promise<
+  { id: string; status: string; caption: string | null; credit_line: string | null; selected: boolean }[]
+> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot read assets.");
+  const response = await fetch(
+    `${url}/rest/v1/assets?shoot_id=eq.${shootId}&select=id,status,caption,credit_line,selected`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  );
+  return (await response.json()) as Awaited<ReturnType<typeof assetsOnShoot>>;
+}
+
+/**
+ * Remove a shoot that has files on it.
+ *
+ * asset_versions is append-only and the shoot's delete is refused while an
+ * asset points at it, so the assets go first and through the audited RPC --
+ * the same route tests/helpers/supabase.ts takes. Failures are surfaced rather
+ * than swallowed: a test that leaves rows behind changes what the next run
+ * starts from.
+ */
+export async function purgeShootWithAssets(shootId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up the shoot.");
+
+  for (const asset of await assetsOnShoot(shootId)) {
+    const purged = await fetch(`${url}/rest/v1/rpc/purge_asset_admin`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ target_asset: asset.id }),
+    });
+    if (!purged.ok) {
+      throw new Error(`Could not purge asset ${asset.id}: ${await purged.text()}`);
+    }
+  }
+
+  await deleteShoot(shootId);
+}
+
 /** The id of a shoot with a given title, or null. */
 export async function shootIdByTitle(title: string): Promise<string | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");

@@ -54,7 +54,9 @@ Editorial clearance does not imply permission for advertising or endorsement. Pr
 
 Question answered: **What are we pursuing, where, when, and for whom?**
 
-Upload/intake methods: drag/drop, folder, mobile/camera upload, watched folder. Accept a brief without files and files without a finished brief.
+One page, one action. Sections in order: shoot details, photographs, metadata shared by the photographs, rights and usage, final review. Every section is mounted at once — this is a document, not a wizard — so moving between them loses nothing.
+
+Upload/intake methods: drag/drop, folder, mobile/camera upload, watched folder. Accept a brief without files and files without a finished brief. Files chosen here are hashed and staged; they become assets when the shoot is created.
 
 Fields:
 
@@ -68,7 +70,11 @@ Fields:
 
 On ingest, extract capture time, camera/lens, IPTC, copyright, sequence/bursts, hashes, and possible duplicates. Preserve the original and create delivery derivatives separately.
 
-Primary action: **Create Shoot and Review**.
+Primary action: **Create shoot**. It writes a private draft in `draft` status and redirects to the shoot workspace, where the confirmation appears on the record. It sends, publishes, submits, and bills nothing.
+
+The final review reports rather than gates. Only two things stop a draft being written: no subject or event, and a file still uploading. Missing captions, credit, and copyright are named because the dispatch review will require them, and creating the draft is not blocked on them.
+
+Rights fields here — exclusivity, embargo, sensitive content, usage restrictions — are editable metadata, not a binding attestation. The representations a photographer makes about what may be sent live at the dispatch gate, which is the point of consequence.
 
 ## 4. Shoot Workspace — `/shoots/[shootId]`
 
@@ -107,7 +113,7 @@ Validate:
 
 Statuses: draft, needs_review, ready, sending, delivered, failed, recalled. A failed delivery creates a high-priority Work Queue item.
 
-Primary action: **Approve and Send**. Sending requires a fresh human confirmation and creates an immutable Submission Record.
+Primary action: **Approve and Send**. Sending requires a fresh human confirmation — a second, explicit act, showing the frames, the buyer, the terms, and the restrictions before it commits — and creates an immutable Submission Record. This gate is deliberately the only confirmation step in the shoot lifecycle; creating a shoot has none.
 
 ## 6. Submission Record — `/submissions/[submissionId]`
 

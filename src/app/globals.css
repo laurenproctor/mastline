@@ -3449,3 +3449,169 @@ img.avatar {
 .delivery-acceptance q {
   font-style: italic;
 }
+
+/* ---------------------------------------------------------------------------
+   Create shoot: one page, several sections.
+
+   The brief, the photographs, their metadata, the rights facts, and the final
+   review are sections of one document rather than steps of a wizard. Every
+   field stays mounted, so the rules below are about separating sections
+   visually -- nothing here hides or reveals part of the form.
+   --------------------------------------------------------------------------- */
+.create-shoot > form > section {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 18px;
+}
+.create-shoot > form > section:first-of-type {
+  border-top: 0;
+  padding-top: 6px;
+}
+.create-shoot > form > section > h2 {
+  font-family: var(--serif, inherit);
+  font-size: 1.0625rem;
+  margin: 0 0 6px;
+}
+.create-shoot > form > section > .section-note {
+  margin: 0 0 12px;
+}
+.create-shoot > form > section > .form-grid {
+  margin-top: 12px;
+}
+/* Focus lands here after a refused submission, so it has to be visible. */
+.create-shoot > form > section:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 6px;
+}
+
+/* An index of the page, not a progress bar: nothing here is locked or ahead. */
+.section-nav ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0 0 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 750;
+}
+.section-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.section-nav a:hover,
+.section-nav a:focus-visible {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+/* Files staged but not yet saved. Deliberately not styled like the contact
+   sheet: none of these is an asset until the shoot is created. */
+.staged-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.staged-row {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.012);
+}
+.staged-row.failed {
+  border-left: 2px solid var(--red);
+}
+.staged-row.staged {
+  border-left: 2px solid var(--blue);
+}
+.staged-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.staged-thumb {
+  width: 54px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  flex: none;
+}
+.staged-thumb.empty {
+  display: block;
+}
+.staged-facts {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.staged-facts strong {
+  overflow-wrap: anywhere;
+}
+.staged-facts small {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+.staged-metadata {
+  margin-top: 10px;
+}
+.staged-metadata summary {
+  cursor: pointer;
+  font-size: var(--fs-note);
+  color: var(--muted);
+}
+.staged-metadata .form-grid {
+  margin-top: 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+
+/* The review. Warnings are the dispatch gate's requirements shown early; they
+   are never styled as errors, because none of them stops a draft. */
+.draft-review {
+  border: 1px solid var(--line);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.draft-review > p:first-child {
+  margin: 0;
+}
+.review-notes ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: var(--fs-note);
+}
+.review-notes.blocking {
+  border-left: 2px solid var(--red);
+  padding-left: 12px;
+}
+.review-notes a {
+  color: var(--blue);
+}
+
+/* The confirmation on the shoot itself, after the redirect. */
+.created-notice {
+  border-left: 2px solid var(--blue);
+}
+.created-notice h2 {
+  margin: 8px 0 4px;
+  font-size: 1.0625rem;
+}
+
+@media (max-width: 720px) {
+  .staged-head {
+    flex-wrap: wrap;
+  }
+  .staged-metadata .form-grid {
+    padding-left: 8px;
+  }
+}

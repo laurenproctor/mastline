@@ -178,6 +178,211 @@ export function parseAssetMetadata(form: FormData): ParseResult<AssetMetadataInp
 }
 
 /**
+ * Metadata the whole shoot shares, entered once on the creation page.
+ *
+ * These are the facts that are the same for every frame of one job -- who took
+ * it, who owns it, and any limit that applies to the lot -- so they are typed
+ * once and inherited, exactly as registerImport() already inherits the location
+ * from the brief. A per-photograph value overrides its shoot-level counterpart;
+ * neither is required to create a draft.
+ */
+export interface ShootAssetDefaultsInput {
+  creditLine?: string;
+  copyrightNotice?: string;
+  usageRestrictions?: string;
+  keywords: string[];
+}
+
+export function parseShootAssetDefaults(form: FormData): ShootAssetDefaultsInput {
+  return {
+    creditLine: optionalText(form, "defaultCreditLine"),
+    copyrightNotice: optionalText(form, "defaultCopyrightNotice"),
+    usageRestrictions: optionalText(form, "defaultUsageRestrictions"),
+    keywords: parseList(optionalText(form, "defaultKeywords")),
+  };
+}
+
+/** A preview the browser produced and staged next to its original. */
+export interface StagedPreviewInput {
+  sha256: string;
+  bytes: number;
+  width: number;
+  height: number;
+  stagingKey: string;
+}
+
+/**
+ * One photograph the browser has already put in the staging area, waiting for a
+ * shoot to belong to.
+ */
+export interface StagedPhotographInput {
+  filename: string;
+  sha256: string;
+  bytes: number;
+  mimeType: string;
+  capturedAt?: string;
+  width?: number;
+  height?: number;
+  stagingKey: string;
+  preview?: StagedPreviewInput;
+  metadata: AssetMetadataInput;
+}
+
+export type StagedPhotographsResult =
+  | { readonly ok: true; readonly value: StagedPhotographInput[] }
+  | { readonly ok: false; readonly error: string };
+
+/**
+ * How many frames one Create shoot may carry.
+ *
+ * A card dump is bigger than this, which is why the shoot workspace keeps its
+ * own import queue: that one registers each file as it lands and survives a
+ * closed laptop. This limit is on a single Server Action, where every
+ * registration shares one request, and it exists so a request cannot be made
+ * arbitrarily long by a value the browser supplied.
+ */
+export const MAX_STAGED_PHOTOGRAPHS = 200;
+
+function stagedString(source: Record<string, unknown>, key: string): string {
+  const value = source[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function stagedNumber(source: Record<string, unknown>, key: string): number | undefined {
+  const value = source[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function stagedList(source: Record<string, unknown>, key: string): string[] {
+  const value = source[key];
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (typeof entry !== "string") continue;
+    const trimmed = entry.trim();
+    if (trimmed) seen.add(trimmed);
+  }
+  return [...seen];
+}
+
+function parseStagedPreview(value: unknown): StagedPreviewInput | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Record<string, unknown>;
+
+  const sha256 = stagedString(source, "sha256");
+  const bytes = stagedNumber(source, "bytes");
+  const width = stagedNumber(source, "width");
+  const height = stagedNumber(source, "height");
+  const stagingKey = stagedString(source, "stagingKey");
+
+  // A malformed preview is dropped rather than refused. It is a thumbnail; the
+  // original it belongs to is what must not be lost.
+  if (!isSha256(sha256) || !bytes || bytes <= 0 || !width || !height || !stagingKey) {
+    return undefined;
+  }
+  return { sha256, bytes, width, height, stagingKey };
+}
+
+/**
+ * The photographs a Create shoot submission is carrying.
+ *
+ * These arrive as JSON in a hidden input, which is to say they arrive from the
+ * browser and are worth exactly as much as anything else a browser sends. Every
+ * field is re-checked here, and the staging key is checked again server-side
+ * against the caller's organization by registerImport() -- this parser cannot
+ * do that, because it does not know which organization the caller is in.
+ *
+ * A photograph is refused rather than repaired: bytes whose digest does not
+ * parse are bytes nobody can prove the provenance of later, and the whole point
+ * of the import path is that the digest is a fact.
+ */
+export function parseStagedPhotographs(form: FormData): StagedPhotographsResult {
+  const raw = text(form, "photographs");
+  if (!raw) return { ok: true, value: [] };
+
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: "The photographs could not be read. Add them again." };
+  }
+
+  if (!Array.isArray(decoded)) {
+    return { ok: false, error: "The photographs could not be read. Add them again." };
+  }
+  if (decoded.length > MAX_STAGED_PHOTOGRAPHS) {
+    return {
+      ok: false,
+      error: `Create the shoot with up to ${MAX_STAGED_PHOTOGRAPHS} photographs, then import the rest from the shoot.`,
+    };
+  }
+
+  const photographs: StagedPhotographInput[] = [];
+
+  for (const entry of decoded) {
+    if (!entry || typeof entry !== "object") {
+      return { ok: false, error: "One of the photographs could not be read. Add it again." };
+    }
+    const source = entry as Record<string, unknown>;
+
+    const filename = stagedString(source, "filename");
+    const sha256 = stagedString(source, "sha256");
+    const bytes = stagedNumber(source, "bytes");
+    const mimeType = stagedString(source, "mimeType") || "application/octet-stream";
+    const stagingKey = stagedString(source, "stagingKey");
+
+    if (!filename) return { ok: false, error: "A photograph arrived without a filename." };
+    if (!isSha256(sha256)) {
+      return { ok: false, error: `The digest for ${filename} could not be read. Add it again.` };
+    }
+    if (!bytes || bytes <= 0) {
+      return { ok: false, error: `${filename} arrived without a size. Add it again.` };
+    }
+    if (!stagingKey) {
+      return { ok: false, error: `${filename} was never uploaded. Add it again.` };
+    }
+
+    const capturedAt = parseTimestamp(stagedString(source, "capturedAt") || undefined);
+    const metadata = (source.metadata ?? {}) as Record<string, unknown>;
+
+    const caption = stagedString(metadata, "caption");
+    if (caption.length > MAX_CAPTION) {
+      return { ok: false, error: `Keep the caption on ${filename} under ${MAX_CAPTION} characters.` };
+    }
+    const headline = stagedString(metadata, "headline");
+    if (headline.length > MAX_TITLE) {
+      return { ok: false, error: `Keep the headline on ${filename} under ${MAX_TITLE} characters.` };
+    }
+
+    photographs.push({
+      filename,
+      sha256,
+      bytes,
+      mimeType,
+      // An unreadable capture time is dropped, not refused: it is read off the
+      // file rather than typed, and the frame is still worth importing.
+      capturedAt: capturedAt ?? undefined,
+      width: stagedNumber(source, "width"),
+      height: stagedNumber(source, "height"),
+      stagingKey,
+      preview: parseStagedPreview(source.preview),
+      metadata: {
+        headline: headline || undefined,
+        caption: caption || undefined,
+        subjects: stagedList(metadata, "subjects"),
+        locationName: stagedString(metadata, "locationName") || undefined,
+        keywords: stagedList(metadata, "keywords"),
+        creditLine: stagedString(metadata, "creditLine") || undefined,
+        copyrightNotice: stagedString(metadata, "copyrightNotice") || undefined,
+        usageRestrictions: stagedString(metadata, "usageRestrictions") || undefined,
+      },
+    });
+  }
+
+  return { ok: true, value: photographs };
+}
+
+/**
  * A record id.
  *
  * Every id in the system is a UUID, so a malformed one means "no such record"

@@ -7,6 +7,15 @@ import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { CreateShootForm } from "./shoot-form";
 
+/**
+ * Create a shoot.
+ *
+ * One page, one action. The brief, the photographs, the metadata they share,
+ * the rights facts, and a final review all live in the form below, because
+ * creating a shoot is private workspace activity and does not warrant a
+ * confirmation screen. The screen that does is the dispatch review, which is
+ * where a fresh human confirmation is still required before anything leaves.
+ */
 export default async function CreateShootPage({
   params: routeParams,
   searchParams,
@@ -66,8 +75,8 @@ export default async function CreateShootPage({
     <AppShell active="Shoots" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
-          description="Start with a brief. Facts entered here are inherited by every asset, package, and submission that follows."
-          eyebrow={fromOnboarding ? "Your workspace is ready" : "New record"}
+          description="Everything for this shoot on one page. It saves as a private draft — nothing is sent, published, or offered to a buyer."
+          eyebrow={fromOnboarding ? "Your workspace is ready" : "New draft"}
           title="Create shoot"
         />
 
@@ -83,43 +92,15 @@ export default async function CreateShootPage({
           </Panel>
         )}
 
-        <div className="panel-grid">
-          <Panel action={<Badge tone="neutral">Draft</Badge>} title="Shoot brief">
-            <div className="panel-body">
-              <CreateShootForm
-                workspaceSlug={workspaceSlug}
-                buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
-                canSeeSourceNote={can(role, "sensitive_note.read")}
-              />
-            </div>
-          </Panel>
-
-          <div className="stack">
-            <Panel title="What happens next">
-              <div className="panel-body">
-                <ol className="next-steps">
-                  <li>The shoot is created as a draft.</li>
-                  <li>Import files. Each is hashed before it leaves this machine.</li>
-                  <li>Originals are stored untouched; previews are separate files.</li>
-                  <li>Select frames and complete captions.</li>
-                  <li>Build a package for a buyer and review it before sending.</li>
-                </ol>
-                <p className="section-note">
-                  Nothing is sent to a buyer without an explicit human confirmation.
-                </p>
-              </div>
-            </Panel>
-            <Panel title="Storage">
-              <div className="panel-body">
-                <Badge tone="good">Private by default</Badge>
-                <p className="section-note">
-                  Files go to a private bucket scoped to this workspace. Nothing is publicly
-                  readable, and delivery uses short-lived signed links.
-                </p>
-              </div>
-            </Panel>
+        <Panel action={<Badge tone="neutral">Draft</Badge>} title="New shoot">
+          <div className="panel-body create-shoot">
+            <CreateShootForm
+              workspaceSlug={workspaceSlug}
+              buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
+              canSeeSourceNote={can(role, "sensitive_note.read")}
+            />
           </div>
-        </div>
+        </Panel>
       </div>
     </AppShell>
   );

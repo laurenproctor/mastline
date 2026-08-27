@@ -6,7 +6,7 @@ import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
-import { recordEvent } from "./activity";
+import { recordEvent, recordEventWith } from "./activity";
 
 /**
  * Assets, their versions, and their caption history.
@@ -222,13 +222,15 @@ export async function listCaptionHistory(
  * something described by it actually changed.
  */
 export async function updateAssetMetadata(input: {
+  /** The caller's client, when they already hold one. See createPackageFromSelection. */
+  client?: SupabaseClient;
   organizationId: Id;
   actorId: Id;
   assetId: Id;
   metadata: AssetMetadataInput;
 }): Promise<void> {
   const { organizationId, actorId, assetId, metadata } = input;
-  const supabase = await createClient();
+  const supabase = input.client ?? (await createClient());
 
   const { data: current, error: readError } = await supabase
     .from("assets")
@@ -283,7 +285,7 @@ export async function updateAssetMetadata(input: {
   if (error) throw new Error(`Could not save the metadata: ${error.message}`);
 
   if (describedFieldsChanged) {
-    await recordEvent({
+    await recordEventWith(supabase, {
       organizationId,
       actorId,
       entityType: "asset",

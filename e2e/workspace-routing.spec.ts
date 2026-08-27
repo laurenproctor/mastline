@@ -295,7 +295,7 @@ test.describe("two workspaces open at once", () => {
       // Tab A writes first, with the cookie pointing away from it.
       await tabA.goto(at("/shoots/new"));
       await tabA.getByLabel("Subject or event").fill(titleA);
-      await tabA.getByRole("button", { name: "Create shoot and review" }).click();
+      await tabA.getByRole("button", { name: "Create shoot" }).click();
       await tabA.waitForURL(/\/shoots\//, { timeout: 20_000 });
 
       expect(
@@ -305,7 +305,7 @@ test.describe("two workspaces open at once", () => {
 
       // Tab B writes second, into the other workspace.
       await tabB.getByLabel("Subject or event").fill(titleB);
-      await tabB.getByRole("button", { name: "Create shoot and review" }).click();
+      await tabB.getByRole("button", { name: "Create shoot" }).click();
       await tabB.waitForURL(/\/shoots\//, { timeout: 20_000 });
 
       expect(

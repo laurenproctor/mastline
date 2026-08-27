@@ -28,6 +28,15 @@
   settled before charging a non-US customer.
 - Storage/scale: Solo 250 GB and 1 photographer; Pro 1 TB; Studio up to 5 people and 5 TB shared; Agency flexible/custom
 - Optional Mastline Sales Engine split: photographer 70%, Mastline 30%, only on licenses generated inside Mastline
+- **Confirmation belongs at the point of consequence.** Creating a shoot is
+  private, reversible workspace activity, so it happens on one page with one
+  button and no confirmation step: brief, photographs, shared metadata, rights
+  facts, and a review that reports rather than gates. The consequential act is
+  dispatch, and its two-motion confirmation is untouched. Files chosen before
+  the shoot exists are hashed and staged in the workspace's private staging
+  area, then registered by the same `registerImport` the shoot workspace uses.
+  There was never a separate confirmation ROUTE to retire — the second screen
+  was the shoot workspace itself, which is still where the flow lands.
 - Human review before outbound or consequential actions
 - Warm off-white/light editorial interface is the default product direction; blue is the primary action signal
 
