@@ -5490,3 +5490,1438 @@ footer ul a {
   padding: 0;
   font-style: normal;
 }
+
+/* =========================================================================
+   Care and motion on the pages beneath the home page
+   -------------------------------------------------------------------------
+   The home page carried all of the site's movement; every other page was a
+   static document. What follows is the shared reveal the stylesheet already
+   had rules for, plus the demonstrations that give the argument on each page
+   something to do.
+
+   Everything here obeys the editorial direction above it: no radius, no
+   shadow, hairline rules, ink and paper, acid green as the only signal.
+   ========================================================================= */
+
+/* ----- staggered reveal ------------------------------------------------ */
+/* A container tagged data-rv-group brings its own children in one after the
+   other, so a row of cards arrives as a row rather than all at once. The
+   stagger is nth-child rather than an inline custom property because these
+   are hand-written siblings, not a mapped array. */
+[data-rv-group] > * {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+[data-rv-group].rv-in > * {
+  opacity: 1;
+  transform: none;
+}
+[data-rv-group].rv-in > *:nth-child(2) {
+  transition-delay: 70ms;
+}
+[data-rv-group].rv-in > *:nth-child(3) {
+  transition-delay: 140ms;
+}
+[data-rv-group].rv-in > *:nth-child(4) {
+  transition-delay: 210ms;
+}
+[data-rv-group].rv-in > *:nth-child(5) {
+  transition-delay: 280ms;
+}
+[data-rv-group].rv-in > *:nth-child(6) {
+  transition-delay: 350ms;
+}
+[data-rv-group].rv-in > *:nth-child(7) {
+  transition-delay: 420ms;
+}
+[data-rv-group].rv-in > *:nth-child(n + 8) {
+  transition-delay: 490ms;
+}
+/* A table stagger reads as a stutter, so rows come in together. */
+[data-rv-group] tbody > tr {
+  transition-delay: 0ms !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-rv-group] > * {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* ----- the pitch link, played through (editors, product) --------------- */
+.pitch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+  gap: 56px;
+  align-items: start;
+}
+.pitch-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--ink);
+}
+.pitch-rail li {
+  border-bottom: 1px solid var(--rule);
+}
+.pitch-rail button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  padding: 18px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-3);
+  transition: color 0.25s;
+}
+.pitch-rail button:hover {
+  color: var(--ink);
+}
+.pitch-rail i {
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  line-height: 20px;
+  height: 20px;
+  width: 20px;
+  text-align: center;
+  border: 1px solid var(--rule-2);
+  color: var(--ink-3);
+  transition:
+    background 0.25s,
+    color 0.25s,
+    border-color 0.25s;
+}
+.pitch-rail b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.pitch-rail small {
+  display: block;
+  margin-top: 5px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: inherit;
+  /* Collapsed until the step is the one being shown, so the rail reads as a
+     list of four moves rather than four paragraphs competing with the phone. */
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    max-height 0.45s cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 0.35s;
+}
+.pitch-rail .on button {
+  color: var(--ink-2);
+}
+.pitch-rail .on small {
+  max-height: 7em;
+  opacity: 1;
+}
+.pitch-rail .on i {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+.pitch-rail .done i {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.pitch-rail button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.pitch-device {
+  position: sticky;
+  top: 96px;
+}
+.pitch-screen {
+  border: 1px solid var(--ink);
+  background: var(--bg);
+  /* Held open to the tallest pane so stepping through does not shunt the
+     section below it up and down the page. */
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+}
+.pitch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg-2);
+}
+.pitch-host,
+.pitch-timer {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.pitch-timer b {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.pitch-timer.done {
+  color: var(--ink);
+  background: var(--green);
+  padding: 3px 7px;
+}
+.pitch-pane {
+  padding: 18px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: pitchin 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes pitchin {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.pitch-message {
+  justify-content: center;
+  flex: 1;
+}
+.pitch-from {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pitch-bubble {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule-2);
+  background: var(--bg-2);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.pitch-bubble em {
+  display: block;
+  margin-top: 10px;
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink);
+  border-bottom: 1px solid var(--ink);
+  width: fit-content;
+}
+.pitch-note {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.pitch-frames {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.pitch-frame {
+  position: relative;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  animation: pitchframe 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 90ms);
+}
+@keyframes pitchframe {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+.pitch-frame.t1 {
+  background: linear-gradient(135deg, #3a3f4b, #1c1f26 60%, #0e1014);
+}
+.pitch-frame.t2 {
+  background: linear-gradient(135deg, #5a4036, #2a1f1b 60%, #120e0d);
+}
+.pitch-frame.t3 {
+  background: linear-gradient(135deg, #2f4a5c, #1a2630 60%, #0c1116);
+}
+.pitch-frame.t4 {
+  background: linear-gradient(135deg, #6b6b63, #2a2a27 55%, #101010);
+}
+.pitch-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 62% 38%, rgba(255, 255, 255, 0.22), transparent 55%);
+}
+.pitch-frame span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  color: rgba(255, 255, 255, 0.42);
+  transform: rotate(-16deg);
+}
+.pitch-caption {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+.pitch-terms {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--rule);
+}
+.pitch-terms > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+}
+/* The screen already has an edge; a rule right above it reads as a mistake. */
+.pitch-terms > div:last-child {
+  border-bottom: 0;
+}
+.pitch-terms dt {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.pitch-terms dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: right;
+}
+.pitch-ask {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pitch-ask b {
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--ink);
+}
+.pitch-accept {
+  border: 0;
+  background: var(--green);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 500;
+  height: 50px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.pitch-accept:hover {
+  filter: brightness(0.93);
+}
+.pitch-or {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  text-align: center;
+}
+.pitch-counters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.pitch-counters button {
+  width: 100%;
+  padding: 11px 10px;
+  border: 1px solid var(--rule-2);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--sans);
+  transition:
+    border-color 0.2s,
+    background 0.2s;
+}
+.pitch-counters button:hover {
+  border-color: var(--ink);
+  background: var(--bg-2);
+}
+.pitch-counters b {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.pitch-counters small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.pitch-done {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  padding: 9px 11px;
+  background: var(--green);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+.pitch-done svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.pitch-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pitch-files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-2);
+  animation: pitchin 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 110ms + 200ms);
+}
+.pitch-files i {
+  flex: none;
+  width: 54px;
+  height: 3px;
+  background: var(--rule-2);
+  position: relative;
+  overflow: hidden;
+}
+.pitch-files i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--ink);
+  transform-origin: left;
+  animation: pitchfill 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 110ms + 320ms);
+}
+@keyframes pitchfill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.pitch-replay {
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--rule-2);
+  transition: color 0.2s;
+}
+.pitch-replay:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+@media (max-width: 1000px) {
+  .pitch {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+  }
+  .pitch-device {
+    position: static;
+    max-width: 380px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pitch-pane,
+  .pitch-frame,
+  .pitch-files li,
+  .pitch-files i::after {
+    animation: none;
+  }
+  .pitch-rail small {
+    transition: none;
+  }
+}
+
+/* ----- the lifecycle chain, walkable (how it works) -------------------- */
+.lifecycle {
+  border-top: 1px solid var(--ink);
+  margin-top: 56px;
+}
+.lifecycle-chain {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.lifecycle-chain button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 14px 20px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-3);
+  transition: color 0.25s;
+}
+.lifecycle-chain button:hover {
+  color: var(--ink);
+}
+/* The rule under each stage fills in as the chain is walked, so the row reads
+   as one line being drawn rather than seven separate buttons. */
+.lifecycle-chain button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 3px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lifecycle-chain button.on::after,
+.lifecycle-chain button.past::after {
+  transform: scaleX(1);
+}
+.lifecycle-chain button.on::after {
+  background: var(--green);
+}
+.lifecycle-n {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--rule-2);
+  transition: color 0.25s;
+}
+.lifecycle-chain button.on .lifecycle-n,
+.lifecycle-chain button.past .lifecycle-n {
+  color: var(--ink-3);
+}
+.lifecycle-name {
+  font-family: var(--serif);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: inherit;
+}
+.lifecycle-chain button.on .lifecycle-name {
+  color: var(--ink);
+}
+.lifecycle-chain button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+.lifecycle-panel {
+  border-top: 1px solid var(--rule);
+  padding-top: 26px;
+  /* Held open to the tallest pairing so stepping along the chain does not
+     shift the section under it. */
+  min-height: 190px;
+}
+.lifecycle-panel:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+.lifecycle-panel > div {
+  animation: lifein 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes lifein {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.lifecycle-panel dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 56px;
+  margin: 18px 0 0;
+}
+.lifecycle-panel dt {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.lifecycle-panel dd {
+  margin: 10px 0 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+@media (max-width: 900px) {
+  .lifecycle-chain {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lifecycle-chain button {
+    padding: 14px 12px 16px 0;
+  }
+  .lifecycle-panel dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+  .lifecycle-panel {
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lifecycle-panel > div {
+    animation: none;
+  }
+  .lifecycle-chain button::after {
+    transition: none;
+  }
+}
+
+/* ----- what is inside the frame (commercial opportunities) ------------- */
+.detect {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 48px;
+  align-items: start;
+}
+.detect-frame {
+  border: 1px solid var(--ink);
+}
+.detect-image {
+  position: relative;
+  aspect-ratio: 4/5;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(255, 255, 255, 0.2), transparent 52%),
+    linear-gradient(160deg, #3f434e 0%, #24272f 42%, #14161b 72%, #0c0d10 100%);
+}
+/* A standing figure, suggested rather than drawn: the frame only has to read
+   as a person on a sidewalk for the pins to have something to sit on. Drawing
+   it rather than photographing it means the demonstration cannot come apart
+   the first time the picture behind it is replaced. */
+.detect-image::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 23%;
+  width: 32%;
+  height: 70%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.17),
+    rgba(255, 255, 255, 0.09) 46%,
+    rgba(255, 255, 255, 0.03) 74%,
+    transparent
+  );
+  clip-path: polygon(22% 0, 78% 0, 88% 26%, 74% 100%, 26% 100%, 12% 26%);
+}
+.detect-image::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 11%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+.detect-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 28%;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(137, 255, 10, 0.16) 70%,
+    rgba(137, 255, 10, 0.5)
+  );
+  opacity: 0;
+}
+.detect-image.scanning .detect-sweep {
+  animation: detectsweep 1s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes detectsweep {
+  0% {
+    opacity: 1;
+    transform: translateY(-100%);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(360%);
+  }
+}
+.detect-pin {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.detect-pin.in {
+  opacity: 1;
+}
+.detect-pin i {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(0.4);
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.detect-pin.in i {
+  transform: scale(1);
+}
+.detect-pin.on i {
+  border-color: var(--green);
+  background: var(--green);
+}
+/* The ring only draws around the item being read about, so the frame has one
+   focus rather than four competing ones. */
+.detect-pin.on::after {
+  content: "";
+  position: absolute;
+  left: -19px;
+  top: -19px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--green);
+  animation: detectring 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@keyframes detectring {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+.detect-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.detect-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 22px;
+}
+.detect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  border-top: 1px solid var(--ink);
+}
+.detect-list li {
+  border-bottom: 1px solid var(--rule);
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.4s,
+    transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.detect-list li.in {
+  opacity: 1;
+  transform: none;
+}
+.detect-list button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 13px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.detect-list .chip {
+  flex: none;
+  width: 190px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 8px 4px;
+}
+.detect-list b {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink-3);
+  transition: color 0.2s;
+}
+.detect-list button:hover b,
+.detect-list button.on b {
+  color: var(--ink);
+}
+.detect-list button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+.detect-routes {
+  width: 100%;
+  /* Held open to the tallest pairing, so picking a different item does not
+     move the button that was just clicked. */
+  min-height: 210px;
+}
+.detect-routes > div {
+  animation: lifein 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.detect-route {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.detect-route p {
+  margin: 7px 0 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.detect-rights {
+  margin: 14px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.detect-rights b {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-right: 8px;
+}
+@media (max-width: 900px) {
+  .detect {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+  }
+  .detect-list .chip {
+    width: auto;
+  }
+  .detect-list button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+  }
+  .detect-routes {
+    min-height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detect-sweep {
+    display: none;
+  }
+  .detect-pin i,
+  .detect-list li,
+  .detect-routes > div {
+    transition: none;
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+  .detect-pin.on::after {
+    animation: none;
+  }
+}
+
+/* ----- one night's sale, divided (teams) ------------------------------- */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 56px;
+  align-items: start;
+}
+.split-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  position: sticky;
+  top: 96px;
+}
+.split-amount {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.split-amount output {
+  font-family: var(--serif);
+  font-size: clamp(46px, 5.6vw, 72px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.split input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 1px;
+  background: var(--rule-2);
+  cursor: pointer;
+}
+.split input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--ink);
+  cursor: pointer;
+}
+.split input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  background: var(--ink);
+  cursor: pointer;
+}
+.split input[type="range"]:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 6px;
+}
+.split-amount input[type="range"] {
+  margin-top: 8px;
+}
+.split-origin {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid var(--rule-2);
+}
+.split-origin button {
+  padding: 13px 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.split-origin button + button {
+  border-left: 1px solid var(--rule-2);
+}
+.split-origin button small {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rule-2);
+  transition: color 0.2s;
+}
+.split-origin button.on {
+  background: var(--ink);
+  color: #fff;
+}
+.split-origin button.on small {
+  color: var(--green);
+}
+.split-origin button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
+}
+.split-ledger {
+  border-top: 1px solid var(--ink);
+}
+.split-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.split-row > span {
+  min-width: 0;
+  flex: 1;
+}
+.split-row > b,
+.split-row .split-pay {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.split-head {
+  align-items: baseline;
+  border-bottom-color: var(--ink);
+}
+.split-head > span {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.split-head > b {
+  font-size: 34px;
+}
+.split-row > span > b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+.split-row > span > small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.split-row label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 11px;
+  max-width: 280px;
+}
+.split-row label em {
+  font-style: normal;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  min-width: 38px;
+  text-align: right;
+}
+.split-row label em i {
+  font-style: normal;
+  color: var(--ink-3);
+}
+.split-foot {
+  align-items: baseline;
+  border-bottom: 0;
+  padding-top: 18px;
+}
+.split-foot > span {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.split-foot > b {
+  font-size: 22px;
+  color: var(--ink-3);
+}
+.split-note {
+  grid-column: 2;
+  margin: 18px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 62ch;
+}
+@media (max-width: 1000px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 34px;
+  }
+  .split-controls {
+    position: static;
+  }
+  .split-note {
+    grid-column: 1;
+  }
+}
+@media (max-width: 560px) {
+  .split-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .split-row .split-pay {
+    align-self: flex-end;
+  }
+}
+
+/* ----- who may do what (trust) ----------------------------------------- */
+.roles-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* Top-aligned: the notes run to one line or two, and stretched items pushed
+     the short ones' headings down out of line with the rest. */
+  align-items: start;
+  border-top: 1px solid var(--ink);
+}
+.roles-tabs button {
+  padding: 16px 14px 18px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--sans);
+  color: var(--ink-3);
+  position: relative;
+  transition: color 0.2s;
+}
+.roles-tabs button::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 3px;
+  background: var(--green);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.roles-tabs button.on::after {
+  transform: scaleX(1);
+}
+.roles-tabs b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--ink-3);
+  transition: color 0.2s;
+}
+.roles-tabs button:hover b,
+.roles-tabs button.on b {
+  color: var(--ink);
+}
+.roles-tabs small {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+.roles-tabs button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+.roles-grid {
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 48px;
+}
+.roles-grid li {
+  display: grid;
+  grid-template-columns: 20px 68px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.roles-mark {
+  align-self: center;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+}
+.roles-mark svg {
+  width: 14px;
+  height: 14px;
+}
+.roles-grid .yes .roles-mark {
+  background: var(--green);
+  color: var(--ink);
+}
+.roles-grid .no .roles-mark {
+  color: var(--rule-2);
+}
+.roles-state {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.roles-text {
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.roles-grid .no .roles-text {
+  color: var(--ink-3);
+}
+.roles-note {
+  margin: 22px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-3);
+  max-width: 74ch;
+}
+@media (max-width: 900px) {
+  .roles-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .roles-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roles-tabs button::after {
+    transition: none;
+  }
+}
+
+/* ----- copy, for the press kit ----------------------------------------- */
+.copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.copy code {
+  font-family: var(--sans);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+.copy button {
+  flex: none;
+  border: 1px solid var(--rule-2);
+  background: transparent;
+  padding: 6px 11px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  /* The label swaps between three lengths; a floor stops the control resizing
+     under the pointer that is still on it. */
+  min-width: 108px;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    color 0.2s;
+}
+.copy button:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.copy button.done {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--ink);
+}
+.copy button.failed {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+/* Beneath a boilerplate paragraph rather than beside a value. A paragraph and
+   not a div: `.principles div` carries `border-top: 1px solid var(--ink)
+   !important`, and it matches any descendant, so a wrapping div drew a rule
+   across the card. */
+.copy-block {
+  margin: 14px 0 0;
+}
+
+/* ----- dense commercial tables ----------------------------------------- */
+/* "Tables for commercial facts" is the design language's own line, and these
+   are the widest rows on the site. A row that answers back under the pointer
+   is the difference between reading across seven columns and losing the line
+   halfway. */
+.records tbody tr,
+.diff tbody tr,
+.cmp tbody tr {
+  transition: background 0.15s;
+}
+.records tbody tr:hover,
+.diff tbody tr:hover,
+.cmp tbody tr:hover {
+  background: var(--bg-3);
+}
+
+/* ----- what a month leaves you (pricing) ------------------------------- */
+/* Sits inside the .calc band, so the blue panel and its type come for free.
+   Only the parts the old two-number split did not have are new. */
+.pcalc .calc-slider + .calc-slider {
+  margin-top: 20px;
+}
+.pcalc-plans {
+  display: flex;
+  gap: 0;
+  margin-top: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  align-self: flex-start;
+}
+.pcalc-plans button {
+  border: 0;
+  background: transparent;
+  padding: 11px 20px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.pcalc-plans button + button {
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+}
+.pcalc-plans button:hover {
+  color: #fff;
+}
+.pcalc-plans button.on {
+  background: var(--green);
+  color: var(--ink);
+}
+.pcalc-plans button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -3px;
+}
+.pcalc .calc-r {
+  justify-content: center;
+}
+.pcalc .calc-row b {
+  font-variant-numeric: tabular-nums;
+}
+.pcalc-year {
+  margin: 6px 0 0;
+  text-align: right;
+  font-family: var(--sans);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+.pcalc-vs {
+  margin-top: 26px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+}
+.pcalc-vs .calc-row b {
+  font-size: 22px;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+}
+.pcalc-delta {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+}
+.pcalc-delta b {
+  color: var(--green);
+  font-weight: 500;
+}
+/* When the subscription outweighs an agency's cut the panel says so plainly
+   rather than dressing it up. No red: it is a fact about volume, not a fault. */
+.pcalc-delta.behind {
+  color: rgba(255, 255, 255, 0.66);
+}
+@media (max-width: 640px) {
+  .pcalc-plans {
+    align-self: stretch;
+  }
+  .pcalc-plans button {
+    flex: 1;
+    padding: 11px 8px;
+  }
+  .pcalc-vs .calc-row b {
+    font-size: 17px;
+    white-space: normal;
+  }
+}

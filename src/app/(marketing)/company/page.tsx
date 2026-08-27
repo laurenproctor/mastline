@@ -22,7 +22,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="who">
+          <div className="who" data-rv-group>
             <div>
               <span className="mk-eyebrow">About Mastline</span>
               <h2>A Storyworlding company, built on the sidewalks of Hollywood and New York.</h2>
@@ -61,7 +61,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="who">
+          <div className="who" data-rv-group>
             <div>
               <span className="mk-eyebrow">Who it’s for</span>
               <h2>Independent professionals and teams of two to ten.</h2>
@@ -125,7 +125,7 @@ export default function Page() {
                   <th>What Mastline adds</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-rv-group>
                 <tr>
                   <td>Agency submission portal</td>
                   <td>Receives and distributes content</td>
@@ -173,7 +173,7 @@ export default function Page() {
               <span className="mk-eyebrow">Common questions</span>
               <h2>Before starting.</h2>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>Do I have to leave my agency?</summary>
                 <p>

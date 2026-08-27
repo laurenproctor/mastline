@@ -1,6 +1,28 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { PitchLink } from "../_components/pitch-link";
+
+/** The rail beside the phone. The product page tells the same four moves in its
+ *  own shorter words, so each page keeps its own. */
+const STEPS = [
+  {
+    title: "Open the link",
+    body: "It works in any browser. No download, no password.",
+  },
+  {
+    title: "Review the set",
+    body: "Previews, caption, who and where, price, terms, and exclusivity.",
+  },
+  {
+    title: "Accept, counter, or pass",
+    body: "One tap to take it at asking, or send a counter on price or usage. The photographer answers from their phone.",
+  },
+  {
+    title: "Get the files",
+    body: "Accepting the license unlocks full-resolution downloads on the spot, with the license document attached.",
+  },
+] as const;
 
 export const metadata: Metadata = { title: "For editors" };
 
@@ -23,53 +45,18 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="editors">
+          <div className="head">
             <div>
               <span className="mk-eyebrow">The short version</span>
               <h2>No account. No app. No new process.</h2>
-              <p className="lede" style={{ marginTop: "18px" }}>
-                Every pitch link works on its own. Open it, look, and accept, counter, or pass. Say
-                yes and the license and full-resolution files are released on the spot. No login to
-                buy, and no marketing email.
-              </p>
             </div>
-            <div className="edsteps">
-              <div>
-                <i>1</i>
-                <div>
-                  <b>Open the link</b>
-                  <p>It works in any browser. No download, no password.</p>
-                </div>
-              </div>
-              <div>
-                <i>2</i>
-                <div>
-                  <b>Review the set</b>
-                  <p>Previews, caption, who and where, price, terms, and exclusivity.</p>
-                </div>
-              </div>
-              <div>
-                <i>3</i>
-                <div>
-                  <b>Accept, counter, or pass</b>
-                  <p>
-                    One tap to take it at asking, or send a counter on price or usage. The
-                    photographer answers from their phone.
-                  </p>
-                </div>
-              </div>
-              <div>
-                <i>4</i>
-                <div>
-                  <b>Get the files</b>
-                  <p>
-                    Accepting the license unlocks full-resolution downloads on the spot, with the
-                    license document attached.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <p className="lede">
+              Every pitch link works on its own. Open it, look, and accept, counter, or pass. Say
+              yes and the license and full-resolution files are released on the spot. No login to
+              buy, and no marketing email.
+            </p>
           </div>
+          <PitchLink steps={STEPS} />
         </div>
       </section>
 
@@ -111,7 +98,7 @@ export default function Page() {
               chase.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Provenance that holds up</h3>
               <p>
@@ -173,7 +160,7 @@ export default function Page() {
               the same without an account.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>A pitch inbox</h3>
               <p>
@@ -321,7 +308,7 @@ export default function Page() {
               Outlets accept pitches through Mastline knowing what the platform does and doesn’t do.
             </p>
           </div>
-          <div className="never">
+          <div className="never" data-rv-group>
             <div>
               <span>
                 <b>No tracking of individuals.</b> Mastline’s news radar reads public signals:
@@ -365,7 +352,7 @@ export default function Page() {
               <span className="mk-eyebrow">Questions from picture desks</span>
               <h2>Quick answers.</h2>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>Do I have to sign up to see the pictures?</summary>
                 <p>

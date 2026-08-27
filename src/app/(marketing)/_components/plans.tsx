@@ -63,7 +63,7 @@ export function Plans({ eyebrow, heading }: { eyebrow: string; heading: string }
         </div>
       </div>
 
-      <div className="plans">
+      <div className="plans" data-rv-group>
         {PLANS.map((plan) => {
           const custom = isCustomPriced(plan);
           const yearly = annualTotal(plan);

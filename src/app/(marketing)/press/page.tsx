@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { CopyButton } from "../_components/copy";
+
+/**
+ * The approved descriptions, held once.
+ *
+ * The page renders these and the copy controls put the same characters on the
+ * clipboard. Two literals would eventually disagree, and a reporter would
+ * publish the one that was not approved.
+ */
+const ONE_SENTENCE =
+  "Mastline is the business operating system for paparazzi and entertainment photographers, handling everything between the shutter and the bank: pitching, licensing, delivery, payments, rights, and archive resale.";
+
+const ONE_PARAGRAPH =
+  "Mastline is the business operating system for professional paparazzi, independent celebrity and news photographers, small field teams, and boutique photo agencies. It gives every picture a commercial memory, a record of where it was shot, who it was pitched to, what it licensed for, what it earned, and when it becomes valuable again, and turns that record into faster sales, cleaner licenses, on-time payment, and recurring income from the archive. Photographers keep 100% of the sales they make themselves and 70% of the sales Mastline helps create. Mastline is a Storyworlding company, built on the sidewalks of Hollywood and New York with the photographers who use it every night.";
 
 export const metadata: Metadata = { title: "Press" };
 
@@ -40,27 +54,19 @@ export default function Page() {
               the business layer is the point.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>One sentence</h3>
-              <p>
-                Mastline is the business operating system for paparazzi and entertainment
-                photographers, handling everything between the shutter and the bank: pitching,
-                licensing, delivery, payments, rights, and archive resale.
+              <p>{ONE_SENTENCE}</p>
+              <p className="copy-block">
+                <CopyButton label="Copy sentence" text={ONE_SENTENCE} />
               </p>
             </div>
             <div>
               <h3>One paragraph</h3>
-              <p>
-                Mastline is the business operating system for professional paparazzi, independent
-                celebrity and news photographers, small field teams, and boutique photo agencies. It
-                gives every picture a commercial memory, a record of where it was shot, who it was
-                pitched to, what it licensed for, what it earned, and when it becomes valuable
-                again, and turns that record into faster sales, cleaner licenses, on-time payment,
-                and recurring income from the archive. Photographers keep 100% of the sales they
-                make themselves and 70% of the sales Mastline helps create. Mastline is a
-                Storyworlding company, built on the sidewalks of Hollywood and New York with the
-                photographers who use it every night.
+              <p>{ONE_PARAGRAPH}</p>
+              <p className="copy-block">
+                <CopyButton label="Copy paragraph" text={ONE_PARAGRAPH} />
               </p>
             </div>
           </div>
@@ -77,7 +83,7 @@ export default function Page() {
           </div>
           <div className="tablewrap">
             <table className="diff">
-              <tbody>
+              <tbody data-rv-group>
                 <tr>
                   <td>Company</td>
                   <td colSpan={2}>Mastline, a Storyworlding company</td>
@@ -128,7 +134,8 @@ export default function Page() {
                   <td>Press contact</td>
                   <td colSpan={2}>
                     <a href="mailto:press@mastline.co">press@mastline.co</a> ·{" "}
-                    <a href="tel:+13479263232">347.926.3232</a>
+                    <a href="tel:+13479263232">347.926.3232</a>{" "}
+                    <CopyButton label="Copy address" text="press@mastline.co" />
                   </td>
                 </tr>
               </tbody>
@@ -139,7 +146,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="who">
+          <div className="who" data-rv-group>
             <div>
               <span className="mk-eyebrow">The story</span>
               <h2>The people who make the pictures never had software of their own.</h2>
@@ -232,7 +239,7 @@ export default function Page() {
               Use as written, or ask press@mastline.co for a quote on a specific story.
             </p>
           </div>
-          <div className="quotes">
+          <div className="quotes" data-rv-group>
             <blockquote className="quote">
               <p>
                 “Every picture a photographer takes should keep paying them. Most of the industry is
@@ -276,7 +283,7 @@ export default function Page() {
               enforced in the software.
             </p>
           </div>
-          <div className="never">
+          <div className="never" data-rv-group>
             <div>
               <span>
                 <b>No real-time tracking of individuals.</b> The news radar reads public signals
@@ -334,7 +341,7 @@ export default function Page() {
               effects, and don’t set the name in another typeface.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div style={{ alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
               <Image
                 src="/marketing/wordmark.png"
@@ -377,6 +384,7 @@ export default function Page() {
                 }}
               ></b>
               <span>Ink · #0B0C0E</span>
+              <CopyButton label="Copy hex" text="#0B0C0E" />
             </div>
             <div>
               <b
@@ -388,6 +396,7 @@ export default function Page() {
                 }}
               ></b>
               <span>Mastline Blue · #1E5BFF</span>
+              <CopyButton label="Copy hex" text="#1E5BFF" />
             </div>
             <div>
               <b
@@ -400,6 +409,7 @@ export default function Page() {
                 }}
               ></b>
               <span>Paper · #F6F7F9</span>
+              <CopyButton label="Copy hex" text="#F6F7F9" />
             </div>
             <div>
               <b
@@ -411,6 +421,7 @@ export default function Page() {
                 }}
               ></b>
               <span>Signal Green · #89FF0A</span>
+              <CopyButton label="Copy hex" text="#89FF0A" />
             </div>
           </div>
           <p style={{ marginTop: "18px", fontSize: "14px", color: "var(--ink-3)" }}>
@@ -455,7 +466,7 @@ export default function Page() {
               <span className="mk-eyebrow">For reporters</span>
               <h2>Things reporters ask.</h2>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>How is the name said?</summary>
                 <p>

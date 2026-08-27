@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SplitCalculator } from "../_components/behaviors";
+import { PricingCalculator } from "../_components/pricing-calculator";
 import { Plans } from "../_components/plans";
 
 export const metadata: Metadata = { title: "Pricing" };
@@ -8,7 +8,6 @@ export const metadata: Metadata = { title: "Pricing" };
 export default function Page() {
   return (
     <>
-      <SplitCalculator />
       <section className="pagehead pr-hero">
         <div className="wrap">
           <div className="crumb">
@@ -89,7 +88,7 @@ export default function Page() {
               The work stays <em className="serif-i">with the photographer.</em>
             </h2>
           </div>
-          <div className="lanes">
+          <div className="lanes" data-rv-group>
             <div className="lane">
               <div className="lane-top">
                 <span>01</span>
@@ -136,7 +135,7 @@ export default function Page() {
               forever. Mastline takes a share only of the sales it creates, and nothing on the rest.
             </p>
           </div>
-          <div className="vs">
+          <div className="vs" data-rv-group>
             <div>
               <span className="mk-eyebrow">Typical agency</span>
               <span className="big">40–60%</span>
@@ -161,57 +160,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="calc">
-            <div className="calc-l">
-              <span className="mk-eyebrow" style={{ color: "#8FB0FF" }}>
-                See the split
-              </span>
-              <h2>
-                Simple numbers.
-                <br />
-                Visible before every sale.
-              </h2>
-              <p>
-                The split is calculated on the license fee after taxes, refunds, chargebacks and
-                discounts. Standard payment processing comes out of Mastline’s share.
-              </p>
-              <label className="calc-slider">
-                <span className="mk-eyebrow" style={{ color: "#8FB0FF" }}>
-                  Example license value
-                </span>
-                <div>
-                  <input
-                    type="range"
-                    min="100"
-                    max="10000"
-                    step="50"
-                    value="1000"
-                    id="pr-range"
-                    aria-label="Example license value"
-                  />
-                  <output id="pr-out">$1,000</output>
-                </div>
-              </label>
-            </div>
-            <div className="calc-r">
-              <div className="calc-row big">
-                <span className="mk-eyebrow">License</span>
-                <b id="pr-total">$1,000</b>
-              </div>
-              <div className="calc-row">
-                <span>
-                  <i className="dot you"></i>Photographer <small>70%</small>
-                </span>
-                <b id="pr-you">$700</b>
-              </div>
-              <div className="calc-row">
-                <span>
-                  <i className="dot us"></i>Mastline <small>30%</small>
-                </span>
-                <b id="pr-us">$300</b>
-              </div>
-            </div>
-          </div>
+          <PricingCalculator />
         </div>
       </section>
 
@@ -232,7 +181,7 @@ export default function Page() {
                   <th>Agency</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-rv-group>
                 <tr>
                   <td>Shoot, asset & submission records</td>
                   <td>✓</td>
@@ -309,7 +258,7 @@ export default function Page() {
                 Transparent economics are part of the product, not an afterthought.
               </p>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>When does Mastline take 30%?</summary>
                 <p>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { SplitDemo } from "../_components/split-demo";
 
 export const metadata: Metadata = { title: "Teams" };
 
@@ -41,7 +42,7 @@ export default function Page() {
               Where more than one person touches the pictures or the money, this is the plan.
             </p>
           </div>
-          <div className="wants">
+          <div className="wants" data-rv-group>
             <div className="want">
               <span className="k">
                 Same <em>night,</em> one record
@@ -92,7 +93,7 @@ export default function Page() {
               </h2>
             </div>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Shared buyer history</h3>
               <p>
@@ -217,6 +218,23 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
+              <span className="mk-eyebrow">The split, worked out</span>
+              <h2>Move the sale. Move the shares. Nobody argues.</h2>
+            </div>
+            <p className="lede">
+              The same arithmetic Mastline runs when a payment lands, with the handle left on.
+              Nothing is taken from a sale the crew made itself; the 30% applies only to a sale
+              Mastline created, and it comes off before the crew’s own splits.
+            </p>
+          </div>
+          <SplitDemo />
+        </div>
+      </section>
+
+      <section>
+        <div className="wrap">
+          <div className="head">
+            <div>
               <span className="mk-eyebrow">For agencies</span>
               <h2>A tailored operating layer for larger operations.</h2>
             </div>
@@ -225,7 +243,7 @@ export default function Page() {
               outlet contracts, accounting, and archive.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Custom team structure</h3>
               <p>
@@ -286,7 +304,7 @@ export default function Page() {
               the <Link href="/pricing">Pricing</Link> page.
             </p>
           </div>
-          <div className="vs">
+          <div className="vs" data-rv-group>
             <div className="m">
               <span className="mk-eyebrow">Studio</span>
               <span className="big">
@@ -342,7 +360,7 @@ export default function Page() {
               <span className="mk-eyebrow">Questions from crews</span>
               <h2>Before bringing a team over.</h2>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>Who owns the pictures on a team account?</summary>
                 <p>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RoleAccess } from "../_components/role-access";
 
 export const metadata: Metadata = { title: "Trust" };
 
@@ -22,7 +23,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="trust">
+          <div className="trust" data-rv-group>
             <div>
               <b>Provenance and chain of custody</b>
               <p>
@@ -93,6 +94,23 @@ export default function Page() {
         <div className="wrap">
           <div className="head">
             <div>
+              <span className="mk-eyebrow">Role-based access</span>
+              <h2>Who may do what, and who may never see a source.</h2>
+            </div>
+            <p className="lede">
+              A workspace is not one login shared around. Pick a role to see exactly what it can
+              reach. These answers are read from the capability table the database policies mirror,
+              not written for this page.
+            </p>
+          </div>
+          <RoleAccess />
+        </div>
+      </section>
+
+      <section>
+        <div className="wrap">
+          <div className="head">
+            <div>
               <span className="mk-eyebrow">Where the line is drawn</span>
               <h2>What Mastline will never do.</h2>
             </div>
@@ -101,7 +119,7 @@ export default function Page() {
               and outlets can accept pitches through it knowing that.
             </p>
           </div>
-          <div className="never">
+          <div className="never" data-rv-group>
             <div>
               <span>
                 <b>No real-time tracking of individuals.</b> The news radar reads public signals:
@@ -172,7 +190,7 @@ export default function Page() {
               <h2>What Mastline holds itself to.</h2>
             </div>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Speed under pressure</h3>
               <p>

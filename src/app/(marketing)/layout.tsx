@@ -3,6 +3,7 @@ import { brandSans, brandSerif } from "@/lib/brand-fonts";
 import Image from "next/image";
 import Link from "next/link";
 import { ConsentReopenLink } from "@/components/consent-reopen-link";
+import { SiteMotion } from "./_components/site-motion";
 import { SiteNav } from "./_components/site-nav";
 import "./marketing.css";
 
@@ -50,6 +51,17 @@ export const metadata: Metadata = {
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`mkt ${brandSans.variable} ${brandSerif.variable}`}>
+      {/* The reveal below hides tagged blocks until they are scrolled to. With
+          no JavaScript nothing would ever unhide them, so hand the page back to
+          a reader who has it turned off. */}
+      <noscript>
+        <style>
+          {
+            "[data-rv],[data-rv-group]>*{opacity:1!important;transform:none!important}.farrow,.fsplit{transform:none!important}"
+          }
+        </style>
+      </noscript>
+      <SiteMotion />
       <a className="skip" href="#main">
         Skip to main content
       </a>

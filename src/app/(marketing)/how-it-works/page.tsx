@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { LifecycleChain } from "../_components/lifecycle";
 
 export const metadata: Metadata = { title: "How it works" };
 
@@ -80,22 +81,17 @@ export default function Page() {
               </p>
             </div>
           </div>
-          <div className="logic">
-            <span className="mk-eyebrow">System logic</span>
-            <span>Opportunity</span>
-            <span className="arrow">→</span>
-            <span>Shoot</span>
-            <span className="arrow">→</span>
-            <span>Asset</span>
-            <span className="arrow">→</span>
-            <span>Submission</span>
-            <span className="arrow">→</span>
-            <span>License or usage</span>
-            <span className="arrow">→</span>
-            <span>Payment</span>
-            <span className="arrow">→</span>
-            <span>Match or recovery</span>
+          <div className="head" style={{ marginTop: "72px" }}>
+            <div>
+              <span className="mk-eyebrow">System logic</span>
+              <h2>One fact, entered once, all the way down.</h2>
+            </div>
+            <p className="lede">
+              The same chain, stage by stage: what each record keeps, and what the step after it
+              inherits without anyone typing it again. Walk it with a click or the arrow keys.
+            </p>
           </div>
+          <LifecycleChain />
         </div>
       </section>
 

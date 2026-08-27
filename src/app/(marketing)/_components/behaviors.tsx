@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { SALES_ENGINE_PHOTOGRAPHER_RATE, SALES_ENGINE_PLATFORM_RATE } from "@/lib/sales-engine";
+import { useEffect } from "react";
+import { usePrefersReducedMotion } from "./use-reduced-motion";
 
 /**
- * The five pieces of the marketing site that move.
+ * The four pieces of the home page that move.
  *
  * These attach behaviour to markup that is already server-rendered, rather than
  * owning it. The design was authored as one HTML file with a script that walks
@@ -15,22 +15,13 @@ import { SALES_ENGINE_PHOTOGRAPHER_RATE, SALES_ENGINE_PLATFORM_RATE } from "@/li
  * content behind a class the script adds, so without this the pitch panel and
  * the running total would never appear at all. A third, the dates, is why the
  * night's takings used to be paid on a day in the past.
+ *
+ * The pricing page's calculator used to live here too. It now has its own
+ * component, because it grew from restating 70/30 into modelling a month, and
+ * it owns its own markup rather than reaching into the page's.
  */
 
 const money = (n: number) => Math.round(n).toLocaleString("en-US");
-
-/** Respect the visitor's motion setting, and re-check if they change it. */
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(query.matches);
-    sync();
-    query.addEventListener("change", sync);
-    return () => query.removeEventListener("change", sync);
-  }, []);
-  return reduced;
-}
 
 /**
  * The archive "reawakening" demo: a headline types itself, dormant frames light
@@ -199,38 +190,6 @@ export function MoneyCounter() {
       if (frame !== null) cancelAnimationFrame(frame);
     };
   }, [reduced]);
-
-  return null;
-}
-
-/**
- * The 70/30 calculator on the pricing page.
- *
- * The rates come from src/lib/sales-engine.ts, the same module that splits a
- * real sale, so the illustration cannot drift from the arithmetic a
- * photographer is actually paid by.
- */
-export function SplitCalculator() {
-  useEffect(() => {
-    const range = document.getElementById("pr-range") as HTMLInputElement | null;
-    const out = document.getElementById("pr-out");
-    const total = document.getElementById("pr-total");
-    const yours = document.getElementById("pr-you");
-    const ours = document.getElementById("pr-us");
-    if (!range || !out || !total || !yours || !ours) return;
-
-    const update = () => {
-      const value = Number(range.value);
-      out.textContent = `$${money(value)}`;
-      total.textContent = `$${money(value)}`;
-      yours.textContent = `$${money(value * SALES_ENGINE_PHOTOGRAPHER_RATE)}`;
-      ours.textContent = `$${money(value * SALES_ENGINE_PLATFORM_RATE)}`;
-    };
-
-    update();
-    range.addEventListener("input", update);
-    return () => range.removeEventListener("input", update);
-  }, []);
 
   return null;
 }

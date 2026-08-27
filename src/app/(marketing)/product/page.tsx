@@ -1,5 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { PitchLink } from "../_components/pitch-link";
+
+/** The product page tells the four moves more briefly than the editors page.
+ *  Both readings are right for their page, so each keeps its own. */
+const PITCH_STEPS = [
+  {
+    title: "They get a link",
+    body: "By email or text, from the photographer. Opens on any phone.",
+  },
+  { title: "They see the set", body: "Previews, caption, terms, price, exclusive countdown." },
+  { title: "They accept or counter", body: "One tap at asking, or a structured counter." },
+  {
+    title: "Files and license arrive",
+    body: "Full-res unlocks on acceptance. Downloads are logged.",
+  },
+] as const;
 
 export const metadata: Metadata = { title: "Product" };
 
@@ -30,7 +46,7 @@ export default function Page() {
               <h2>Know what matters before the day starts.</h2>
             </div>
           </div>
-          <div className="areas">
+          <div className="areas" data-rv-group>
             <div className="area">
               <div className="ic">
                 <svg
@@ -111,7 +127,7 @@ export default function Page() {
               <h2>Earn from every picture, from anywhere.</h2>
             </div>
           </div>
-          <div className="areas">
+          <div className="areas" data-rv-group>
             <div className="area">
               <div className="ic">
                 <svg
@@ -168,7 +184,7 @@ export default function Page() {
               <h2>Nothing leaves until it’s buyer-ready. Nothing sent is forgotten.</h2>
             </div>
           </div>
-          <div className="areas">
+          <div className="areas" data-rv-group>
             <div className="area">
               <div className="ic">
                 <svg
@@ -225,7 +241,7 @@ export default function Page() {
               <h2>The memory that outlives any folder, portal, or agency.</h2>
             </div>
           </div>
-          <div className="areas">
+          <div className="areas" data-rv-group>
             <div className="area">
               <div className="ic">
                 <svg
@@ -348,7 +364,7 @@ export default function Page() {
                   <th>What it connects to</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody data-rv-group>
                 <tr>
                   <td>Opportunity</td>
                   <td>Story, source, signal, timing, relevance</td>
@@ -392,49 +408,19 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="editors">
+          <div className="head">
             <div>
               <span className="mk-eyebrow">Editor experience</span>
               <h2>A link, a look, a tap. No account required.</h2>
-              <p className="lede" style={{ marginTop: "18px" }}>
-                Every pitch is a single mobile page: watermarked previews, the photographer’s
-                caption, the price, the terms, and a countdown when an exclusive is offered. Editors
-                accept or counter with one tap and never create a login. The license and
-                full-resolution files are released the moment they accept, and every open and
-                download is logged.
-              </p>
             </div>
-            <div className="edsteps">
-              <div>
-                <i>1</i>
-                <div>
-                  <b>They get a link</b>
-                  <p>By email or text, from the photographer. Opens on any phone.</p>
-                </div>
-              </div>
-              <div>
-                <i>2</i>
-                <div>
-                  <b>They see the set</b>
-                  <p>Previews, caption, terms, price, exclusive countdown.</p>
-                </div>
-              </div>
-              <div>
-                <i>3</i>
-                <div>
-                  <b>They accept or counter</b>
-                  <p>One tap at asking, or a structured counter.</p>
-                </div>
-              </div>
-              <div>
-                <i>4</i>
-                <div>
-                  <b>Files and license arrive</b>
-                  <p>Full-res unlocks on acceptance. Downloads are logged.</p>
-                </div>
-              </div>
-            </div>
+            <p className="lede">
+              Every pitch is a single mobile page: watermarked previews, the photographer’s caption,
+              the price, the terms, and a countdown when an exclusive is offered. Editors accept or
+              counter with one tap and never create a login. The license and full-resolution files
+              are released the moment they accept, and every open and download is logged.
+            </p>
           </div>
+          <PitchLink steps={PITCH_STEPS} />
         </div>
       </section>
 
@@ -453,7 +439,7 @@ export default function Page() {
               something it can watch the news for.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Bulk import</h3>
               <p>
@@ -498,7 +484,7 @@ export default function Page() {
               bookkeeping already works.
             </p>
           </div>
-          <div className="integrations">
+          <div className="integrations" data-rv-group>
             <div>
               <b>Photo Mechanic</b>
               <span>Ingest and captions flow straight in</span>
@@ -571,7 +557,7 @@ export default function Page() {
               It makes suggestions, shows why, and leaves the final call to a person.
             </p>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Metadata assistance</h3>
               <p>

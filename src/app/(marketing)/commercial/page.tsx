@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { DetectionDemo } from "../_components/detection";
 
 export const metadata: Metadata = { title: "Commercial" };
 
@@ -209,10 +210,12 @@ export default function Page() {
             </div>
             <p className="lede">
               Matching is assisted, not magic. Each item carries a label a photographer and their
-              readers can trust, and nothing is presented as a certainty that isn’t one.
+              readers can trust, and nothing is presented as a certainty that isn’t one. Here is one
+              frame scanned, with what each label does and does not open up.
             </p>
           </div>
-          <div className="matches">
+          <DetectionDemo />
+          <div className="matches" data-rv-group style={{ marginTop: "56px" }}>
             <div className="match">
               <span className="chip exact">Exact match</span>
               <h3>The product, confirmed</h3>
@@ -251,7 +254,7 @@ export default function Page() {
 
       <section>
         <div className="wrap">
-          <div className="who">
+          <div className="who" data-rv-group>
             <div>
               <span className="mk-eyebrow">Route A</span>
               <h2>Brand licensing, handled like any other sale.</h2>
@@ -339,7 +342,7 @@ export default function Page() {
               <h2>It lives where the work already lives.</h2>
             </div>
           </div>
-          <div className="principles">
+          <div className="principles" data-rv-group>
             <div>
               <h3>Work Queue</h3>
               <p>
@@ -475,7 +478,7 @@ export default function Page() {
             </ul>
           </div>
           <div>
-            <div className="vs">
+            <div className="vs" data-rv-group>
               <div className="m">
                 <span className="mk-eyebrow">Brand licensing</span>
                 <span className="big">
@@ -517,7 +520,7 @@ export default function Page() {
               <span className="mk-eyebrow">Questions</span>
               <h2>Before turning it on.</h2>
             </div>
-            <div className="faq">
+            <div className="faq" data-rv-group>
               <details open>
                 <summary>Does this change how I sell to editors?</summary>
                 <p>
