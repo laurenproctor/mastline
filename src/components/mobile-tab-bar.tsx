@@ -40,6 +40,7 @@ const OVERFLOW = [
 export function MobileTabBar({
   active,
   avatar,
+  base,
   displayName,
   initials,
   workspaceName,
@@ -47,6 +48,8 @@ export function MobileTabBar({
 }: {
   active?: NavLabel;
   avatar?: string;
+  /** "/<workspace-address>". Every destination here hangs off it. */
+  base: string;
   displayName: string;
   initials: string;
   workspaceName: string;
@@ -62,7 +65,7 @@ export function MobileTabBar({
         <Link
           aria-current={active === item.label ? "page" : undefined}
           className={active === item.label ? "tab active" : "tab"}
-          href={item.href}
+          href={`${base}${item.href}`}
           key={item.href}
         >
           <NavIcon name={item.icon} />
@@ -110,7 +113,7 @@ export function MobileTabBar({
             <Link
               aria-current={active === item.label ? "page" : undefined}
               className={active === item.label ? "tab-sheet-link active" : "tab-sheet-link"}
-              href={item.href}
+              href={`${base}${item.href}`}
               key={item.href}
             >
               <NavIcon name={item.icon} />

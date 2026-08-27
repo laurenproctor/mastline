@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { setRatingAction, setSelectionAction } from "@/app/shoots/actions";
+import { setRatingAction, setSelectionAction } from "@/app/[workspace]/shoots/actions";
 
 export interface SheetAsset {
   readonly id: string;
@@ -26,10 +26,12 @@ type Filter = "all" | "selected" | "warnings";
  * the focused frame is announced.
  */
 export function ContactSheet({
+  workspaceSlug,
   shootId,
   assets,
   onFocusAsset,
 }: {
+  workspaceSlug: string;
   shootId: string;
   assets: readonly SheetAsset[];
   onFocusAsset?: (assetId: string) => void;
@@ -58,7 +60,7 @@ export function ContactSheet({
     async (ids: string[], selected: boolean) => {
       if (ids.length === 0) return;
       setPendingIds(new Set(ids));
-      await setSelectionAction({ shootId, assetIds: ids, selected });
+      await setSelectionAction(workspaceSlug, { shootId, assetIds: ids, selected });
       setPendingIds(new Set());
       startTransition(() => router.refresh());
     },
@@ -81,7 +83,7 @@ export function ContactSheet({
 
   const rate = useCallback(
     async (asset: SheetAsset, rating: number) => {
-      await setRatingAction({
+      await setRatingAction(workspaceSlug, {
         shootId,
         assetId: asset.id,
         rating: asset.rating === rating ? null : rating,

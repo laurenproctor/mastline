@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { ACTIVE_WORKSPACE_COOKIE, requireSession } from "@/lib/auth";
+import { requireWorkspace } from "@/lib/auth";
 import { humanizeStatus } from "@/lib/format";
 import { getWorkspaceStatus } from "@/lib/data/subscription";
 import { Avatar } from "./avatar";
@@ -53,14 +53,25 @@ const ROLE_LABELS: Record<string, string> = {
 
 export async function AppShell({
   active,
+  workspace,
   children,
 }: {
   active?: NavLabel;
+  /** The address in the URL. Membership decides; this only looks it up. */
+  workspace: string;
   children: React.ReactNode;
 }) {
   const cookieStore = await cookies();
-  const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
+  const session = await requireWorkspace(workspace);
   const { activeWorkspace } = session;
+
+  /*
+   * Links are built from the address the workspace holds now, not from the one
+   * that was requested. A request can arrive on a retired address -- the
+   * middleware redirects those, but a link rendered from the requested slug
+   * would send the next click back through the redirect for no reason.
+   */
+  const base = `/${activeWorkspace.slug}`;
   const status = await getWorkspaceStatus(activeWorkspace);
   const avatar = await signAvatarUrl((await getProfile(session.userId))?.avatarPath);
   const roleLabel = ROLE_LABELS[activeWorkspace.role] ?? humanizeStatus(activeWorkspace.role);
@@ -73,7 +84,7 @@ export async function AppShell({
       </a>
 
       <aside className="sidebar">
-        <Link className="brand" href="/work">
+        <Link className="brand" href={`${base}/work`}>
           <Image
             alt="Mastline — go to the work queue"
             height={30}
@@ -92,7 +103,7 @@ export async function AppShell({
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={isActive ? "nav-link active" : "nav-link"}
-                href={item.href}
+                href={`${base}${item.href}`}
                 key={item.href}
               >
                 <NavIcon name={item.icon} />
@@ -106,7 +117,7 @@ export async function AppShell({
           <Link
             aria-current={active === "Settings" ? "page" : undefined}
             className={active === "Settings" ? "nav-link active" : "nav-link"}
-            href="/settings"
+            href={`${base}/settings`}
           >
             <NavIcon name="settings" />
             <span>Settings</span>
@@ -134,7 +145,7 @@ export async function AppShell({
       {navMode === "bottom" && (
         <>
           <div className="mobile-top">
-            <Link className="mobile-top-brand" href="/work">
+            <Link className="mobile-top-brand" href={`${base}/work`}>
               <Image
                 alt="Mastline — go to the work queue"
                 height={26}
@@ -147,6 +158,7 @@ export async function AppShell({
           <MobileTabBar
             active={active}
             avatar={avatar}
+            base={base}
             displayName={session.displayName}
             initials={session.initials}
             roleLabel={roleLabel}

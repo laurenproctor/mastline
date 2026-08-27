@@ -1,7 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { TwoFactor } from "@/app/settings/_components/two-factor";
+import { TwoFactor } from "@/app/[workspace]/settings/_components/two-factor";
 import { ACTIVE_WORKSPACE_COOKIE, getSession } from "@/lib/auth";
 import { mfaBlocksAccess, mfaStanding } from "@/lib/mfa";
 
@@ -47,10 +48,10 @@ export default async function SecureYourAccountPage() {
             : `Your account is protected, so ${session.activeWorkspace.name} is yours to use again.`}
         </p>
         <div className="spacer" />
-        <TwoFactor email={session.email} standing={standing} />
+        <TwoFactor workspaceSlug={session.activeWorkspace.slug} email={session.email} standing={standing} />
         {!blocked && (
           <p className="section-note">
-            <a href="/work">Continue to your work</a>
+            <Link href={`/${session.activeWorkspace.slug}/work`}>Continue to your work</Link>
           </p>
         )}
       </div>

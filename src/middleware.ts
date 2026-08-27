@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { isMarketing, isProtected } from "@/lib/routes";
+import { isMarketing, isProtected, isWorkspaceSection } from "@/lib/routes";
+import { slugStanding, splitWorkspacePath, withWorkspaceSlug } from "@/lib/workspace-canonical";
+import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/auth";
 import { COUNTRY_COOKIE } from "@/lib/consent";
 
 /**
@@ -84,6 +86,87 @@ export async function middleware(request: NextRequest) {
    * reads this back at the far end.
    */
   const returnTo = `${pathname}${request.nextUrl.search}`;
+
+  /*
+   * A workspace that has moved still answers at the address it left behind.
+   *
+   * Only paths shaped like /<address>/<section> are considered, which is why
+   * this costs nothing until the workspace-scoped routes exist: a legacy
+   * /work has no second segment to match, so the lookup never runs. A bare
+   * /<address> is excluded too, or every mistyped single-segment URL would
+   * become a database query.
+   *
+   * The redirect is temporary and uncacheable on purpose. Which address is
+   * current depends on who is asking -- a non-member resolves nothing here --
+   * and a permanent redirect would be cached by the browser and go on
+   * answering after a rename, a sign-out, or a membership being removed.
+   */
+  if (user) {
+    const parts = splitWorkspacePath(pathname);
+    if (parts && isWorkspaceSection(parts.rest)) {
+      const { data: rows } = await supabase
+        .from("workspace_slugs")
+        .select("slug, organization_id, is_current");
+
+      const byOrg = new Map<string, { currentSlug: string; historicalSlugs: string[] }>();
+      for (const row of rows ?? []) {
+        const org = row.organization_id as string | null;
+        if (!org) continue;
+        const entry = byOrg.get(org) ?? { currentSlug: "", historicalSlugs: [] };
+        if (row.is_current) entry.currentSlug = row.slug as string;
+        else entry.historicalSlugs.push(row.slug as string);
+        byOrg.set(org, entry);
+      }
+
+      const standing = slugStanding(parts.slug, [...byOrg.values()]);
+      if (standing.standing === "historical") {
+        const url = request.nextUrl.clone();
+        // Only the first segment changes. The rest of the path and the whole
+        // query string are what make the link worth following.
+        url.pathname = withWorkspaceSlug(pathname, standing.currentSlug);
+        const moved = NextResponse.redirect(url, 307);
+        moved.headers.set("Cache-Control", "private, no-store");
+        return moved;
+      }
+    }
+  }
+
+  /*
+   * The addresses that existed before workspaces were in the URL.
+   *
+   * /work, /shoots/<id>, /money?tab=... were every link anybody had bookmarked
+   * or pasted, and they cannot simply 404. Which workspace they mean depends
+   * on who is following them, so this is the one redirect that consults the
+   * hint cookie -- validated against live membership, never trusted on its own.
+   *
+   * Temporary and uncacheable, and that is not a detail. The answer varies by
+   * user and changes when they switch workspaces or sign out; a permanent
+   * redirect would be cached by the browser and go on sending somebody to a
+   * workspace they had left.
+   */
+  if (user) {
+    const legacy = splitWorkspacePath(pathname);
+    if (legacy && isWorkspaceSection(`/${legacy.slug}`)) {
+      const { data: rows } = await supabase
+        .from("workspace_slugs")
+        .select("slug, organization_id, is_current")
+        .eq("is_current", true);
+
+      const owned = (rows ?? []).filter((row) => row.organization_id);
+      const hinted = request.cookies.get(ACTIVE_WORKSPACE_COOKIE)?.value;
+      const chosen =
+        owned.find((row) => row.organization_id === hinted) ??
+        (owned.length === 1 ? owned[0] : undefined);
+
+      if (chosen) {
+        const url = request.nextUrl.clone();
+        url.pathname = `/${chosen.slug}${pathname}`;
+        const moved = NextResponse.redirect(url, 307);
+        moved.headers.set("Cache-Control", "private, no-store");
+        return moved;
+      }
+    }
+  }
 
   if (!user && isProtected(pathname)) {
     const url = request.nextUrl.clone();

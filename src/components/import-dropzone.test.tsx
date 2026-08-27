@@ -16,9 +16,9 @@ const finished: string[] = [];
 const failing = new Set<string>();
 let releaseRegister: (() => void) | null = null;
 
-vi.mock("@/app/shoots/actions", () => ({
-  prepareUploadAction: vi.fn(async (token: string) => ({ stagingKey: `org/_staging/${token}` })),
-  registerImportAction: vi.fn(async (input: { filename: string }) => {
+vi.mock("@/app/[workspace]/shoots/actions", () => ({
+  prepareUploadAction: vi.fn(async (_workspaceSlug: string, token: string) => ({ stagingKey: `org/_staging/${token}` })),
+  registerImportAction: vi.fn(async (_workspaceSlug: string, input: { filename: string }) => {
     // Held open on demand so a second selection can arrive mid-flight.
     if (releaseRegister) {
       await new Promise<void>((resolve) => {
@@ -35,8 +35,8 @@ vi.mock("@/app/shoots/actions", () => ({
     registered.push(input.filename);
     return { ok: true, assetId: `asset-${registered.length}`, filename: input.filename };
   }),
-  registerPreviewAction: vi.fn(async () => ({ ok: true })),
-  finishImportAction: vi.fn(async (shootId: string) => {
+  registerPreviewAction: vi.fn(async (_workspaceSlug: string, ) => ({ ok: true })),
+  finishImportAction: vi.fn(async (_workspaceSlug: string, shootId: string) => {
     finished.push(shootId);
   }),
 }));
@@ -80,7 +80,7 @@ beforeEach(() => {
 describe("choosing several files at once", () => {
   it("registers every file, not just the first", async () => {
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     const input = document.querySelector<HTMLInputElement>("#import-files")!;
     await user.upload(input, [jpeg("a.jpg"), jpeg("b.jpg"), jpeg("c.jpg"), jpeg("d.jpg")]);
@@ -91,7 +91,7 @@ describe("choosing several files at once", () => {
 
   it("lists every chosen file so the count is visible before it finishes", async () => {
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     const input = document.querySelector<HTMLInputElement>("#import-files")!;
     await user.upload(input, [jpeg("a.jpg"), jpeg("b.jpg"), jpeg("c.jpg")]);
@@ -104,7 +104,7 @@ describe("choosing several files at once", () => {
 
   it("advances the shoot once for the batch, not once per file", async () => {
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     const input = document.querySelector<HTMLInputElement>("#import-files")!;
     await user.upload(input, [jpeg("a.jpg"), jpeg("b.jpg"), jpeg("c.jpg")]);
@@ -115,7 +115,7 @@ describe("choosing several files at once", () => {
 
   it("clears the control so the same file can be chosen again", async () => {
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     const input = document.querySelector<HTMLInputElement>("#import-files")!;
     await user.upload(input, [jpeg("a.jpg")]);
@@ -128,7 +128,7 @@ describe("choosing several files at once", () => {
 describe("choosing more files while a batch is still running", () => {
   it("queues them instead of dropping them on the floor", async () => {
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     // Hold the first batch open so the second selection lands mid-flight,
     // which is exactly when the earlier version silently discarded it.
@@ -162,7 +162,7 @@ describe("when one file fails", () => {
     failing.add("broken.jpg");
 
     const user = userEvent.setup();
-    render(<ImportDropzone shootId="shoot-1" />);
+    render(<ImportDropzone shootId="shoot-1" workspaceSlug="marcus-hale-studio" />);
 
     const input = document.querySelector<HTMLInputElement>("#import-files")!;
     await user.upload(input, [jpeg("broken.jpg"), jpeg("fine.jpg"), jpeg("also-fine.jpg")]);

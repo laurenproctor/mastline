@@ -6,7 +6,6 @@ import {
   type Session,
   type Workspace,
   type WorkspaceSession,
-  requireSession,
   requireUserSession,
   requireWorkspace,
 } from "./auth";
@@ -27,17 +26,10 @@ import { chooseLandingWorkspace } from "./workspace-landing";
  * than per-browser. That is what `workspaceContext` below does, and it is what
  * every page and action is being moved onto, one file at a time.
  *
- * Until that move is finished both APIs exist:
- *
- *   workspaceContext(slug) / requireWorkspaceContext(slug, capability)
- *     The destination. The slug is required, so a call site that has not been
- *     told which workspace it is in cannot compile.
- *
- *   currentContext() / requireContext(capability)
- *     What is there today, unchanged and cookie-derived. Every remaining use is
- *     a place where two tabs can still disagree, so `grep currentContext` and
- *     `grep requireContext` are the checklist for finishing the job. Nothing new
- *     should call them, and neither should outlive the migration.
+ * The cookie-derived pair that used to live here is gone. Nothing may read the
+ * active-workspace cookie to decide what to read or write: the slug is a
+ * required argument, so a call site that has not been told which workspace it
+ * is in fails to compile rather than quietly picking one.
  */
 
 /**
@@ -121,32 +113,4 @@ export async function landingWorkspace(session?: Session): Promise<LandingWorksp
   return choice.outcome === "resolved"
     ? { outcome: "resolved", slug: choice.workspace.slug, workspaces }
     : { outcome: choice.outcome, workspaces };
-}
-
-/**
- * @deprecated Cookie-derived, and therefore shared between tabs. Move the call
- * site to `workspaceContext(slug)`, which takes its workspace from the URL.
- */
-export async function currentContext(): Promise<{
-  session: WorkspaceSession;
-  organizationId: string;
-  actorId: string;
-}> {
-  const cookieStore = await cookies();
-  const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
-  return {
-    session,
-    organizationId: session.activeWorkspace.id,
-    actorId: session.userId,
-  };
-}
-
-/**
- * @deprecated Cookie-derived. Move the call site to
- * `requireWorkspaceContext(slug, capability)`.
- */
-export async function requireContext(capability: Capability) {
-  const context = await currentContext();
-  assertCan(context.session.activeWorkspace.role, capability);
-  return context;
 }

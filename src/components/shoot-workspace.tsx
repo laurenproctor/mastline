@@ -12,12 +12,14 @@ import { Badge } from "./primitives";
  * motion rather than two screens.
  */
 export function ShootWorkspace({
+  workspaceSlug,
   shootId,
   sheetAssets,
   inspectorAssets,
   shootLocationName,
   suggestionsAvailable = false,
 }: {
+  workspaceSlug: string;
   shootId: string;
   sheetAssets: readonly SheetAsset[];
   inspectorAssets: readonly InspectorAsset[];
@@ -32,7 +34,7 @@ export function ShootWorkspace({
   return (
     <div className="shoot-layout">
       <div>
-        <ContactSheet assets={sheetAssets} onFocusAsset={setFocusedId} shootId={shootId} />
+        <ContactSheet workspaceSlug={workspaceSlug} assets={sheetAssets} onFocusAsset={setFocusedId} shootId={shootId} />
       </div>
 
       <aside aria-label="Asset inspector" className="panel">
@@ -42,6 +44,7 @@ export function ShootWorkspace({
         </div>
         {focused ? (
           <AssetInspector
+            workspaceSlug={workspaceSlug}
             asset={focused}
             shootId={shootId}
             shootLocationName={shootLocationName}

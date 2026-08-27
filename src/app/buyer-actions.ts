@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { parseNewBuyer } from "@/lib/buyer";
 import { createBuyer } from "@/lib/data/buyers";
-import { requireContext } from "@/lib/session-context";
+import { requireWorkspaceContext } from "@/lib/session-context";
 
 /**
  * Create a buyer from wherever the operator happens to be.
@@ -26,7 +26,8 @@ export interface CreateBuyerResult {
   readonly error?: string;
 }
 
-export async function createBuyerAction(input: {
+export async function createBuyerAction(
+  workspaceSlug: string,input: {
   name: string;
   buyerType: string;
   contactName?: string;
@@ -35,7 +36,7 @@ export async function createBuyerAction(input: {
   const parsed = parseNewBuyer(input);
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
-  const { organizationId, actorId } = await requireContext("buyer.write");
+  const { organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "buyer.write");
 
   try {
     const buyer = await createBuyer({ organizationId, actorId, buyer: parsed.value });

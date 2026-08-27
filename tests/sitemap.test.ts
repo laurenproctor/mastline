@@ -31,6 +31,7 @@ const EXCLUDED_FROM_SITEMAP: Record<string, string> = {
   auth: "OAuth callback handlers, no page",
   d: "tokenised delivery links, not public documents",
   api: "machine surface, no page",
+  "[workspace]": "the workspace-scoped application, gated on its second segment",
 };
 
 function topLevelSegments(): string[] {

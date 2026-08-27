@@ -1,3 +1,5 @@
+import { splitWorkspacePath } from "./workspace-canonical";
+
 /**
  * The route classifications shared by the middleware gate, robots.txt, and the
  * tests that keep both honest.
@@ -71,6 +73,46 @@ export const PROTECTED_ROUTES = [
   // otherwise, and /api/export in particular must never be public.
   "/api",
 ];
+
+/**
+ * The sections that live inside a workspace, as the second path segment.
+ *
+ * `/<slug>/work` rather than `/work`: the workspace is the first segment, so
+ * what identifies a path as belonging to a workspace at all is the segment
+ * after it. Keeping the list here means the middleware, the canonicalizer and
+ * robots.txt agree on what a workspace path looks like.
+ */
+export const WORKSPACE_SECTIONS = [
+  "archive",
+  "assets",
+  "billing",
+  "dispatch",
+  "money",
+  "news",
+  "rights",
+  "settings",
+  "shoots",
+  "submissions",
+  "work",
+] as const;
+
+const WORKSPACE_SECTION_SET = new Set<string>(WORKSPACE_SECTIONS);
+
+/**
+ * Whether the remainder of a workspace path names a section.
+ *
+ * `rest` is what splitWorkspacePath returns: "/work", "/shoots/abc", or "" for
+ * a bare address. A bare address is not treated as a workspace path here --
+ * deliberately, because that would make every unrecognised single-segment URL
+ * look like one, and a mistyped address has to stay a 404 rather than becoming
+ * a redirect to sign-in.
+ */
+export function isWorkspaceSection(rest: string): boolean {
+  if (!rest.startsWith("/")) return false;
+  const next = rest.slice(1);
+  const boundary = next.indexOf("/");
+  return WORKSPACE_SECTION_SET.has(boundary === -1 ? next : next.slice(0, boundary));
+}
 
 /**
  * The one carve-out inside /api: an inbound provider callback has no session to
@@ -148,8 +190,31 @@ export function safeNextPath(value: string | null | undefined): string {
   return `${url.pathname}${url.search}`;
 }
 
+/**
+ * Whether a path requires a session.
+ *
+ * Four categories, and the fourth is what workspace addresses added:
+ *
+ *   1. /api, minus the webhook carve-out
+ *   2. root-protected screens that exist before a workspace does, /onboarding
+ *      and /secure-your-account
+ *   3. the legacy paths, /work and friends, which are still gated so that a
+ *      signed-out visitor following an old bookmark is sent to sign in rather
+ *      than shown a 404
+ *   4. workspace-scoped paths, recognised by their SECOND segment
+ *
+ * The fourth has to be decided on the second segment rather than the first,
+ * because the first is an arbitrary address this function cannot know. That
+ * also preserves the property the list below was written for: `/nonsense` has
+ * no second segment naming a section, so it stays an unknown path and falls
+ * through to a 404 instead of bouncing a mistyped URL to /sign-in.
+ */
 export function isProtected(pathname: string): boolean {
-  return matches(pathname, PROTECTED_ROUTES) && !matches(pathname, PROTECTED_EXCEPTIONS);
+  if (matches(pathname, PROTECTED_EXCEPTIONS)) return false;
+  if (matches(pathname, PROTECTED_ROUTES)) return true;
+
+  const parts = splitWorkspacePath(pathname);
+  return parts !== null && isWorkspaceSection(parts.rest);
 }
 
 export function isMarketing(pathname: string): boolean {

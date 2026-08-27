@@ -6,7 +6,7 @@ import {
   type MetadataState,
   saveAssetMetadataAction,
   suggestAssetMetadataAction,
-} from "@/app/shoots/actions";
+} from "@/app/[workspace]/shoots/actions";
 import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
 import { formatConfidence } from "@/lib/format";
 
@@ -40,11 +40,13 @@ export interface InspectorAsset {
  * frame currently in view.
  */
 export function AssetInspector({
+  workspaceSlug,
   asset,
   shootId,
   shootLocationName,
   suggestionsAvailable = false,
 }: {
+  workspaceSlug: string;
   asset: InspectorAsset;
   shootId: string;
   /** Inherited into the Location field when this frame has none of its own. */
@@ -56,6 +58,7 @@ export function AssetInspector({
       asset={asset}
       key={asset.id}
       shootId={shootId}
+      workspaceSlug={workspaceSlug}
       shootLocationName={shootLocationName}
       suggestionsAvailable={suggestionsAvailable}
     />
@@ -63,17 +66,19 @@ export function AssetInspector({
 }
 
 function InspectorForm({
+  workspaceSlug,
   asset,
   shootId,
   shootLocationName,
   suggestionsAvailable,
 }: {
+  workspaceSlug: string;
   asset: InspectorAsset;
   shootId: string;
   shootLocationName?: string;
   suggestionsAvailable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(saveAssetMetadataAction, INITIAL);
+  const [state, formAction, pending] = useActionState(saveAssetMetadataAction.bind(null, workspaceSlug), INITIAL);
 
   // One fact entered once: a frame with no location of its own starts at the
   // shoot's, and the operator can overwrite it like any other field. This is a
@@ -93,7 +98,7 @@ function InspectorForm({
   const requestSuggestion = () => {
     setSuggestError(null);
     startSuggesting(async () => {
-      const result = await suggestAssetMetadataAction(asset.id);
+      const result = await suggestAssetMetadataAction(workspaceSlug, asset.id);
       if (!result.ok || !result.suggestion) {
         setSuggestError(result.error ?? "The suggestion could not be made.");
         return;

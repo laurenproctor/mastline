@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PROTECTED_ROUTES } from "@/lib/routes";
+import { PROTECTED_ROUTES, WORKSPACE_SECTIONS } from "@/lib/routes";
 import { IS_PRODUCTION_SITE, SITE_URL, absoluteUrl } from "@/lib/site";
 
 /**
@@ -23,6 +23,10 @@ export default function robots(): MetadataRoute.Robots {
         allow: "/",
         disallow: [
           ...PROTECTED_ROUTES.map((route) => `${route}/`),
+          // The same areas again, one segment in, because every workspace
+          // sits under an address of its own now. robots.txt is a request
+          // rather than a control, so the gated layouts also carry noindex.
+          ...WORKSPACE_SECTIONS.map((section) => `/*/${section}/`),
           // Tokenised delivery links are held by picture desks and are not
           // public documents, whatever a crawler may have found them in.
           "/d/",

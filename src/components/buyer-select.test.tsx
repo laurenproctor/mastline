@@ -18,7 +18,7 @@ let nextResult: { ok: boolean; id?: string; name?: string; existed?: boolean; er
 };
 
 vi.mock("@/app/buyer-actions", () => ({
-  createBuyerAction: vi.fn(async (input: { name: string; buyerType: string }) => {
+  createBuyerAction: vi.fn(async (_workspaceSlug: string, input: { name: string; buyerType: string }) => {
     created.push({ name: input.name, buyerType: input.buyerType });
     return nextResult;
   }),
@@ -41,14 +41,14 @@ const hiddenValue = () =>
 
 describe("BuyerSelect", () => {
   it("offers the buyers already recorded", () => {
-    render(<BuyerSelect buyers={BUYERS} />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} />);
     expect(screen.getByRole("option", { name: "Getty" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "The Sun" })).toBeInTheDocument();
   });
 
   it("submits the chosen buyer's id", async () => {
     const user = userEvent.setup();
-    render(<BuyerSelect buyers={BUYERS} />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} />);
 
     await user.selectOptions(screen.getByLabelText(/Buyer/), "buyer-2");
     expect(hiddenValue()).toBe("buyer-2");
@@ -56,7 +56,7 @@ describe("BuyerSelect", () => {
 
   it("never submits the add-new sentinel as if it were a buyer", async () => {
     const user = userEvent.setup();
-    render(<BuyerSelect buyers={BUYERS} defaultValue="buyer-1" />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} defaultValue="buyer-1" />);
 
     await user.selectOptions(screen.getByLabelText(/Buyer/), "__add_new__");
     expect(screen.getByLabelText(/Buyer name/)).toBeInTheDocument();
@@ -70,7 +70,7 @@ describe("BuyerSelect", () => {
 
     render(
       <form onSubmit={onSubmit}>
-        <BuyerSelect buyers={BUYERS} />
+        <BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} />
       </form>,
     );
 
@@ -87,7 +87,7 @@ describe("BuyerSelect", () => {
   it("says so when the name was already in the workspace, and selects that one", async () => {
     nextResult = { ok: true, id: "buyer-1", name: "Getty", existed: true };
     const user = userEvent.setup();
-    render(<BuyerSelect buyers={BUYERS} />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} />);
 
     await user.selectOptions(screen.getByLabelText(/Buyer/), "__add_new__");
     await user.type(screen.getByLabelText(/Buyer name/), "Getty");
@@ -102,7 +102,7 @@ describe("BuyerSelect", () => {
   it("shows what went wrong and keeps the form open", async () => {
     nextResult = { ok: false, error: "Give the buyer a name." };
     const user = userEvent.setup();
-    render(<BuyerSelect buyers={BUYERS} />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} />);
 
     await user.selectOptions(screen.getByLabelText(/Buyer/), "__add_new__");
     await user.type(screen.getByLabelText(/Buyer name/), "x");
@@ -116,7 +116,7 @@ describe("BuyerSelect", () => {
   });
 
   it("does not offer to create one for a role that may not", () => {
-    render(<BuyerSelect buyers={BUYERS} canCreate={false} />);
+    render(<BuyerSelect workspaceSlug="marcus-hale-studio" buyers={BUYERS} canCreate={false} />);
     expect(screen.queryByRole("option", { name: /Add a new buyer/ })).not.toBeInTheDocument();
   });
 });
@@ -124,7 +124,7 @@ describe("BuyerSelect", () => {
 describe("BuyerCheckboxes", () => {
   it("ticks a buyer added here, because that is why it was added", async () => {
     const user = userEvent.setup();
-    render(<BuyerCheckboxes buyers={BUYERS} legend="Target buyers" />);
+    render(<BuyerCheckboxes workspaceSlug="marcus-hale-studio" buyers={BUYERS} legend="Target buyers" />);
 
     await user.click(screen.getByRole("button", { name: /Add a buyer/ }));
     await user.type(screen.getByLabelText(/Buyer name/), "Backgrid");
@@ -135,7 +135,7 @@ describe("BuyerCheckboxes", () => {
 
   it("submits every ticked buyer under one name", async () => {
     const user = userEvent.setup();
-    render(<BuyerCheckboxes buyers={BUYERS} legend="Target buyers" />);
+    render(<BuyerCheckboxes workspaceSlug="marcus-hale-studio" buyers={BUYERS} legend="Target buyers" />);
 
     await user.click(screen.getByLabelText("Getty"));
     await user.click(screen.getByLabelText("The Sun"));

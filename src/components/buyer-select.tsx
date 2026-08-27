@@ -39,9 +39,11 @@ const ADD_NEW = "__add_new__";
  * form is invalid HTML that submits the wrong thing.
  */
 export function AddBuyerInline({
+  workspaceSlug,
   onCreated,
   onCancel,
 }: {
+  workspaceSlug: string;
   onCreated: (buyer: BuyerChoice, existed: boolean) => void;
   onCancel: () => void;
 }) {
@@ -56,7 +58,7 @@ export function AddBuyerInline({
   const submit = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createBuyerAction({ name, buyerType, contactName, contactEmail });
+      const result = await createBuyerAction(workspaceSlug, { name, buyerType, contactName, contactEmail });
       if (!result.ok || !result.id) {
         setError(result.error ?? "Could not add the buyer.");
         return;
@@ -151,6 +153,7 @@ export function AddBuyerInline({
 }
 
 export function BuyerSelect({
+  workspaceSlug,
   name = "buyerId",
   label = "Buyer",
   buyers,
@@ -163,6 +166,7 @@ export function BuyerSelect({
   /** False for a role that may pick a buyer but not create one. */
   canCreate = true,
 }: {
+  workspaceSlug: string;
   name?: string;
   label?: string;
   buyers: readonly BuyerChoice[];
@@ -243,6 +247,7 @@ export function BuyerSelect({
 
       {adding && (
         <AddBuyerInline
+          workspaceSlug={workspaceSlug}
           onCancel={() => setAdding(false)}
           onCreated={(buyer, existed) => {
             setKnown((current) =>
@@ -270,12 +275,14 @@ export function BuyerSelect({
  * Used for a shoot's target buyers, which pre-fill the dispatch package later.
  */
 export function BuyerCheckboxes({
+  workspaceSlug,
   name = "targetBuyerIds",
   legend,
   hint,
   buyers,
   canCreate = true,
 }: {
+  workspaceSlug: string;
   name?: string;
   legend: string;
   hint?: string;
@@ -320,6 +327,7 @@ export function BuyerCheckboxes({
 
       {adding && (
         <AddBuyerInline
+          workspaceSlug={workspaceSlug}
           onCancel={() => setAdding(false)}
           onCreated={(buyer) => {
             setKnown((current) =>

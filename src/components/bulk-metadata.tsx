@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { Badge, Field } from "@/components/primitives";
-import { type MetadataState, applyMetadataToManyAction } from "@/app/shoots/actions";
+import { type MetadataState, applyMetadataToManyAction } from "@/app/[workspace]/shoots/actions";
 
 const INITIAL: MetadataState = {};
 
@@ -18,10 +18,12 @@ const INITIAL: MetadataState = {};
  * erases work is worse than no bulk action.
  */
 export function BulkMetadata({
+  workspaceSlug,
   shootId,
   selectedIds,
   defaults,
 }: {
+  workspaceSlug: string;
   shootId: string;
   selectedIds: readonly string[];
   defaults: {
@@ -31,7 +33,7 @@ export function BulkMetadata({
     usageRestrictions?: string;
   };
 }) {
-  const [state, formAction, pending] = useActionState(applyMetadataToManyAction, INITIAL);
+  const [state, formAction, pending] = useActionState(applyMetadataToManyAction.bind(null, workspaceSlug), INITIAL);
   const [open, setOpen] = useState(false);
 
   if (selectedIds.length === 0) {

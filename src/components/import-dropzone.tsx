@@ -7,7 +7,7 @@ import {
   prepareUploadAction,
   registerImportAction,
   registerPreviewAction,
-} from "@/app/shoots/actions";
+} from "@/app/[workspace]/shoots/actions";
 import { createClient } from "@/lib/supabase/client";
 import {
   formatBytes,
@@ -66,10 +66,12 @@ const CONCURRENCY = 3;
  * files were silently dropped and the operator was told nothing.
  */
 export function ImportDropzone({
+  workspaceSlug,
   shootId,
   /** True once the shoot has files: the same control, taking less of the page. */
   compact = false,
 }: {
+  workspaceSlug: string;
   shootId: string;
   compact?: boolean;
 }) {
@@ -113,7 +115,7 @@ export function ImportDropzone({
         const dimensions = await readDimensions(file);
 
         update(id, { state: "uploading" });
-        const { stagingKey } = await prepareUploadAction(uploadToken());
+        const { stagingKey } = await prepareUploadAction(workspaceSlug, uploadToken());
         const upload = await supabase.storage.from("originals").upload(stagingKey, file, {
           contentType: file.type || "application/octet-stream",
           upsert: false,
@@ -121,7 +123,7 @@ export function ImportDropzone({
         if (upload.error) throw new Error(upload.error.message);
 
         update(id, { state: "recording" });
-        const result = await registerImportAction({
+        const result = await registerImportAction(workspaceSlug, {
           shootId,
           filename: file.name,
           sha256,
@@ -146,7 +148,7 @@ export function ImportDropzone({
               .from("derivatives")
               .upload(previewKey, preview.blob, { contentType: "image/jpeg", upsert: true });
             if (!previewUpload.error) {
-              await registerPreviewAction({
+              await registerPreviewAction(workspaceSlug, {
                 assetId: result.assetId,
                 sha256: await hashFile(preview.blob),
                 bytes: preview.blob.size,
@@ -219,7 +221,7 @@ export function ImportDropzone({
     // the whole batch rather than once per file.
     if (imported > 0) {
       try {
-        await finishImportAction(shootId);
+        await finishImportAction(workspaceSlug, shootId);
       } catch {
         // The files are imported either way; the status is cosmetic here.
       }
