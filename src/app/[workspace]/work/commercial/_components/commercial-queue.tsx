@@ -7,6 +7,7 @@ import type {
   CommercialOpportunity,
   CommercialOpportunityStage,
 } from "@/lib/commercial-opportunities";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 type StageFilter = "all" | CommercialOpportunityStage;
 
@@ -26,10 +27,14 @@ const STAGE_LABELS: Record<CommercialOpportunityStage, string> = {
 };
 
 export function CommercialQueue({
+  workspaceSlug,
   opportunities,
 }: {
+  /** The address the workspace holds, resolved by the page above. */
+  workspaceSlug: string;
   opportunities: readonly CommercialOpportunity[];
 }) {
+  const routes = workspaceRoutes(workspaceSlug);
   const [activeStage, setActiveStage] = useState<StageFilter>("all");
   const [selectedId, setSelectedId] = useState("julian-cross-soho");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -242,7 +247,10 @@ export function CommercialQueue({
             </p>
           </div>
 
-          <Link className="button acid commercial-review-link" href={`/work/commercial/${selected.id}`}>
+          <Link
+            className="button acid commercial-review-link"
+            href={routes.opportunity(selected.id)}
+          >
             Review this opportunity <span aria-hidden="true">→</span>
           </Link>
         </aside>

@@ -2,7 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge, Metric, PageHeader, Panel, TableScroll } from "@/components/primitives";
+import { MetadataPanel, type MetadataPanelData } from "@/components/metadata-panel";
+import { describeStatus, resolveMetadata, technicalRows } from "@/lib/asset-metadata";
 import { getAsset } from "@/lib/data/assets";
+import { getMetadata } from "@/lib/data/asset-metadata";
+import { generationIsAvailable } from "@/lib/data/metadata-jobs";
+import { can } from "@/lib/permissions";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { listLicenses, listPayments } from "@/lib/data/money";
 import { getShoot } from "@/lib/data/shoots";
@@ -12,6 +17,7 @@ import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset } from "@/lib/metadata-rules";
 import { formatMoney, sum } from "@/lib/money";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 
 interface HistoryRow {
@@ -24,11 +30,22 @@ interface HistoryRow {
 }
 
 export default async function AssetPage({ params }: { params: Promise<{ workspace: string; assetId: string }> }) {
-  const { workspace: workspaceSlug, assetId } = await params;
-  const { organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace, assetId } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
 
   const asset = await getAsset(organizationId, assetId);
   if (!asset) notFound();
+
+  const metadata = await getMetadata(organizationId, assetId);
 
   const [shoot, submissions, licenses, payments, buyers] = await Promise.all([
     asset.shootId ? getShoot(organizationId, asset.shootId) : Promise.resolve(null),
@@ -61,7 +78,35 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
     : new Map<string, string>();
   const previewUrl = preview ? previewUrls.get(preview.objectKey) : undefined;
 
-  const report = reviewAsset(asset);
+  const report = reviewAsset(asset, undefined, metadata);
+
+  /*
+   * The same panel the shoot screen shows, on the photograph's own record.
+   *
+   * One component rather than a read-only rendering beside it: the record
+   * screen is where somebody lands from a dispatch warning or a search result,
+   * and being able to fix what sent them there without navigating again is the
+   * point. Provenance is resolved here, against this asset's shoot.
+   */
+  const generatedValues = (metadata?.generatedValues ?? {}) as { uncertaintyNote?: string };
+  const panel: MetadataPanelData = {
+    photograph: {
+      id: asset.id,
+      filename: asset.canonicalFilename,
+      previewUrl,
+      isVideo: asset.assetKind === "video",
+    },
+    fields: resolveMetadata(metadata, shoot).fields as MetadataPanelData["fields"],
+    status: describeStatus(metadata),
+    technical: technicalRows(metadata?.technical ?? null, (iso) => formatDateTime(iso)),
+    version: metadata?.version ?? 1,
+    generatedAt: metadata?.generatedAt,
+    aiModel: metadata?.aiModel,
+    overallConfidence: metadata?.overallConfidence,
+    uncertaintyNote: generatedValues.uncertaintyNote,
+    failureDetail: metadata?.failureDetail,
+    confirmedAt: metadata?.confirmedAt,
+  };
 
   const history: HistoryRow[] = [
     ...assetSubmissions.map((submission) => ({
@@ -70,7 +115,7 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
       counterparty: buyerNames.get(submission.buyerId ?? "") ?? submission.reference,
       detail: humanizeStatus(submission.status),
       value: "—",
-      href: `/submissions/${submission.id}`,
+      href: routes.submission(submission.id),
     })),
     ...assetLicenses.map((license) => ({
       date: license.startsAt ?? "",
@@ -245,7 +290,7 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
                   <dt>Shoot</dt>
                   <dd>
                     {shoot ? (
-                      <Link className="text-link" href={`/shoots/${shoot.id}`}>
+                      <Link className="text-link" href={routes.shoot(shoot.id)}>
                         {shoot.title}
                       </Link>
                     ) : (
@@ -255,6 +300,25 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
                 </div>
               </dl>
             </Panel>
+
+            {metadata ? (
+              <MetadataPanel
+                {...panel}
+                canEdit={can(session.activeWorkspace.role, "asset.write")}
+                generationAvailable={generationIsAvailable()}
+                shootId={asset.shootId}
+                workspaceSlug={workspaceSlug}
+              />
+            ) : (
+              <Panel title="Photograph metadata">
+                <div className="panel-body">
+                  <p className="section-note">
+                    This photograph was imported before structured metadata existed, so it has no
+                    record yet. Generating one creates it.
+                  </p>
+                </div>
+              </Panel>
+            )}
 
             <Panel title="Provenance">
               <div className="panel-body">

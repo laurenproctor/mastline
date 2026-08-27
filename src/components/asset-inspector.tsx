@@ -1,14 +1,8 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { Badge, Field } from "@/components/primitives";
-import {
-  type MetadataState,
-  saveAssetMetadataAction,
-  suggestAssetMetadataAction,
-} from "@/app/[workspace]/shoots/actions";
-import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
-import { formatConfidence } from "@/lib/format";
+import { type MetadataState, saveAssetMetadataAction } from "@/app/[workspace]/shoots/actions";
 
 const INITIAL: MetadataState = {};
 
@@ -32,26 +26,30 @@ export interface InspectorAsset {
 }
 
 /**
- * Edit one asset's metadata.
+ * The fields a dispatch actually sends.
  *
- * Saving preserves the previous values in the caption history rather than
- * overwriting them, which is why the form says so beneath the button. Remounted
- * per asset so the fields, and any suggestion sitting in them, belong to the
- * frame currently in view.
+ * Caption, credit, copyright, people, location, keywords, restrictions: the
+ * things a picture desk rejects work for lacking. Saving preserves the previous
+ * values in the caption history rather than overwriting them, which is why the
+ * form says so beneath the button.
+ *
+ * Suggestions no longer live here. A model's proposal is a stored, reviewable
+ * record now -- see the photograph metadata panel -- and confirming one is what
+ * copies its headline, caption, people, and keywords into these fields. What is
+ * left here is what a person types directly, which is why nothing in it carries
+ * a provenance chip.
  */
 export function AssetInspector({
   workspaceSlug,
   asset,
   shootId,
   shootLocationName,
-  suggestionsAvailable = false,
 }: {
   workspaceSlug: string;
   asset: InspectorAsset;
   shootId: string;
   /** Inherited into the Location field when this frame has none of its own. */
   shootLocationName?: string;
-  suggestionsAvailable?: boolean;
 }) {
   return (
     <InspectorForm
@@ -60,7 +58,6 @@ export function AssetInspector({
       shootId={shootId}
       workspaceSlug={workspaceSlug}
       shootLocationName={shootLocationName}
-      suggestionsAvailable={suggestionsAvailable}
     />
   );
 }
@@ -70,13 +67,11 @@ function InspectorForm({
   asset,
   shootId,
   shootLocationName,
-  suggestionsAvailable,
 }: {
   workspaceSlug: string;
   asset: InspectorAsset;
   shootId: string;
   shootLocationName?: string;
-  suggestionsAvailable: boolean;
 }) {
   const [state, formAction, pending] = useActionState(saveAssetMetadataAction.bind(null, workspaceSlug), INITIAL);
 
@@ -88,30 +83,8 @@ function InspectorForm({
   const [keywords, setKeywords] = useState(asset.keywords.join(", "));
   const [locationName, setLocationName] = useState(asset.locationName ?? shootLocationName ?? "");
 
-  const [suggestion, setSuggestion] = useState<MetadataSuggestion | null>(null);
-  const [suggestError, setSuggestError] = useState<string | null>(null);
-  const [suggesting, startSuggesting] = useTransition();
-
   const inheritedLocation =
     !asset.locationName && Boolean(shootLocationName) && locationName === shootLocationName;
-
-  const requestSuggestion = () => {
-    setSuggestError(null);
-    startSuggesting(async () => {
-      const result = await suggestAssetMetadataAction(workspaceSlug, asset.id);
-      if (!result.ok || !result.suggestion) {
-        setSuggestError(result.error ?? "The suggestion could not be made.");
-        return;
-      }
-      const drafted = result.suggestion;
-      setSuggestion(drafted);
-      // Applied straight into the fields, because a suggestion nobody can edit
-      // in place is a suggestion nobody uses. Nothing is saved by this.
-      if (drafted.headline) setHeadline(drafted.headline);
-      if (drafted.caption) setCaption(drafted.caption);
-      if (drafted.keywords.length > 0) setKeywords(drafted.keywords.join(", "));
-    });
-  };
 
   return (
     <form action={formAction} className="inspector">
@@ -129,42 +102,6 @@ function InspectorForm({
 
       {asset.missingRequired.length > 0 && (
         <p className="inspector-missing">Needs: {asset.missingRequired.join(", ")}</p>
-      )}
-
-      {suggestionsAvailable && (
-        <div className="suggest-bar">
-          <button
-            className="button small"
-            disabled={suggesting || pending}
-            onClick={requestSuggestion}
-            type="button"
-          >
-            {suggesting
-              ? "Reading the frame…"
-              : suggestion
-                ? "Suggest again"
-                : `Suggest from the ${asset.isVideo ? "clip" : "image"}`}
-          </button>
-          <span className="section-note">
-            Drafts a headline, caption, and keywords. Never suggests who is in frame.
-          </span>
-        </div>
-      )}
-
-      {suggestError && (
-        <p className="auth-error" role="alert">
-          {suggestError}
-        </p>
-      )}
-
-      {suggestion && (
-        <div className="suggestion-note" role="status">
-          <Badge tone="blue">Suggested</Badge>
-          <p>
-            {suggestion.basis} Confidence {formatConfidence(suggestion.confidence)}. Read it,
-            correct it, then save — nothing below is recorded until you do.
-          </p>
-        </div>
       )}
 
       <Field

@@ -10,10 +10,9 @@ import {
   updateAssetMetadata,
 } from "@/lib/data/assets";
 import { registerDerivative, registerImport, stagingKeyFor } from "@/lib/data/imports";
-import { suggestMetadataForAsset } from "@/lib/data/metadata-suggestions";
-import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
 import { createShoot, getShoot, setShootStatus, updateShootBrief } from "@/lib/data/shoots";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 import { type FieldErrors, parseAssetMetadata, parseShootBrief } from "@/lib/validation";
 import type { ShootBriefInput } from "@/lib/validation";
@@ -48,9 +47,10 @@ export async function createShootAction(
     return { errors: { _form: error instanceof Error ? error.message : "Unknown error" } };
   }
 
-  revalidatePath(`/${canonicalSlug}/shoots`);
-  revalidatePath(`/${canonicalSlug}/work`);
-  redirect(`/${canonicalSlug}/shoots/${shootId}`);
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.shoots());
+  revalidatePath(routes.work());
+  redirect(routes.shoot(shootId));
 }
 
 export async function updateShootBriefAction(
@@ -70,7 +70,7 @@ export async function updateShootBriefAction(
     return { errors: { _form: error instanceof Error ? error.message : "Unknown error" } };
   }
 
-  revalidatePath(`/${canonicalSlug}/shoots/${shootId}`);
+  revalidatePath(workspaceRoutes(canonicalSlug).shoot(shootId));
   return { ok: true, message: "Brief saved." };
 }
 
@@ -194,8 +194,9 @@ export async function finishImportAction(
   workspaceSlug: string,shootId: string): Promise<void> {
   const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "shoot.write");
   await setShootStatus({ organizationId, actorId, shootId, status: "preparing" });
-  revalidatePath(`/${canonicalSlug}/shoots/${shootId}`);
-  revalidatePath(`/${canonicalSlug}/work`);
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.shoot(shootId));
+  revalidatePath(routes.work());
 }
 
 export async function setSelectionAction(
@@ -211,7 +212,7 @@ export async function setSelectionAction(
     assetIds: input.assetIds,
     selected: input.selected,
   });
-  revalidatePath(`/${canonicalSlug}/shoots/${input.shootId}`);
+  revalidatePath(workspaceRoutes(canonicalSlug).shoot(input.shootId));
   return result;
 }
 
@@ -223,28 +224,7 @@ export async function setRatingAction(
 }): Promise<void> {
   const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
   await setRating({ organizationId, actorId, assetId: input.assetId, rating: input.rating });
-  revalidatePath(`/${canonicalSlug}/shoots/${input.shootId}`);
-}
-
-export interface SuggestionState {
-  readonly ok: boolean;
-  readonly suggestion?: MetadataSuggestion;
-  readonly error?: string;
-}
-
-/**
- * Draft caption metadata for one frame.
- *
- * This writes nothing. It returns a draft the operator reads, edits, and saves
- * through saveAssetMetadataAction like anything they typed themselves, which is
- * what keeps an inferred caption from ever becoming a recorded fact without a
- * human deciding it should.
- */
-export async function suggestAssetMetadataAction(
-  workspaceSlug: string,assetId: string): Promise<SuggestionState> {
-  const { organizationId } = await requireWorkspaceContext(workspaceSlug, "asset.write");
-  const outcome = await suggestMetadataForAsset({ organizationId, assetId });
-  return { ok: outcome.ok, suggestion: outcome.suggestion, error: outcome.error };
+  revalidatePath(workspaceRoutes(canonicalSlug).shoot(input.shootId));
 }
 
 export interface MetadataState {
@@ -272,8 +252,9 @@ export async function saveAssetMetadataAction(
     return { errors: { _form: error instanceof Error ? error.message : "Save failed." } };
   }
 
-  if (shootId) revalidatePath(`/${canonicalSlug}/shoots/${shootId}`);
-  revalidatePath(`/${canonicalSlug}/assets/${assetId}`);
+  const routes = workspaceRoutes(canonicalSlug);
+  if (shootId) revalidatePath(routes.shoot(shootId));
+  revalidatePath(routes.asset(assetId));
   return { ok: true, message: "Saved. The previous version is kept in the caption history." };
 }
 
@@ -320,7 +301,7 @@ export async function applyMetadataToManyAction(
       assetIds,
       metadata: provided,
     });
-    revalidatePath(`/${canonicalSlug}/shoots/${shootId}`);
+    revalidatePath(workspaceRoutes(canonicalSlug).shoot(shootId));
     return { ok: true, message: `Applied to ${updated} ${updated === 1 ? "asset" : "assets"}.` };
   } catch (error) {
     return { errors: { _form: error instanceof Error ? error.message : "Bulk apply failed." } };
@@ -340,5 +321,5 @@ export async function tombstoneAssetAction(
     assetId: input.assetId,
     reason: input.reason || "Removed by the operator",
   });
-  revalidatePath(`/${canonicalSlug}/shoots/${input.shootId}`);
+  revalidatePath(workspaceRoutes(canonicalSlug).shoot(input.shootId));
 }

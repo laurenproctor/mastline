@@ -7,6 +7,7 @@ import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue"> = {
   queued: "neutral",
@@ -24,8 +25,17 @@ export default async function SubmissionsPage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
-  const { organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await params;
+  const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const [submissions, buyers, licenses] = await Promise.all([
     listSubmissions(organizationId),
     listWorkspaceBuyers(organizationId),
@@ -103,7 +113,7 @@ export default async function SubmissionsPage({
                           )}
                         </td>
                         <td>
-                          <Link className="text-link" href={`/submissions/${submission.id}`}>
+                          <Link className="text-link" href={routes.submission(submission.id)}>
                             Open <span aria-hidden="true">→</span>
                           </Link>
                         </td>

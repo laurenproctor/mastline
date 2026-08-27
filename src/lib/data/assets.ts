@@ -6,7 +6,7 @@ import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
-import { recordEvent } from "./activity";
+import { recordEvent, recordEventWith } from "./activity";
 
 /**
  * Assets, their versions, and their caption history.
@@ -226,9 +226,11 @@ export async function updateAssetMetadata(input: {
   actorId: Id;
   assetId: Id;
   metadata: AssetMetadataInput;
+  /** Supplied when the caller already holds one, e.g. a multi-step save. */
+  client?: SupabaseClient;
 }): Promise<void> {
   const { organizationId, actorId, assetId, metadata } = input;
-  const supabase = await createClient();
+  const supabase = input.client ?? (await createClient());
 
   const { data: current, error: readError } = await supabase
     .from("assets")
@@ -283,7 +285,12 @@ export async function updateAssetMetadata(input: {
   if (error) throw new Error(`Could not save the metadata: ${error.message}`);
 
   if (describedFieldsChanged) {
-    await recordEvent({
+    // Logged through the SAME client the edit used. Reaching for a fresh one
+    // here would build a request-scoped client from cookies, which is wrong
+    // twice over: it costs a second client on the ordinary path, and it fails
+    // outright wherever there is no request -- the metadata job runner, a
+    // confirmation publishing its caption, a test.
+    await recordEventWith(supabase, {
       organizationId,
       actorId,
       entityType: "asset",
@@ -333,6 +340,57 @@ export async function applyMetadataToMany(input: {
   }
 
   return { updated };
+}
+
+/**
+ * Copy confirmed editorial metadata onto the asset itself.
+ *
+ * This is the join between the two records, and it runs at exactly one moment:
+ * confirmation. Until then the structured record is a working draft; after it,
+ * the headline, caption, keywords and subjects are the photographer's own
+ * account of the frame, and the asset row is what a dispatch actually sends.
+ *
+ * Doing it here rather than reading the metadata table at dispatch time is what
+ * keeps the promise the confirmation dialog makes -- "confirmed metadata may be
+ * included in buyer submissions and licensing records" -- literally true, and
+ * it means the caption that leaves has been through the append-only revision
+ * log like every other caption edit.
+ *
+ * Only non-empty values are copied. A confirmed record with no caption of its
+ * own must not blank one the photographer typed on the asset form.
+ */
+export async function publishConfirmedMetadata(input: {
+  organizationId: Id;
+  actorId: Id;
+  assetId: Id;
+  editorial: {
+    headline?: string;
+    caption?: string;
+    subjects: readonly string[];
+    keywords: readonly string[];
+  };
+  client?: SupabaseClient;
+}): Promise<void> {
+  const { organizationId, actorId, assetId, editorial } = input;
+  const current = await getAsset(organizationId, assetId, input.client);
+  if (!current) return;
+
+  await updateAssetMetadata({
+    organizationId,
+    actorId,
+    assetId,
+    client: input.client,
+    metadata: {
+      headline: editorial.headline ?? current.headline,
+      caption: editorial.caption ?? current.caption,
+      subjects: editorial.subjects.length > 0 ? [...editorial.subjects] : [...current.subjects],
+      locationName: current.locationName,
+      keywords: editorial.keywords.length > 0 ? [...editorial.keywords] : [...current.keywords],
+      creditLine: current.creditLine,
+      copyrightNotice: current.copyrightNotice,
+      usageRestrictions: current.usageRestrictions,
+    },
+  });
 }
 
 export async function setSelection(input: {

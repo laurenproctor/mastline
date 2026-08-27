@@ -762,6 +762,398 @@ button {
   line-height: 1.6;
   color: var(--ink);
 }
+
+/* ---------------------------------------------------------------------------
+ * Photograph metadata
+ *
+ * The panel's whole job is to keep four kinds of value visually distinct
+ * without turning the form into a colour chart. So exactly one of them is
+ * tinted -- the generated one, which is the only kind that needs reading before
+ * it is trusted -- and the other three carry a word and a hairline. Colour
+ * never carries the meaning alone: every chip says what it is.
+ * ------------------------------------------------------------------------- */
+
+.inspector-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 0;
+  flex-wrap: wrap;
+}
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  vertical-align: middle;
+}
+
+.metadata-panel {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 18px;
+}
+.meta-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.meta-head h2 {
+  margin: 0;
+  font-size: var(--fs-base);
+  letter-spacing: -0.01em;
+}
+.meta-head p {
+  margin: 2px 0 0;
+}
+
+/*
+ * The counter above, the two buttons below.
+ *
+ * A single row of [Previous][7 of 24 · 6 reviewed][Next] does not fit the
+ * 330px inspector, and letting it wrap put Next on a line of its own with the
+ * counter stranded beside Previous. Two explicit rows behave the same at every
+ * width this panel is used at, including a phone.
+ */
+.meta-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.meta-nav > span {
+  grid-column: 1 / -1;
+  order: -1;
+  text-align: center;
+  font-size: var(--fs-micro);
+}
+
+.meta-preview {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.meta-preview.empty {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 120px;
+  color: var(--muted);
+}
+
+.meta-status {
+  margin: 0;
+  font-size: var(--fs-note);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.meta-uncertainty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: var(--fs-note);
+  line-height: 1.6;
+  border-left: 2px solid var(--amber);
+  background: #fdf6e8;
+  color: var(--ink);
+}
+
+.meta-generate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Anything that replaces or publishes work says so before it happens. */
+.meta-warning {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--amber);
+  background: #fdf6e8;
+}
+.meta-warning h3 {
+  margin: 0;
+  font-size: var(--fs-base);
+}
+.meta-warning p {
+  margin: 0;
+  font-size: var(--fs-note);
+  line-height: 1.6;
+}
+
+.meta-form {
+  display: grid;
+  gap: 14px;
+}
+.meta-group {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.meta-group legend {
+  padding: 0 6px;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.meta-group[disabled] {
+  opacity: 0.7;
+}
+.meta-group.rights {
+  border-left: 2px solid var(--blue);
+}
+.meta-group p.section-note {
+  margin: 0;
+}
+
+.meta-field {
+  display: grid;
+  gap: 2px;
+}
+/*
+ * The chip sits above its control rather than beside the label, because a
+ * label and a chip on one line collide at the width this panel is used at --
+ * a phone held on a pavement.
+ */
+.prov {
+  justify-self: start;
+  padding: 1px 6px;
+  font-size: var(--fs-label);
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--paper);
+}
+.prov-generated {
+  border-color: #bac6ff;
+  background: #eef1ff;
+  color: #14309f;
+}
+.prov-inherited {
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+.prov-entered {
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+.prov-confirmed {
+  border-color: #b6d8c4;
+  background: #eef7f1;
+  color: var(--green);
+}
+/* The one tint on a control: a suggestion nobody has accepted yet. */
+.meta-field:has(.prov-generated) input,
+.meta-field:has(.prov-generated) textarea,
+.meta-field:has(.prov-generated) select {
+  background: #f7f8ff;
+  border-color: #bac6ff;
+}
+
+.meta-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.meta-check input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue);
+  flex: none;
+}
+.meta-check label {
+  font-size: var(--fs-note);
+  line-height: 1.5;
+}
+
+.meta-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.confirm-gate {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.confirm-gate > .button {
+  justify-self: start;
+}
+
+.meta-technical summary {
+  cursor: pointer;
+  font-size: var(--fs-note);
+  color: var(--ink-2);
+  padding: 6px 0;
+}
+.meta-technical dl {
+  margin: 4px 0 0;
+}
+.meta-technical .key-value dd {
+  word-break: break-word;
+}
+
+/*
+ * The panel inside the inspector.
+ *
+ * The shoot screen's right-hand column is a deliberately dark lightbox -- a
+ * frame is judged against black, not against paper -- so the panel has to be
+ * legible there as well as on the photograph's own record, which is a light
+ * page. Rather than two components, the same markup takes a dark skin here,
+ * reusing the exact values `.inspector` already established so the two halves
+ * of the tabbed panel do not look like different products.
+ *
+ * Every pairing below was checked against the surface behind it: #b8b8b4 on
+ * #18191b is 8.4:1, and the field border #6a6b6e clears the 3:1 a control's own
+ * edge owes.
+ */
+.shoot-layout .metadata-panel {
+  color: #f4f4f2;
+}
+/* The tab above already names this panel. The heading stays for a screen
+   reader, which reaches the region by its label rather than by the tab. */
+.shoot-layout .metadata-panel .meta-head h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.shoot-layout .metadata-panel .meta-status,
+.shoot-layout .metadata-panel .section-note,
+.shoot-layout .metadata-panel .muted {
+  color: #b8b8b4;
+}
+.shoot-layout .metadata-panel .meta-nav {
+  border-color: #333;
+}
+.shoot-layout .metadata-panel .meta-preview {
+  background: #101112;
+  border-color: #333;
+}
+.shoot-layout .metadata-panel .meta-preview.empty {
+  color: #8d8d89;
+}
+.shoot-layout .metadata-panel .meta-group {
+  background: #1d1e21;
+  border-color: #333;
+}
+.shoot-layout .metadata-panel .meta-group legend,
+.shoot-layout .metadata-panel .meta-check label,
+.shoot-layout .metadata-panel .field label {
+  color: #b8b8b4;
+}
+.shoot-layout .metadata-panel .field input,
+.shoot-layout .metadata-panel .field textarea,
+.shoot-layout .metadata-panel .field select {
+  background: #232426;
+  color: white;
+  border-color: #6a6b6e;
+}
+.shoot-layout .metadata-panel .prov {
+  background: #232426;
+  border-color: #4a4b4e;
+  color: #c9c9c5;
+}
+/* The one tinted state survives the skin: a suggestion still reads as blue,
+   and still tints the control it belongs to. */
+.shoot-layout .metadata-panel .prov-generated {
+  background: #1b2352;
+  border-color: #4356c4;
+  color: #cdd6ff;
+}
+.shoot-layout .metadata-panel .prov-confirmed {
+  background: #16301f;
+  border-color: #2f6b48;
+  color: #a9e2c0;
+}
+.shoot-layout .metadata-panel .meta-field:has(.prov-generated) input,
+.shoot-layout .metadata-panel .meta-field:has(.prov-generated) textarea,
+.shoot-layout .metadata-panel .meta-field:has(.prov-generated) select {
+  background: #1b1f36;
+  border-color: #4356c4;
+}
+.shoot-layout .metadata-panel .confirm-gate,
+.shoot-layout .metadata-panel .meta-technical summary {
+  border-color: #333;
+  color: #d8d8d4;
+}
+.shoot-layout .metadata-panel .key-value {
+  border-color: #2f3032;
+}
+.shoot-layout .metadata-panel .key-value dt {
+  color: #b8b8b4;
+}
+.shoot-layout .metadata-panel .key-value dd {
+  color: #f4f4f2;
+}
+/* The cream warning and uncertainty blocks keep their light treatment: they are
+   the two things that must not recede, and dark ink on cream is the strongest
+   pairing available on either surface. */
+.shoot-layout .metadata-panel .meta-warning,
+.shoot-layout .metadata-panel .meta-uncertainty {
+  color: var(--ink);
+}
+.shoot-layout .metadata-panel .inspector-saved {
+  color: #a9e2c0;
+}
+
+/*
+ * The inspector scrolls inside itself rather than stretching the sheet.
+ *
+ * The metadata panel is much taller than the contact sheet beside it, and a
+ * grid row is as tall as its tallest cell -- so without this the sheet column
+ * became a screen and a half of empty black. Bounding the aside also keeps the
+ * frames in view while the panel is scrolled, which is the motion this screen
+ * is for: look at the picture, read what was said about it.
+ *
+ * Only above the breakpoint. On a phone the two are stacked and an inner
+ * scroller would be a trap.
+ */
+@media (min-width: 901px) {
+  .shoot-layout > aside {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    /* The consent banner is pinned to the bottom of the viewport, and this
+       panel now reaches it. Anything that does has to consume the inset, or
+       the last field and the Confirm control sit behind the banner until it
+       is dismissed -- which is exactly how Sign out disappeared once before. */
+    max-height: calc(100vh - var(--consent-inset, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 900px) {
+  .metadata-panel {
+    padding: 12px 12px 20px;
+  }
+  .meta-preview {
+    max-height: 200px;
+  }
+}
 /*
  * The edge of a control is the component, not decoration, so it is drawn in
  * --field-line rather than the table hairline. At 1.41:1 the old border was

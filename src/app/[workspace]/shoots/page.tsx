@@ -7,6 +7,7 @@ import { formatDate, humanizeStatus } from "@/lib/format";
 import { reviewSelection } from "@/lib/metadata-rules";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "blue"> = {
   draft: "neutral",
@@ -26,8 +27,17 @@ export default async function ShootsPage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const shoots = await listShoots(organizationId);
   const allAssets = await listAssets(organizationId);
 
@@ -44,7 +54,7 @@ export default async function ShootsPage({
           action={can(session.activeWorkspace.role, "shoot.write") ? "Create shoot" : undefined}
           description="Every job, from brief to dispatched package."
           eyebrow="Field operations"
-          href={`/${workspaceSlug}/shoots/new`}
+          href={routes.newShoot()}
           title="Shoots"
         />
 
@@ -94,7 +104,7 @@ export default async function ShootsPage({
                           <Progress value={report.completionPercent} />
                         </td>
                         <td>
-                          <Link className="text-link" href={`/shoots/${shoot.id}`}>
+                          <Link className="text-link" href={routes.shoot(shoot.id)}>
                             Open <span aria-hidden="true">→</span>
                           </Link>
                         </td>

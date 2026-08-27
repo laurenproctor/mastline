@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { RENAME_LIMIT_PER_YEAR, type RenameOutcome, SLUG_MAX_LENGTH, slugProblem } from "@/lib/slug";
 import { isSupportedTimezone, parseWorkspaceName } from "@/lib/timezones";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * Why these actions redirect instead of calling revalidatePath.
@@ -19,13 +20,20 @@ import { isSupportedTimezone, parseWorkspaceName } from "@/lib/timezones";
  * A redirect is a fresh request, so the screen shows the new state and the
  * confirmation rides along in the query string.
  */
-const SAVED = {
-  buyer: "/settings?saved=buyer",
-  invite: "/settings?saved=invite",
-  removed: "/settings?saved=removed",
-  workspace: "/settings?saved=workspace",
-  address: "/settings?saved=address",
-} as const;
+/**
+ * Where each confirmation lands.
+ *
+ * These were bare "/settings?saved=...", which only reached the right screen
+ * because the middleware put a workspace in front of them using the
+ * active-workspace cookie -- so saving in one tab could confirm in another
+ * workspace's settings. The address is now a required argument, and it is the
+ * canonical one the action just resolved.
+ */
+type SavedReason = "buyer" | "invite" | "removed" | "workspace" | "address";
+
+function savedAt(canonicalSlug: string, reason: SavedReason): string {
+  return workspaceRoutes(canonicalSlug).settings({ query: { saved: reason } });
+}
 
 export interface BuyerState {
   readonly ok?: boolean;
@@ -53,7 +61,7 @@ export async function saveBuyerTemplateAction(
     return { error: "Payment terms must be a whole number of days." };
   }
 
-  const { organizationId } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { organizationId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -70,7 +78,7 @@ export async function saveBuyerTemplateAction(
 
   if (error) return { error: `Could not save the buyer: ${error.message}` };
 
-  redirect(SAVED.buyer);
+  redirect(savedAt(canonicalSlug, "buyer"));
 }
 
 export interface InviteState {
@@ -107,7 +115,7 @@ export async function inviteMemberAction(
     return { error: "Choose a role. An owner cannot be invited; transfer ownership instead." };
   }
 
-  const { session, organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "member.invite");
+  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "member.invite");
   const admin = createAdminClient();
 
   // Find the person, or create a dormant account for them.
@@ -153,7 +161,7 @@ export async function inviteMemberAction(
 
   // The address is deliberately not carried in the query string; it would sit
   // in browser history for a person who never chose to be listed there.
-  redirect(SAVED.invite);
+  redirect(savedAt(canonicalSlug, "invite"));
 }
 
 export async function removeMemberAction(
@@ -162,7 +170,7 @@ export async function removeMemberAction(
   formData: FormData,
 ): Promise<InviteState> {
   const userId = String(formData.get("userId") ?? "");
-  const { organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "member.invite");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "member.invite");
 
   if (userId === actorId) {
     return { error: "A workspace cannot be left without an owner." };
@@ -177,7 +185,7 @@ export async function removeMemberAction(
 
   if (error) return { error: `Could not remove that person: ${error.message}` };
 
-  redirect(SAVED.removed);
+  redirect(savedAt(canonicalSlug, "removed"));
 }
 
 export interface WorkspaceState {
@@ -214,7 +222,7 @@ export async function updateWorkspaceAction(
     return { error: "Choose a timezone from the list." };
   }
 
-  const { session, organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
   const supabase = await createClient();
 
   const previousName = session.activeWorkspace.name;
@@ -225,7 +233,7 @@ export async function updateWorkspaceAction(
   // Nothing to write, but the same confirmation: from the outside, saving a
   // form that changed nothing succeeded.
   if (parsed.name === previousName && timezone === previousTimezone) {
-    redirect(SAVED.workspace);
+    redirect(savedAt(canonicalSlug, "workspace"));
   }
 
   const { error } = await supabase
@@ -260,7 +268,7 @@ export async function updateWorkspaceAction(
   // router.refresh() afterwards does not take effect either. A redirect is a
   // fresh request, so the new name is correct in this panel and in the shell,
   // which is the whole point of having saved it.
-  redirect(SAVED.workspace);
+  redirect(savedAt(canonicalSlug, "workspace"));
 }
 
 export interface AddressState {
@@ -312,7 +320,7 @@ export async function renameWorkspaceAddressAction(
   const problem = slugProblem(requested);
   if (problem) return { error: REFUSALS[problem] };
 
-  const { session, organizationId } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { session, organizationId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
 
   // The capability is held by admins too; moving the address is an owner's
   // decision, and the database refuses anyone else regardless of this.
@@ -329,7 +337,15 @@ export async function renameWorkspaceAddressAction(
   if (error) return { error: `Could not change the address: ${error.message}` };
 
   const outcome = data as RenameOutcome;
-  if (outcome === "renamed" || outcome === "unchanged") redirect(SAVED.address);
+  /*
+   * A rename changes the address these very routes are built from, so the
+   * confirmation has to land on the NEW one. The context was resolved before
+   * the call, so its canonicalSlug is the address the workspace has just left;
+   * redirecting there would bounce through the historical-address redirect on
+   * the way back, and read as though the change had not taken.
+   */
+  if (outcome === "renamed") redirect(savedAt(requested, "address"));
+  if (outcome === "unchanged") redirect(savedAt(canonicalSlug, "address"));
 
   return { error: REFUSALS[outcome] ?? "That address could not be used." };
 }

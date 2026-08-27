@@ -119,7 +119,16 @@ export function isWorkspaceSection(rest: string): boolean {
  * present. It is NOT unauthenticated -- the handler verifies an HMAC signature
  * and refuses outright when no secret is configured.
  */
-export const PROTECTED_EXCEPTIONS = ["/api/webhooks"];
+/**
+ * The two carve-outs inside /api, neither of which is unauthenticated.
+ *
+ * An inbound provider callback has no session to present, and neither does a
+ * scheduler draining the metadata queue. Both verify their own credential --
+ * an HMAC signature for a webhook, a bearer secret for the worker -- and both
+ * refuse outright when no secret is configured. Sending them through the
+ * session gate would answer a machine with a redirect to a sign-in page.
+ */
+export const PROTECTED_EXCEPTIONS = ["/api/webhooks", "/api/jobs"];
 
 export function matches(pathname: string, routes: string[]): boolean {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));

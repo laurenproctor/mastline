@@ -1,54 +1,98 @@
 import { describe, expect, it } from "vitest";
 import {
+  GENERATION_SYSTEM_PROMPT,
   MAX_CAPTION,
   MAX_HEADLINE,
+  MAX_ITEM_LENGTH,
   MAX_KEYWORDS,
-  SUGGESTION_SYSTEM_PROMPT,
-  buildSuggestionPrompt,
+  MAX_LIST_ITEMS,
+  buildGenerationPrompt,
   describeBasis,
-  normaliseSuggestion,
+  normaliseGeneration,
   supportsEffort,
 } from "./metadata-suggestions";
 
 const BASIS = "Read from the image.";
 
-describe("normaliseSuggestion", () => {
-  it("keeps a well-formed suggestion", () => {
-    const result = normaliseSuggestion(
-      {
-        headline: "Man leaves hotel through side entrance",
-        caption: "A man in a dark coat walks out of a hotel side entrance at night.",
-        keywords: ["hotel", "night", "coat"],
-        basis: "Read from the image and the shoot brief.",
-        confidence: 0.7,
-      },
-      BASIS,
-    );
+/** A complete, well-behaved response, as the tool schema asks for it. */
+const WELL_FORMED = {
+  headline: "Man leaves hotel through side entrance",
+  caption: "A man in a dark coat walks out of a hotel side entrance at night.",
+  alt_text: "A man in a dark coat walking out of a lit doorway at night.",
+  event: null,
+  venue: null,
+  city: "London",
+  region: null,
+  country: "United Kingdom",
+  scene: "walking to a waiting car",
+  objects: ["car", "umbrella"],
+  clothing: ["dark coat"],
+  brands: [],
+  keywords: ["hotel", "night", "coat"],
+  category: "candid",
+  quality: "good",
+  sensitivity: "none",
+  uncertainty_note: null,
+  basis: "Read from the image and the shoot brief.",
+  confidence: 0.7,
+  field_confidence: { caption: 0.8, location: 0.4, brands: 0.9, category: 0.6 },
+};
 
-    expect(result).toEqual({
+describe("normaliseGeneration", () => {
+  it("keeps a well-formed response", () => {
+    const result = normaliseGeneration(WELL_FORMED, BASIS);
+
+    expect(result).toMatchObject({
       headline: "Man leaves hotel through side entrance",
-      caption: "A man in a dark coat walks out of a hotel side entrance at night.",
+      editorialCaption: "A man in a dark coat walks out of a hotel side entrance at night.",
+      city: "London",
+      country: "United Kingdom",
+      scene: "walking to a waiting car",
+      objects: ["car", "umbrella"],
+      clothing: ["dark coat"],
+      brands: [],
       keywords: ["hotel", "night", "coat"],
-      basis: "Read from the image and the shoot brief.",
+      contentCategory: "candid",
+      qualityEstimate: "good",
+      sensitivity: "none",
       confidence: 0.7,
+    });
+    // The provider's key is `caption`; the product's field is editorialCaption.
+    // A stray copy under the wire name would quietly become a second source.
+    expect(result).not.toHaveProperty("caption");
+  });
+
+  it("carries per-field confidence under the names the panel uses", () => {
+    const result = normaliseGeneration(WELL_FORMED, BASIS);
+    expect(result?.fieldConfidence).toEqual({
+      editorialCaption: 0.8,
+      city: 0.4,
+      brands: 0.9,
+      contentCategory: 0.6,
     });
   });
 
+  it("reads a null as nothing rather than as the string 'null'", () => {
+    const result = normaliseGeneration(WELL_FORMED, BASIS);
+    expect(result?.eventName).toBeUndefined();
+    expect(result?.venue).toBeUndefined();
+    expect(result?.region).toBeUndefined();
+  });
+
   it("caps a headline and a caption rather than letting them reach a buyer", () => {
-    const result = normaliseSuggestion(
-      { headline: "h".repeat(400), caption: "c".repeat(3000), keywords: [], confidence: 0.5 },
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, headline: "h".repeat(400), caption: "c".repeat(3000) },
       BASIS,
     );
     expect(result?.headline).toHaveLength(MAX_HEADLINE);
-    expect(result?.caption).toHaveLength(MAX_CAPTION);
+    expect(result?.editorialCaption).toHaveLength(MAX_CAPTION);
   });
 
   it("caps, lowercases, and de-duplicates keywords, keeping the strongest first", () => {
-    const result = normaliseSuggestion(
+    const result = normaliseGeneration(
       {
-        caption: "Something visible.",
+        ...WELL_FORMED,
         keywords: ["Hotel", "hotel", "  NIGHT  ", ...Array.from({ length: 30 }, (_, i) => `k${i}`)],
-        confidence: 0.5,
       },
       BASIS,
     );
@@ -56,113 +100,176 @@ describe("normaliseSuggestion", () => {
     expect(result?.keywords.slice(0, 3)).toEqual(["hotel", "night", "k0"]);
   });
 
-  it("drops a keyword too long to be a search term", () => {
-    const result = normaliseSuggestion(
-      { caption: "Visible.", keywords: ["ok", "x".repeat(90)], confidence: 0.5 },
+  it("keeps the casing of a brand, which reads wrong lowercased", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, brands: ["Balenciaga", "balenciaga"] },
       BASIS,
     );
-    expect(result?.keywords).toEqual(["ok"]);
+    expect(result?.brands).toEqual(["Balenciaga"]);
   });
 
-  it("clamps confidence into range instead of trusting it", () => {
-    expect(normaliseSuggestion({ caption: "a", confidence: 5 }, BASIS)?.confidence).toBe(1);
-    expect(normaliseSuggestion({ caption: "a", confidence: -2 }, BASIS)?.confidence).toBe(0);
-    expect(normaliseSuggestion({ caption: "a", confidence: "high" }, BASIS)?.confidence).toBe(0.5);
-  });
-
-  it("falls back to the interface's own basis when the model gives none", () => {
-    expect(normaliseSuggestion({ caption: "a", confidence: 0.5 }, BASIS)?.basis).toBe(BASIS);
-  });
-
-  it("returns null for a response with nothing usable in it, rather than a blank draft", () => {
-    expect(normaliseSuggestion({ headline: "  ", caption: "", keywords: [] }, BASIS)).toBeNull();
-    expect(normaliseSuggestion(null, BASIS)).toBeNull();
-    expect(normaliseSuggestion("a string", BASIS)).toBeNull();
-    expect(normaliseSuggestion(undefined, BASIS)).toBeNull();
-  });
-
-  it("ignores a keywords field that is not a list", () => {
-    const result = normaliseSuggestion(
-      { caption: "Visible.", keywords: "hotel, night", confidence: 0.5 },
+  it("drops an entry too long to be a search term", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, keywords: ["hotel", "x".repeat(MAX_ITEM_LENGTH + 1)] },
       BASIS,
     );
+    expect(result?.keywords).toEqual(["hotel"]);
+  });
+
+  it("caps a list the model overfilled", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, objects: Array.from({ length: 40 }, (_, i) => `object ${i}`) },
+      BASIS,
+    );
+    expect(result?.objects).toHaveLength(MAX_LIST_ITEMS);
+  });
+});
+
+describe("normaliseGeneration on a malformed response", () => {
+  it("returns null rather than a record of blanks when nothing describable came back", () => {
+    expect(
+      normaliseGeneration(
+        {
+          ...WELL_FORMED,
+          headline: "",
+          caption: "",
+          alt_text: "",
+          keywords: [],
+          objects: [],
+          brands: [],
+        },
+        BASIS,
+      ),
+    ).toBeNull();
+  });
+
+  it("returns null for a response that is not an object at all", () => {
+    expect(normaliseGeneration(null, BASIS)).toBeNull();
+    expect(normaliseGeneration("a caption", BASIS)).toBeNull();
+    expect(normaliseGeneration([1, 2, 3], BASIS)).toBeNull();
+    expect(normaliseGeneration(42, BASIS)).toBeNull();
+  });
+
+  it("ignores a list that arrived as a string", () => {
+    const result = normaliseGeneration({ ...WELL_FORMED, keywords: "hotel, night" }, BASIS);
     expect(result?.keywords).toEqual([]);
   });
 
-  it("never carries a people field through, whatever the model returns", () => {
-    const result = normaliseSuggestion(
-      { caption: "Visible.", subjects: ["A Real Person"], keywords: [], confidence: 0.9 },
+  it("ignores an enum value that is not in the vocabulary", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, category: "paparazzi_chase", quality: "amazing" },
       BASIS,
     );
-    expect(result).not.toHaveProperty("subjects");
-    expect(JSON.stringify(result)).not.toContain("A Real Person");
+    expect(result?.contentCategory).toBeUndefined();
+    expect(result?.qualityEstimate).toBeUndefined();
+  });
+
+  it("falls back to the safe end of the sensitivity scale, never the permissive one", () => {
+    // A model that returns nonsense here must not be able to clear a concern.
+    expect(normaliseGeneration({ ...WELL_FORMED, sensitivity: "fine" }, BASIS)?.sensitivity).toBe(
+      "none",
+    );
+    expect(
+      normaliseGeneration({ ...WELL_FORMED, sensitivity: "sensitive" }, BASIS)?.sensitivity,
+    ).toBe("sensitive");
+  });
+
+  it("clamps a confidence outside 0 to 1 and repairs one that is not a number", () => {
+    expect(normaliseGeneration({ ...WELL_FORMED, confidence: 7 }, BASIS)?.confidence).toBe(1);
+    expect(normaliseGeneration({ ...WELL_FORMED, confidence: -3 }, BASIS)?.confidence).toBe(0);
+    expect(normaliseGeneration({ ...WELL_FORMED, confidence: "high" }, BASIS)?.confidence).toBe(
+      0.5,
+    );
+    expect(normaliseGeneration({ ...WELL_FORMED, confidence: NaN }, BASIS)?.confidence).toBe(0.5);
+  });
+
+  it("drops per-field confidence that is not a number rather than storing it", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, field_confidence: { caption: "high", location: 0.2 } },
+      BASIS,
+    );
+    expect(result?.fieldConfidence).toEqual({ city: 0.2 });
+  });
+
+  it("uses the caller's basis when the model gave none", () => {
+    expect(normaliseGeneration({ ...WELL_FORMED, basis: "" }, BASIS)?.basis).toBe(BASIS);
+  });
+
+  it("collapses whitespace a model wrapped its answer in", () => {
+    const result = normaliseGeneration(
+      { ...WELL_FORMED, headline: "  Two   people\n  leave  " },
+      BASIS,
+    );
+    expect(result?.headline).toBe("Two people leave");
   });
 });
 
-describe("the instruction given to the model", () => {
-  it("forbids naming anyone", () => {
-    expect(SUGGESTION_SYSTEM_PROMPT).toMatch(/never name/i);
+describe("the instruction the model is given", () => {
+  it("forbids identifying anyone, in the first rule", () => {
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/Never name, guess at, or otherwise identify/);
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/never work backwards from a face/);
   });
 
-  it("tells it to say so rather than invent detail it cannot see", () => {
-    expect(SUGGESTION_SYSTEM_PROMPT).toMatch(/rather than inventing detail/i);
+  it("says a null is a correct answer, so a blank is not treated as a failure", () => {
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/A null is a correct answer/);
+  });
+
+  it("holds the model to what is readable before it may name a place or a brand", () => {
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/Only name a city, region, or country/);
+    expect(GENERATION_SYSTEM_PROMPT).toMatch(/Only list a brand or product you can actually read/);
   });
 });
 
-describe("buildSuggestionPrompt", () => {
-  it("passes on the facts the photographer already recorded", () => {
-    const prompt = buildSuggestionPrompt({
-      shootTitle: "Hotel Chelsea departure",
-      locationName: "40.7484, -73.9857",
-      capturedAt: "2026-08-25T20:14:00Z",
+describe("buildGenerationPrompt", () => {
+  it("passes known subjects as context and forbids adding to them", () => {
+    const prompt = buildGenerationPrompt({ knownSubjects: ["A. Photographer"] });
+    expect(prompt).toContain("A. Photographer");
+    expect(prompt).toContain("Do not add anyone, and do not return a list of people.");
+  });
+
+  it("says so when the photographer has recorded nothing", () => {
+    expect(buildGenerationPrompt({})).toContain("has not recorded anything about this frame yet");
+  });
+
+  it("tells the model a clip is a clip, so the caption can say so", () => {
+    expect(buildGenerationPrompt({ isVideo: true })).toContain("still from video");
+  });
+
+  it("carries the recorded facts without inventing any", () => {
+    const prompt = buildGenerationPrompt({
+      shootTitle: "Soho arrival",
+      locationName: "Dean Street",
+      capturedAt: "2026-08-19T17:47:03.000Z",
     });
-    expect(prompt).toContain("Hotel Chelsea departure");
-    expect(prompt).toContain("40.7484, -73.9857");
-    expect(prompt).toContain("2026-08-25T20:14:00Z");
-    expect(prompt).toMatch(/do not name anyone/i);
-  });
-
-  it("says so when the frame came from a clip", () => {
-    expect(buildSuggestionPrompt({ isVideo: true })).toMatch(/frame taken from a video clip/i);
-    expect(buildSuggestionPrompt({ isVideo: false })).toMatch(/photograph/i);
-  });
-
-  it("does not pretend to context it does not have", () => {
-    const prompt = buildSuggestionPrompt({});
-    expect(prompt).toMatch(/has not recorded anything/i);
+    expect(prompt).toContain("Shoot: Soho arrival");
+    expect(prompt).toContain("Dean Street");
+    expect(prompt).toContain("2026-08-19T17:47:03.000Z");
   });
 });
 
 describe("describeBasis", () => {
-  it("always states that people are never suggested", () => {
-    expect(describeBasis({})).toMatch(/People are never suggested/);
-    expect(describeBasis({ isVideo: true })).toMatch(/frame of the clip/i);
+  it("always says that people are not identified", () => {
+    expect(describeBasis({})).toContain("People are never identified by Mastline.");
+  });
+
+  it("names what it read, so the sentence in the panel is specific", () => {
+    expect(describeBasis({ isVideo: true, shootTitle: "x", locationName: "y" })).toBe(
+      "Read from a frame of the clip with the shoot brief and the recorded location. People are never identified by Mastline.",
+    );
   });
 });
 
 describe("supportsEffort", () => {
-  // The default. Sending effort to it is a 400, not a wasted parameter.
-  it("does not send effort to the model this deployment actually runs", () => {
+  it("sends no effort to the default model, which rejects it with a 400", () => {
     expect(supportsEffort("claude-haiku-4-5")).toBe(false);
-    expect(supportsEffort("claude-haiku-4-5-20251001")).toBe(false);
   });
 
-  it("sends effort to the models that accept it", () => {
+  it("sends effort to the models that take it", () => {
     expect(supportsEffort("claude-opus-5")).toBe(true);
     expect(supportsEffort("claude-sonnet-5")).toBe(true);
-    expect(supportsEffort("claude-sonnet-4-6")).toBe(true);
-    expect(supportsEffort("claude-fable-5")).toBe(true);
   });
 
-  // Sonnet 4.5 rejects effort exactly as Haiku does, which is the case an
-  // "everything but haiku" rule would have got wrong.
-  it("withholds effort from older models that reject it", () => {
-    expect(supportsEffort("claude-sonnet-4-5")).toBe(false);
-  });
-
-  // A model released after this code was written is not a failed suggestion.
-  it("falls back to the model's own default rather than guessing", () => {
-    expect(supportsEffort("claude-something-7")).toBe(false);
-    expect(supportsEffort("")).toBe(false);
+  it("treats an unrecognised model as not supporting it, which is always a valid request", () => {
+    expect(supportsEffort("some-future-model")).toBe(false);
   });
 });

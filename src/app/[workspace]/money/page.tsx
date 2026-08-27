@@ -8,6 +8,7 @@ import { formatDate, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { listStatementImports } from "@/lib/data/statements";
 import { AllocateForm } from "./_components/allocate";
 import { RecordPayment } from "./_components/record-payment";
@@ -31,8 +32,17 @@ export default async function MoneyPage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
   const [summary, sources, payments, licenses, submissions, buyers] = await Promise.all([
@@ -401,7 +411,7 @@ export default async function MoneyPage({
                 </div>
               ))}
               <div className="side-card">
-                <Link className="text-link" href={`/${workspaceSlug}/archive`}>
+                <Link className="text-link" href={routes.archive()}>
                   Open the archive <span aria-hidden="true">→</span>
                 </Link>
               </div>

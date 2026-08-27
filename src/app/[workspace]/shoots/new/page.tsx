@@ -4,6 +4,7 @@ import { Badge, PageHeader, Panel } from "@/components/primitives";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { CreateShootForm } from "./shoot-form";
 
 export default async function CreateShootPage({
@@ -13,8 +14,17 @@ export default async function CreateShootPage({
   params: Promise<{ workspace: string }>;
   searchParams: Promise<{ source?: string }>;
 }) {
-  const { workspace: workspaceSlug } = await routeParams;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await routeParams;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
   // Onboarding ends here rather than at a simulation of here, so somebody
@@ -40,7 +50,7 @@ export default async function CreateShootPage({
                 change the role, or open an existing shoot.
               </p>
               <div className="spacer" />
-              <Link className="button" href={`/${workspaceSlug}/shoots`}>
+              <Link className="button" href={routes.shoots()}>
                 Back to shoots
               </Link>
             </div>

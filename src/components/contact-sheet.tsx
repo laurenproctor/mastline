@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setRatingAction, setSelectionAction } from "@/app/[workspace]/shoots/actions";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface SheetAsset {
   readonly id: string;
@@ -13,9 +14,17 @@ export interface SheetAsset {
   readonly previewUrl?: string;
   readonly missingRequired: readonly string[];
   readonly capturedAt?: string;
+  /**
+   * The photograph's metadata generation status, where it has a record.
+   *
+   * Carried on the sheet so the review filters can work without a second round
+   * trip, and so a frame whose suggestion failed is visible while culling
+   * rather than only once somebody opens it.
+   */
+  readonly metadataStatus?: string;
 }
 
-type Filter = "all" | "selected" | "warnings";
+type Filter = "all" | "selected" | "warnings" | "unreviewed" | "failed" | "confirmed";
 
 /**
  * The contact sheet.
@@ -47,6 +56,11 @@ export function ContactSheet({
   const visible = useMemo(() => {
     if (filter === "selected") return assets.filter((asset) => asset.selected);
     if (filter === "warnings") return assets.filter((asset) => asset.missingRequired.length > 0);
+    if (filter === "unreviewed")
+      return assets.filter((asset) => asset.metadataStatus === "needs_review");
+    if (filter === "failed") return assets.filter((asset) => asset.metadataStatus === "failed");
+    if (filter === "confirmed")
+      return assets.filter((asset) => asset.metadataStatus === "confirmed");
     return assets;
   }, [assets, filter]);
 
@@ -64,7 +78,16 @@ export function ContactSheet({
       setPendingIds(new Set());
       startTransition(() => router.refresh());
     },
-    [router, shootId],
+    /*
+     * workspaceSlug belongs here. Without it, a callback captured on first
+     * render kept whichever address was current then, and the client router
+     * re-uses this component across a workspace change -- so a stale closure
+     * would have written a selection into the workspace the operator had left.
+     * The action re-resolves membership from the slug it is handed, so the
+     * write would have been refused rather than misfiled, but a refused write
+     * on a screen that looks fine is its own kind of wrong.
+     */
+    [router, shootId, workspaceSlug],
   );
 
   const toggle = useCallback(
@@ -90,7 +113,7 @@ export function ContactSheet({
       });
       startTransition(() => router.refresh());
     },
-    [router, shootId],
+    [router, shootId, workspaceSlug],
   );
 
   const onKeyDown = useCallback(
@@ -151,18 +174,34 @@ export function ContactSheet({
 
   const selectedCount = assets.filter((asset) => asset.selected).length;
   const warningCount = assets.filter((asset) => asset.missingRequired.length > 0).length;
+  const countBy = (status: string) =>
+    assets.filter((asset) => asset.metadataStatus === status).length;
+
+  /*
+   * The review filters appear only when there is something to filter.
+   *
+   * A shoot captioned entirely by hand has no generation statuses at all, and
+   * three permanently empty buttons on the busiest control on the screen would
+   * be worse than none.
+   */
+  const unreviewedCount = countBy("needs_review");
+  const failedCount = countBy("failed");
+  const confirmedCount = countBy("confirmed");
+
+  const filters: readonly (readonly [Filter, string])[] = [
+    ["all", `All ${assets.length}`],
+    ["selected", `Selected ${selectedCount}`],
+    ["warnings", `Warnings ${warningCount}`],
+    ...(unreviewedCount > 0 ? ([["unreviewed", `Needs review ${unreviewedCount}`]] as const) : []),
+    ...(failedCount > 0 ? ([["failed", `Failed ${failedCount}`]] as const) : []),
+    ...(confirmedCount > 0 ? ([["confirmed", `Confirmed ${confirmedCount}`]] as const) : []),
+  ];
 
   return (
     <div>
       <div className="dark-toolbar">
         <div className="actions" role="group" aria-label="Filter frames">
-          {(
-            [
-              ["all", `All ${assets.length}`],
-              ["selected", `Selected ${selectedCount}`],
-              ["warnings", `Warnings ${warningCount}`],
-            ] as const
-          ).map(([value, label]) => (
+          {filters.map(([value, label]) => (
             <button
               aria-pressed={filter === value}
               className={`button small${filter === value ? " acid" : ""}`}
@@ -211,7 +250,13 @@ export function ContactSheet({
             ? "No files imported yet."
             : filter === "warnings"
               ? "Nothing is missing required metadata."
-              : "No frames are selected."}
+              : filter === "unreviewed"
+                ? "Nothing is waiting to be reviewed."
+                : filter === "failed"
+                  ? "No suggestions failed."
+                  : filter === "confirmed"
+                    ? "Nothing has been confirmed yet."
+                    : "No frames are selected."}
         </p>
       ) : (
         <ul aria-label="Contact sheet" className="photo-grid" onKeyDown={onKeyDown} ref={gridRef}>
@@ -280,7 +325,7 @@ export function ContactSheet({
           Arrows move · Space selects · 0–5 rates · Shift-click extends · Ctrl/Cmd-A selects all
         </span>
         {focused && (
-          <Link className="button small" href={`/assets/${focused.id}`}>
+          <Link className="button small" href={workspaceRoutes(workspaceSlug).asset(focused.id)}>
             Open record
           </Link>
         )}

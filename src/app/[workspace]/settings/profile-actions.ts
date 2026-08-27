@@ -1,6 +1,7 @@
 "use server";
 
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 import { revalidatePath } from "next/cache";
 import { requireSession } from "@/lib/auth";
@@ -72,7 +73,7 @@ export async function setAvatarAction(
   }
 
   const { canonicalSlug } = await workspaceContext(workspaceSlug);
-  revalidatePath(`/${canonicalSlug}/settings`);
+  revalidatePath(workspaceRoutes(canonicalSlug).settings());
   revalidatePath("/", "layout");
   return { ok: true };
 }
@@ -99,7 +100,7 @@ export async function removeAvatarAction(workspaceSlug: string): Promise<Profile
   if (previous) await supabase.storage.from("avatars").remove([previous]);
 
   const { canonicalSlug } = await workspaceContext(workspaceSlug);
-  revalidatePath(`/${canonicalSlug}/settings`);
+  revalidatePath(workspaceRoutes(canonicalSlug).settings());
   revalidatePath("/", "layout");
   return { ok: true };
 }

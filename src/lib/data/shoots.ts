@@ -97,11 +97,23 @@ export async function listShoots(
   return (data ?? []).map((row) => toShoot(row as unknown as ShootRow, noteIds.has(row.id)));
 }
 
-export async function getShoot(organizationId: Id, shootId: Id): Promise<Shoot | null> {
+/**
+ * One shoot.
+ *
+ * The optional client is what lets a trusted server path -- the metadata job
+ * runner, which has no user session -- read the brief it needs for context.
+ * Every caller still passes organizationId, so a service-role client scopes the
+ * query by hand exactly as the admin client contract requires.
+ */
+export async function getShoot(
+  organizationId: Id,
+  shootId: Id,
+  client?: SupabaseClient,
+): Promise<Shoot | null> {
   // A malformed id is "no such record", not a database error.
   if (!isRecordId(shootId)) return null;
 
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const [{ data, error }, noteIds] = await Promise.all([
     supabase
       .from("shoots")
@@ -109,7 +121,7 @@ export async function getShoot(organizationId: Id, shootId: Id): Promise<Shoot |
       .eq("organization_id", organizationId)
       .eq("id", shootId)
       .maybeSingle(),
-    sensitiveNoteShootIds(organizationId),
+    sensitiveNoteShootIds(organizationId, supabase),
   ]);
 
   if (error) throw new Error(`Could not load shoot: ${error.message}`);
