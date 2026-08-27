@@ -133,6 +133,47 @@ Item numbers below are permanent. Resolved items keep their number so older note
   see the name. Kept private rather than public because a photographer's own
   face at a guessable address is exactly what source protection argues against.
 
+### Workspace routing
+
+- **Every authenticated destination is built by `workspaceRoutes(canonicalSlug)`
+  in `src/lib/workspace-routes.ts`.** Paths are asked for by name — `routes.money()`,
+  `routes.shoot(id)` — rather than written as strings. The alternative, writing
+  `/money` and letting the middleware put a workspace in front of it, is what
+  produced the two-tab bug: the middleware resolves an unscoped path from the
+  active-workspace cookie, a cookie is one value for the whole browser, so a page
+  showing workspace A could link into workspace B whenever a second tab had
+  switched. A link that cannot be written without an address cannot forget one.
+- **The dispatch review is addressed by shoot, and the package rides in the
+  query.** `routes.dispatch({ shootId, packageId })` takes named arguments for
+  exactly this reason: the route is `/[workspace]/dispatch/[shootId]`, and a
+  positional pair is how a package id ended up in the shoot's segment — which
+  compiles, reads correctly, and 404s.
+- **Links are built from `canonicalSlug`, never from the slug in the request.**
+  A request may arrive on an address the workspace used to hold. Echoing that
+  back sends the next click through the rename redirect again; echoing an
+  unresolved slug would put a browser-supplied value into a destination. Every
+  workspace page therefore destructures its param as `requestedWorkspace` and
+  works from the resolved address.
+- **Work-queue records carry fully scoped destinations, not relative ones.**
+  `getWorkQueue` is handed the route builder and returns complete hrefs. The
+  alternative — workspace-independent destinations scoped where they are drawn —
+  was rejected because a relative value is indistinguishable from a real path,
+  so forgetting to scope one is silent, and a queue item is a record that may be
+  read somewhere other than the page that built it. Navigation *constants* (the
+  sidebar and phone tab bar) stay relative in the sense that they name a route
+  rather than a string, but they too are resolved through the builder, so there
+  is one way to produce a path and no way to produce an unscoped one.
+- **Legacy paths keep working and nothing in the application depends on them.**
+  `/work`, `/shoots/<id>` and friends are still redirected by the middleware for
+  bookmarks and links already shared. Three places may still name one, and each
+  is documented in the allowlist in `tests/link-scoping.test.ts`: the middleware
+  itself, the post-sign-in default (there is no workspace to name yet, and an
+  account may have several), and the fallback in the error and not-found screens
+  when `usePathname()` gives them nothing to read.
+- The cookie is a preference, never a tenancy or authorization input. It answers
+  "where was I?" for a legacy path or a bare sign-in and is checked against live
+  membership before it is used.
+
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.

@@ -7,6 +7,7 @@ import { listShoots } from "./shoots";
 import { createClient } from "../supabase/server";
 import { listSubmissions } from "./submissions";
 import { reviewSelection } from "../metadata-rules";
+import type { WorkspaceRoutes } from "../workspace-routes";
 
 /**
  * The daily action queue.
@@ -24,6 +25,21 @@ export interface WorkQueueItem {
   readonly occurredAt: string;
   readonly urgent: boolean;
   readonly actionLabel: string;
+  /**
+   * A complete, workspace-scoped destination.
+   *
+   * These used to be workspace-independent -- "/money", "/shoots/<id>" -- and
+   * were rendered straight into an href, which left the middleware to guess the
+   * workspace from the active-workspace cookie. The queue is the first screen
+   * of the day and every row on it is a link, so that is the widest surface the
+   * two-tab bug had.
+   *
+   * The alternative was to keep them relative and scope them where they are
+   * drawn. It was rejected: a relative value here is indistinguishable from a
+   * real path, so forgetting to scope one is silent, and a queue item is a
+   * record that may be read somewhere other than the page that built it. A
+   * destination that carries its own workspace cannot be rendered wrongly.
+   */
   readonly href: string;
   readonly rankingBasis: string;
 }
@@ -50,6 +66,12 @@ export interface WorkPulse {
  */
 export async function getWorkQueue(
   organizationId: Id,
+  /**
+   * The route builder for the workspace being read, from `workspaceRoutes()`.
+   * A builder rather than a slug: two strings in a row is how an organization
+   * id and an address get swapped by accident.
+   */
+  routes: WorkspaceRoutes,
   client?: SupabaseClient,
 ): Promise<readonly WorkQueueItem[]> {
   const supabase = client ?? (await createClient());
@@ -119,7 +141,7 @@ export async function getWorkQueue(
           occurredAt: shoot.updatedAt,
           urgent: shoot.priority === "urgent",
           actionLabel: "Continue",
-          href: `/shoots/${shoot.id}`,
+          href: routes.shoot(shoot.id),
           rankingBasis: "Blocks dispatch on a shoot that already has selects",
         });
       }
@@ -135,7 +157,7 @@ export async function getWorkQueue(
         occurredAt: shoot.updatedAt,
         urgent: false,
         actionLabel: "Review",
-        href: `/dispatch/${shoot.id}?package=${pkg.id}`,
+        href: routes.dispatch({ shootId: shoot.id, packageId: pkg.id }),
         rankingBasis: "A prepared package earns nothing until it is sent",
       });
     }
@@ -153,7 +175,7 @@ export async function getWorkQueue(
       occurredAt: submission.sentAt ?? "",
       urgent: true,
       actionLabel: "Retry",
-      href: `/submissions/${submission.id}`,
+      href: routes.submission(submission.id),
       rankingBasis: "An approved package has not reached the buyer",
     });
   }
@@ -170,7 +192,7 @@ export async function getWorkQueue(
       occurredAt: submission.sentAt ?? "",
       urgent: overdue,
       actionLabel: "Record",
-      href: `/submissions/${submission.id}`,
+      href: routes.submission(submission.id),
       rankingBasis: overdue
         ? "The agreed follow-up date has passed"
         : "An unresolved submission is invisible revenue",
@@ -187,7 +209,7 @@ export async function getWorkQueue(
         occurredAt: payment.dueAt ?? "",
         urgent: true,
         actionLabel: "Chase",
-        href: "/money",
+        href: routes.money(),
         rankingBasis: "Payment is past its due date",
       });
     } else if (payment.unallocated.minor > 0 && payment.source === "statement") {
@@ -199,7 +221,7 @@ export async function getWorkQueue(
         occurredAt: payment.receivedAt ?? "",
         urgent: false,
         actionLabel: "Match",
-        href: "/money",
+        href: routes.money(),
         rankingBasis: "Unattributed revenue cannot be traced to an asset or shoot",
       });
     }

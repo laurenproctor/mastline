@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
 export const SEEDED = {
   owner: "marcus@mastline.test",
@@ -12,13 +12,60 @@ export const SEEDED = {
 export const SEEDED_SHOOT = "a0000000-0000-0000-0000-0000000000c1";
 export const SEEDED_ASSET = "a0000000-0000-0000-0000-0000000000d1";
 
-/** Sign in through the real form, because that is a smoke test in itself. */
-export async function signIn(page: Page, email: string = SEEDED.owner): Promise<void> {
-  await page.goto("/sign-in");
+/**
+ * The seeded workspace's address, from supabase/seed.sql.
+ *
+ * Every authenticated destination in these tests is written through `at()`
+ * below rather than as a bare "/work". A bare path is served only by the
+ * middleware's legacy redirect, which resolves it from the active-workspace
+ * cookie -- so a suite written that way tests the compatibility layer while
+ * appearing to test the application. The legacy redirect has a test of its own,
+ * in workspace-routing.spec.ts, which is where it belongs.
+ */
+export const SEEDED_WORKSPACE = "marcus-hale-studio";
+
+/**
+ * Answer the cookie banner before the test starts.
+ *
+ * The banner is pinned to the bottom of the window and, on a 390px phone, sits
+ * over the controls at the foot of a page -- Playwright reports it as
+ * "intercepts pointer events" and the click never lands. The consent tests
+ * exist to exercise that banner; every other test needs it out of the way, and
+ * refusing is the honest way to do it: nothing is granted that a real visitor
+ * would have had to agree to.
+ */
+export async function refuseCookies(context: BrowserContext): Promise<void> {
+  await context.addCookies([
+    { name: "ml_consent", value: "denied", url: "http://127.0.0.1:4100" },
+    // A country the banner is not required to ask in, so it does not reappear.
+    { name: "ml_country", value: "US", url: "http://127.0.0.1:4100" },
+  ]);
+}
+
+/** A path inside a workspace. `at("/work")` -> "/marcus-hale-studio/work". */
+export function at(path: string, workspace: string = SEEDED_WORKSPACE): string {
+  return `/${workspace}${path}`;
+}
+
+/**
+ * Sign in through the real form, because that is a smoke test in itself.
+ *
+ * The destination is named explicitly. Signing in used to land on "/work" and
+ * let the middleware choose a workspace, which is both the thing under repair
+ * and ambiguous the moment an account has more than one membership -- as the
+ * two-tab test's account deliberately does.
+ */
+export async function signIn(
+  page: Page,
+  email: string = SEEDED.owner,
+  workspace: string = SEEDED_WORKSPACE,
+): Promise<void> {
+  const destination = at("/work", workspace);
+  await page.goto(`/sign-in?next=${encodeURIComponent(destination)}`);
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SEEDED.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(/\/work/, { timeout: 20_000 });
+  await page.waitForURL(`**${destination}`, { timeout: 20_000 });
 }
 
 /**
@@ -348,4 +395,139 @@ export async function clearDeliveryLinks(): Promise<void> {
       `Could not clear delivery links (HTTP ${response.status}): ${await response.text()}`,
     );
   }
+}
+
+/**
+ * A throwaway second workspace for the account that signs in.
+ *
+ * The two-tab test needs one person in two workspaces, and the seed gives every
+ * account exactly one. Rather than editing a seeded fixture -- which would leak
+ * into the tenancy tests if a run were interrupted -- this makes a workspace of
+ * its own through the real creation path and purges it afterwards.
+ *
+ * The address is unique per run because an address is never released: a fixed
+ * one would work once and refuse for ever after.
+ */
+export interface ThrowawayWorkspace {
+  readonly id: string;
+  readonly slug: string;
+}
+
+async function accessTokenFor(email: string): Promise<string> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const anon =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? localEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!url || !anon) throw new Error("No Supabase URL or anon key: cannot sign in for fixtures.");
+
+  const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: anon, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: SEEDED.password }),
+  });
+  if (!response.ok) throw new Error(`Could not sign in as ${email}: ${await response.text()}`);
+  const { access_token: token } = (await response.json()) as { access_token?: string };
+  if (!token) throw new Error(`No access token for ${email}.`);
+  return token;
+}
+
+export async function createThrowawayWorkspace(
+  email: string = SEEDED.owner,
+  prefix = "second-desk",
+): Promise<ThrowawayWorkspace> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const anon =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? localEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!url || !anon) throw new Error("No Supabase URL or anon key: cannot create a workspace.");
+
+  const token = await accessTokenFor(email);
+  const slug = `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
+
+  const response = await fetch(`${url}/rest/v1/rpc/create_workspace`, {
+    method: "POST",
+    headers: { apikey: anon, Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      workspace_name: "Second Desk",
+      workspace_slug: slug,
+      // Without this the function hands back the workspace this owner already
+      // has, which would defeat the entire point of the test.
+      allow_additional: true,
+    }),
+  });
+  if (!response.ok) throw new Error(`Could not create ${slug}: ${await response.text()}`);
+
+  const id = (await response.json()) as string;
+  return { id, slug };
+}
+
+export async function purgeWorkspace(organizationId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot purge the workspace.");
+
+  const response = await fetch(`${url}/rest/v1/rpc/purge_organization_admin`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ target_org: organizationId }),
+  });
+  if (!response.ok) {
+    throw new Error(`Could not purge ${organizationId}: ${await response.text()}`);
+  }
+}
+
+/** Delete a package created by a test, so a run does not accumulate them. */
+export async function deletePackage(packageId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up the package.");
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
+
+  // package_assets restricts the package row, so the members go first.
+  const members = await fetch(`${url}/rest/v1/package_assets?package_id=eq.${packageId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!members.ok) throw new Error(`Could not clear the package: ${await members.text()}`);
+
+  const removed = await fetch(`${url}/rest/v1/packages?id=eq.${packageId}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!removed.ok) throw new Error(`Could not delete the package: ${await removed.text()}`);
+}
+
+/**
+ * Remove a shoot a test created.
+ *
+ * Only safe for a shoot with nothing hanging off it -- which is what these
+ * tests make. A seeded shoot with assets and packages needs the purge routines,
+ * and this deliberately cannot reach one: the delete is refused rather than
+ * cascading through a commercial record.
+ */
+export async function deleteShoot(shootId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up the shoot.");
+  const response = await fetch(`${url}/rest/v1/shoots?id=eq.${shootId}`, {
+    method: "DELETE",
+    headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" },
+  });
+  if (!response.ok) throw new Error(`Could not delete shoot ${shootId}: ${await response.text()}`);
+}
+
+/** The id of a shoot with a given title, or null. */
+export async function shootIdByTitle(title: string): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot read shoots.");
+  const response = await fetch(
+    `${url}/rest/v1/shoots?title=eq.${encodeURIComponent(title)}&select=id,organization_id`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  );
+  const rows = (await response.json()) as { id: string }[];
+  return rows[0]?.id ?? null;
 }

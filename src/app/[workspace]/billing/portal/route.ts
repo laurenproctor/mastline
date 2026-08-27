@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createStripeProvider } from "@/lib/billing/stripe";
 import { PermissionError } from "@/lib/permissions";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * Redirect to the provider's own billing screen.
@@ -20,12 +21,12 @@ export async function GET(
     const customerId = session.activeWorkspace.stripeCustomerId;
 
     if (!customerId) {
-      return NextResponse.redirect(new URL(`/${canonicalSlug}/settings`, request.url), { status: 303 });
+      return NextResponse.redirect(new URL(workspaceRoutes(canonicalSlug).settings(), request.url), { status: 303 });
     }
 
     const provider = createStripeProvider();
     if (!provider.isConfigured()) {
-      return NextResponse.redirect(new URL(`/${canonicalSlug}/settings`, request.url), { status: 303 });
+      return NextResponse.redirect(new URL(workspaceRoutes(canonicalSlug).settings(), request.url), { status: 303 });
     }
 
     const origin = new URL(request.url).origin;

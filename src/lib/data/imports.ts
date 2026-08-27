@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Id } from "../domain";
 import { isSha256, safeFilenameSegment } from "../validation";
 import { recordEventWith } from "./activity";
+import { ensureMetadataRecord } from "./asset-metadata";
 
 /**
  * Importing files into a shoot.
@@ -210,6 +211,39 @@ export async function registerImport(input: {
   if (statusError) {
     throw new Error(
       `The file was imported but its status could not be set to active: ${statusError.message}`,
+    );
+  }
+
+  // 3. The metadata record, seeded with what the container already told us.
+  //
+  // Created here rather than lazily, so a photograph is never in a state where
+  // the panel has nothing to show and the queue has nothing to write to. The
+  // EXIF pass and the generation run both come later and both expect this row.
+  //
+  // A failure is reported and not thrown: the original is already stored and
+  // its version row is append-only, so unwinding the import over a missing
+  // metadata row would destroy more than it repaired. The record is recreated
+  // by the job runner, which upserts.
+  try {
+    await ensureMetadataRecord({
+      supabase,
+      organizationId,
+      assetId,
+      seed: {
+        originalFilename: facts.filename,
+        mimeType: facts.mimeType,
+        fileBytes: facts.bytes,
+        width: facts.width,
+        height: facts.height,
+        capturedAt: facts.capturedAt,
+        checksumSha256: facts.sha256,
+      },
+    });
+  } catch (error) {
+    console.warn(
+      `Imported ${facts.filename} but could not create its metadata record: ${
+        error instanceof Error ? error.message : "unknown"
+      }`,
     );
   }
 

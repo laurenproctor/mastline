@@ -11,17 +11,24 @@ import { WorkspaceSwitcher } from "./workspace-switcher";
 import { MobileTabBar } from "./mobile-tab-bar";
 import { NavIcon } from "./nav-icons";
 import { NavPrototypeToggle } from "./nav-prototype-toggle";
+import { type WorkspaceRoutes, workspaceRoutes } from "@/lib/workspace-routes";
 
-/** Primary navigation. The order is the operating loop, not alphabetical. */
+/**
+ * Primary navigation. The order is the operating loop, not alphabetical.
+ *
+ * Each destination is asked for by name rather than written as a path, so a
+ * nav entry cannot be the one link in the application that forgot its
+ * workspace.
+ */
 const NAV = [
-  { href: "/work", icon: "work", label: "Work" },
-  { href: "/news", icon: "news", label: "News radar" },
-  { href: "/shoots", icon: "shoots", label: "Shoots" },
-  { href: "/submissions", icon: "submissions", label: "Submissions" },
-  { href: "/work/commercial", icon: "commercial", label: "Commercial" },
-  { href: "/money", icon: "money", label: "Money" },
-  { href: "/rights", icon: "rights", label: "Rights" },
-  { href: "/archive", icon: "archive", label: "Archive" },
+  { to: (r: WorkspaceRoutes) => r.work(), icon: "work", label: "Work" },
+  { to: (r: WorkspaceRoutes) => r.news(), icon: "news", label: "News radar" },
+  { to: (r: WorkspaceRoutes) => r.shoots(), icon: "shoots", label: "Shoots" },
+  { to: (r: WorkspaceRoutes) => r.submissions(), icon: "submissions", label: "Submissions" },
+  { to: (r: WorkspaceRoutes) => r.commercial(), icon: "commercial", label: "Commercial" },
+  { to: (r: WorkspaceRoutes) => r.money(), icon: "money", label: "Money" },
+  { to: (r: WorkspaceRoutes) => r.rights(), icon: "rights", label: "Rights" },
+  { to: (r: WorkspaceRoutes) => r.archive(), icon: "archive", label: "Archive" },
 ] as const;
 
 export type NavLabel = (typeof NAV)[number]["label"] | "Settings";
@@ -71,7 +78,7 @@ export async function AppShell({
    * middleware redirects those, but a link rendered from the requested slug
    * would send the next click back through the redirect for no reason.
    */
-  const base = `/${activeWorkspace.slug}`;
+  const routes = workspaceRoutes(activeWorkspace.slug);
   const status = await getWorkspaceStatus(activeWorkspace);
   const avatar = await signAvatarUrl((await getProfile(session.userId))?.avatarPath);
   const roleLabel = ROLE_LABELS[activeWorkspace.role] ?? humanizeStatus(activeWorkspace.role);
@@ -84,7 +91,7 @@ export async function AppShell({
       </a>
 
       <aside className="sidebar">
-        <Link className="brand" href={`${base}/work`}>
+        <Link className="brand" href={routes.work()}>
           <Image
             alt="Mastline — go to the work queue"
             height={30}
@@ -103,8 +110,8 @@ export async function AppShell({
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={isActive ? "nav-link active" : "nav-link"}
-                href={`${base}${item.href}`}
-                key={item.href}
+                href={item.to(routes)}
+                key={item.label}
               >
                 <NavIcon name={item.icon} />
                 <span>{item.label}</span>
@@ -117,7 +124,7 @@ export async function AppShell({
           <Link
             aria-current={active === "Settings" ? "page" : undefined}
             className={active === "Settings" ? "nav-link active" : "nav-link"}
-            href={`${base}/settings`}
+            href={routes.settings()}
           >
             <NavIcon name="settings" />
             <span>Settings</span>
@@ -145,7 +152,7 @@ export async function AppShell({
       {navMode === "bottom" && (
         <>
           <div className="mobile-top">
-            <Link className="mobile-top-brand" href={`${base}/work`}>
+            <Link className="mobile-top-brand" href={routes.work()}>
               <Image
                 alt="Mastline — go to the work queue"
                 height={26}
@@ -158,7 +165,7 @@ export async function AppShell({
           <MobileTabBar
             active={active}
             avatar={avatar}
-            base={base}
+            workspaceSlug={activeWorkspace.slug}
             displayName={session.displayName}
             initials={session.initials}
             roleLabel={roleLabel}

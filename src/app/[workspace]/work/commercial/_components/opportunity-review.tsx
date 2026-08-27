@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { CommercialOpportunity, ProductMatchKind } from "@/lib/commercial-opportunities";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 type ReviewMode = "licensing" | "shop";
 
@@ -76,7 +77,7 @@ export function OpportunityReview({  workspaceSlug,
       <div className="commercial-review-shell">
         <section className="commercial-asset-stage" aria-label="Asset under review">
           <div className="commercial-stage-toolbar">
-            <Link className="text-link" href={`/${workspaceSlug}/work/commercial`}>
+            <Link className="text-link" href={workspaceRoutes(workspaceSlug).commercial()}>
               <span aria-hidden="true">←</span> Back to review list
             </Link>
             <span>{opportunity.assetId}</span>

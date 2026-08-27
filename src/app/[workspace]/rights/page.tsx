@@ -14,6 +14,7 @@ import { getAsset } from "@/lib/data/assets";
 import { listPayments } from "@/lib/data/money";
 import { listRightsMatches } from "@/lib/data/rights";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue"> = {
   new: "danger",
@@ -30,8 +31,17 @@ export default async function RightsPage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
-  const { organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await params;
+  const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const matches = await listRightsMatches(organizationId);
   const assets = await Promise.all(matches.map((match) => getAsset(organizationId, match.assetId)));
   const payments = await listPayments(organizationId);
@@ -57,7 +67,7 @@ export default async function RightsPage({
           action="Add monitored domain"
           description="Review possible uses against licenses, provenance, and publisher evidence."
           eyebrow="Evidence before action"
-          href={`/${workspaceSlug}/settings`}
+          href={routes.settings()}
           title="Rights matches"
         />
 
@@ -115,7 +125,7 @@ export default async function RightsPage({
                         <small>{match.pageTitle}</small>
                       </td>
                       <td>
-                        <Link className="text-link" href={`/assets/${match.assetId}`}>
+                        <Link className="text-link" href={routes.asset(match.assetId)}>
                           {assets[index]?.canonicalFilename ?? match.assetId}
                         </Link>
                       </td>

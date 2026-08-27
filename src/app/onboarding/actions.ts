@@ -9,6 +9,7 @@ import { TRIAL_DAYS, TRIAL_STORAGE_BYTES } from "@/lib/pricing";
 import { PLAN_SEATS, TRIAL_PLAN } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import { type FieldErrors, type OnboardingInput, parseOnboarding } from "@/lib/validation";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface OnboardingState {
   readonly error?: string;
@@ -103,9 +104,25 @@ export async function createWorkspaceAction(
     maxAge: 60 * 60 * 24 * 365,
   });
 
+  /*
+   * The address the registry actually recorded, read back rather than echoed
+   * from the form. create_workspace normalises and validates what it is given,
+   * so what the row holds is the only thing worth building a URL from -- and
+   * this used to redirect to a bare "/shoots/new", which reached the new
+   * workspace only because the cookie set two lines above happened to say so.
+   */
+  const { data: registered } = await supabase
+    .from("workspace_slugs")
+    .select("slug")
+    .eq("organization_id", organizationId)
+    .eq("is_current", true)
+    .maybeSingle();
+
+  const slug = (registered?.slug as string | undefined) ?? input.workspaceSlug;
+
   revalidatePath("/", "layout");
   // Onboarding ends at the real first shoot, not a simulation of one. The
   // parameter lets that screen introduce itself to somebody who has never seen
   // it without duplicating any of the import system.
-  redirect("/shoots/new?source=onboarding");
+  redirect(workspaceRoutes(slug).newShoot({ query: { source: "onboarding" } }));
 }

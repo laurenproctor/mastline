@@ -9,6 +9,7 @@
  * requirement is never dropped because a buyer did not ask for it.
  */
 
+import { type PhotographMetadata, blockingMetadataReasons } from "./asset-metadata";
 import type { Asset } from "./domain";
 
 export type MetadataSeverity = "required" | "recommended";
@@ -18,7 +19,15 @@ export interface MetadataRule {
   readonly label: string;
   readonly severity: MetadataSeverity;
   readonly describe: string;
-  readonly isSatisfied: (asset: Asset) => boolean;
+  /**
+   * The photograph's structured metadata record, where it has one.
+   *
+   * Optional because most rules read the asset alone, and because a shoot
+   * imported before the metadata record existed has none. A rule that needs it
+   * must treat `null` as "nothing to object to" rather than as a failure --
+   * captioning by hand has always been a complete workflow.
+   */
+  readonly isSatisfied: (asset: Asset, metadata?: PhotographMetadata | null) => boolean;
 }
 
 const nonEmpty = (value: string | undefined | null): boolean =>
@@ -89,6 +98,28 @@ export const BASELINE_RULES: readonly MetadataRule[] = [
     describe: "Any limit on how the image may be used.",
     isSatisfied: (asset) => nonEmpty(asset.usageRestrictions),
   },
+  /*
+   * The one rule that is about who wrote the words rather than whether they
+   * exist.
+   *
+   * A machine may propose a caption, a scene, a city, a list of brands. None of
+   * that may reach a picture desk unread, because a desk will treat it as the
+   * photographer's own account of what they saw. So a photograph carrying
+   * generated metadata that nobody has confirmed is not dispatch-ready, however
+   * complete it looks.
+   *
+   * A photograph with no metadata record, or one whose record was never
+   * generated, passes: there is nothing inferred in play, and the caption,
+   * credit and copyright rules above already apply.
+   */
+  {
+    field: "metadataConfirmed",
+    label: "Metadata review",
+    severity: "required",
+    describe:
+      "Generated metadata has to be confirmed, and a hold has to have expired, before a frame is sent.",
+    isSatisfied: (_asset, metadata) => blockingMetadataReasons(metadata ?? null).length === 0,
+  },
 ];
 
 export interface MetadataReport {
@@ -104,12 +135,13 @@ export interface MetadataReport {
 export function reviewAsset(
   asset: Asset,
   rules: readonly MetadataRule[] = BASELINE_RULES,
+  metadata: PhotographMetadata | null = null,
 ): MetadataReport {
   const missingRequired = rules.filter(
-    (rule) => rule.severity === "required" && !rule.isSatisfied(asset),
+    (rule) => rule.severity === "required" && !rule.isSatisfied(asset, metadata),
   );
   const missingRecommended = rules.filter(
-    (rule) => rule.severity === "recommended" && !rule.isSatisfied(asset),
+    (rule) => rule.severity === "recommended" && !rule.isSatisfied(asset, metadata),
   );
   const requiredCount = rules.filter((rule) => rule.severity === "required").length;
 
@@ -133,12 +165,21 @@ export interface SelectionReport {
   readonly reports: readonly MetadataReport[];
 }
 
-/** Roll the per-asset reports up for a selection, a shoot, or a package. */
+/**
+ * Roll the per-asset reports up for a selection, a shoot, or a package.
+ *
+ * `metadata` is keyed by asset id and may be partial or absent entirely. A
+ * caller that has not loaded the records gets the same answer it always got,
+ * which keeps the screens that do not need them from having to fetch them.
+ */
 export function reviewSelection(
   assets: readonly Asset[],
   rules: readonly MetadataRule[] = BASELINE_RULES,
+  metadata?: ReadonlyMap<string, PhotographMetadata>,
 ): SelectionReport {
-  const reports = assets.map((asset) => reviewAsset(asset, rules));
+  const reports = assets.map((asset) =>
+    reviewAsset(asset, rules, metadata?.get(asset.id) ?? null),
+  );
   const ready = reports.filter((report) => report.isDispatchReady).length;
 
   return {

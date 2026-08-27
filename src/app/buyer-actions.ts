@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { parseNewBuyer } from "@/lib/buyer";
 import { createBuyer } from "@/lib/data/buyers";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * Create a buyer from wherever the operator happens to be.
@@ -36,14 +37,27 @@ export async function createBuyerAction(
   const parsed = parseNewBuyer(input);
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
-  const { organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "buyer.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "buyer.write");
 
   try {
     const buyer = await createBuyer({ organizationId, actorId, buyer: parsed.value });
 
-    // The buyer appears in pickers on every one of these screens, and in the
-    // settings list of buyer templates.
-    for (const path of ["/shoots/new", "/dispatch", "/money", "/settings", "/submissions"]) {
+    /*
+     * The buyer appears in pickers on every one of these screens, and in the
+     * settings list of buyer templates.
+     *
+     * These were unscoped -- "/money", "/settings" -- which are not paths any
+     * route serves any more, so the revalidation landed nowhere and the new
+     * buyer did not appear until the next full load. They are scoped to the
+     * workspace the buyer was actually created in.
+     */
+    const routes = workspaceRoutes(canonicalSlug);
+    for (const path of [
+      routes.newShoot(),
+      routes.money(),
+      routes.settings(),
+      routes.submissions(),
+    ]) {
       revalidatePath(path);
     }
 

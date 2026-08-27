@@ -13,6 +13,7 @@ import {
   setMfaPolicyAction,
   startEnrollmentAction,
 } from "../mfa-actions";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * The codes, shown once.
@@ -42,7 +43,7 @@ function RecoveryCodes({
           </li>
         ))}
       </ul>
-      <a className="button small" href={`/${workspaceSlug}/settings`}>
+      <a className="button small" href={workspaceRoutes(workspaceSlug).settings()}>
         I have saved them
       </a>
     </div>

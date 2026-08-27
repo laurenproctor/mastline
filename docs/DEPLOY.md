@@ -31,7 +31,7 @@ done and what is still needed.
 Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
 Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-All 22 migrations are applied, including the three private buckets
+All migrations are applied, including the three private buckets
 (`originals`, `derivatives`, `evidence`), none public. Production was never
 seeded; the first workspace is made through real sign-up.
 
@@ -39,6 +39,21 @@ seeded; the first workspace is made through real sign-up.
 worth running before any deploy that touches data: it prints local and remote
 side by side, and a local row with no remote opposite is a migration the code
 about to ship may already be assuming.
+
+`20260827120000_photograph_metadata` is applied to production. It adds
+`asset_metadata`, `asset_metadata_jobs`, two enums, two service-role RPCs, and
+the triggers that stop a generation write from touching rights or a confirmed
+record. It is additive -- nothing existing is altered or dropped -- so it was
+safe to push ahead of the code that uses it, which is also why the application
+tolerates a photograph having no metadata row yet. Its ROLLBACK block is at the
+top of the file.
+
+Note what the security advisor does NOT report after that push:
+`claim_metadata_jobs_admin` and `complete_metadata_job_admin` appear in neither
+the anon nor the authenticated `SECURITY DEFINER` list, because both revoke
+`EXECUTE` from `public`, `anon`, and `authenticated` and grant it only to
+`service_role`. Their absence from that report is the check that the grants
+landed.
 
 One rule that migration `20260825170000` establishes, because it was learned the
 hard way: **service_role holds the same table privileges as authenticated.**
@@ -109,13 +124,16 @@ is what Supabase puts in reset and confirmation emails.
 ## Metadata suggestions
 
 `ANTHROPIC_API_KEY` is set for production. It is server-only and must never
-become `NEXT_PUBLIC_`. It gates one control: "Suggest from the image" in the
-asset inspector. With no key the control is not offered at all rather than
-offered and failing, so an unset key is a degradation and not an outage.
+become `NEXT_PUBLIC_`. It gates the "Generate metadata" control on the
+photograph metadata panel. With no key the control is not offered at all rather
+than offered and failing, and nothing is queued that could never be drained, so
+an unset key is a degradation and not an outage: the whole panel can still be
+filled in and confirmed by hand.
 
 The model is `claude-haiku-4-5` by default, overridable with
-`MASTLINE_SUGGESTION_MODEL` (unset in production, so the default applies).
-Roughly half a cent a suggestion. Two things to know before changing it:
+`MASTLINE_METADATA_MODEL` (`MASTLINE_SUGGESTION_MODEL` is still read as a
+fallback name; both are unset in production, so the default applies). Roughly
+half a cent a photograph. Two things to know before changing it:
 
 - Not every model accepts `output_config.effort`. Haiku 4.5 rejects it with a
   400 rather than ignoring it. `supportsEffort` in `src/lib/metadata-suggestions.ts`
@@ -127,6 +145,39 @@ Roughly half a cent a suggestion. Two things to know before changing it:
 Changing either variable needs a redeploy. The value is read on the server per
 request, but Vercel binds a deployment's environment when the deployment is
 created.
+
+### The metadata worker
+
+Generation is asynchronous and durable. A Server Action inserts a row into
+`asset_metadata_jobs` and returns; `after()` then drains a few jobs on the tail
+of the same invocation, once the response has been flushed. Nothing is lost if
+that invocation dies -- the row is in Postgres and the lease expires -- but
+nothing else picks it up on its own either.
+
+**The sweep is what closes that gap, and it is a deployment step.** `GET` or
+`POST` `/api/jobs/metadata` with `Authorization: Bearer <secret>`, where the
+secret is `METADATA_WORKER_SECRET` or, failing that, `CRON_SECRET` (the variable
+Vercel Cron sends by default). With neither set the endpoint answers 503 to
+everything rather than running unbounded model calls for anyone who finds the
+URL.
+
+To schedule it on Vercel, add to `vercel.json`:
+
+```json
+{ "crons": [{ "path": "/api/jobs/metadata", "schedule": "*/5 * * * *" }] }
+```
+
+Without a scheduler the feature still works -- every request that queues
+metadata also drains some -- but a card of two hundred frames finishes only as
+fast as later requests arrive, and a job whose worker was killed waits for the
+next drain rather than for the next sweep. That is the trade-off recorded in
+`src/lib/data/metadata-jobs.ts`, and it is the reason no queue service was
+added.
+
+Both halves are required for anything to run: `ANTHROPIC_API_KEY` to have
+something to ask, and `SUPABASE_SERVICE_ROLE_KEY` to have something to run the
+ask. `generationIsAvailable()` checks both, and the interface hides the control
+when either is missing.
 
 ## Stripe
 

@@ -10,6 +10,7 @@ import { reviewSelection } from "@/lib/metadata-rules";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const KIND_TONE = {
   Shoot: "warn",
@@ -32,12 +33,23 @@ export default async function WorkQueuePage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  // Links are built from the address the workspace holds now, never from the
+  // one the request happened to arrive on.
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const now = new Date();
 
   const [queue, pulse, shoots, activity] = await Promise.all([
-    getWorkQueue(organizationId),
+    getWorkQueue(organizationId, routes),
     getWorkPulse(organizationId),
     listShoots(organizationId),
     listActivity(organizationId, { limit: 6 }),
@@ -58,7 +70,7 @@ export default async function WorkQueuePage({
               : `${queue.length} ${queue.length === 1 ? "item needs" : "items need"} action. The next best move is visible.`
           }
           eyebrow={formatLongDate(now.toISOString())}
-          href={`/${workspaceSlug}/shoots/new`}
+          href={routes.newShoot()}
           title="Work queue"
         />
 
@@ -128,7 +140,7 @@ export default async function WorkQueuePage({
 
             <Panel
               action={
-                <Link className="text-link" href={`/${workspaceSlug}/archive`}>
+                <Link className="text-link" href={routes.archive()}>
                   View archive
                 </Link>
               }
@@ -165,7 +177,7 @@ export default async function WorkQueuePage({
                 </p>
                 <Progress label="Ready to dispatch" value={onDeckReport.completionPercent} />
                 <div className="spacer" />
-                <Link className="button small" href={`/shoots/${onDeck.id}`}>
+                <Link className="button small" href={routes.shoot(onDeck.id)}>
                   Open shoot
                 </Link>
               </div>
@@ -173,7 +185,7 @@ export default async function WorkQueuePage({
               <div className="side-card">
                 <h3>No shoot in progress</h3>
                 <p>Create a shoot from a brief, before there are any files.</p>
-                <Link className="button small" href={`/${workspaceSlug}/shoots/new`}>
+                <Link className="button small" href={routes.newShoot()}>
                   Create shoot
                 </Link>
               </div>
@@ -195,7 +207,7 @@ export default async function WorkQueuePage({
                   <dd>{formatMoney(pulse.unmatched)}</dd>
                 </div>
               </dl>
-              <Link className="text-link" href={`/${workspaceSlug}/money`}>
+              <Link className="text-link" href={routes.money()}>
                 View money <span aria-hidden="true">→</span>
               </Link>
             </div>

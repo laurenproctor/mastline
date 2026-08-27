@@ -36,3 +36,21 @@ export function supabaseServiceRoleKey(): string {
   }
   return required("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
+
+/**
+ * Whether a service role key is configured at all.
+ *
+ * A predicate rather than a try/catch around the getter above, and it lives
+ * here rather than at the call site for one reason: the variable is named in
+ * exactly one file, and `tests/secret-safety.test.ts` enforces that. Code that
+ * needs to know whether a trusted server path CAN run -- the metadata worker
+ * asks before offering to queue anything -- asks this instead of reading the
+ * environment itself.
+ *
+ * Returns false in the browser rather than throwing: the question "can the
+ * server do this?" has an answer there, and it is no.
+ */
+export function hasServiceRoleKey(): boolean {
+  if (typeof window !== "undefined") return false;
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}

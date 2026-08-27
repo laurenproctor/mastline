@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { ErrorState } from "@/components/error-state";
+import { ErrorState, useErrorExits } from "@/components/error-state";
 
 /**
  * The application error boundary.
@@ -17,6 +17,8 @@ export default function AppError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const exits = useErrorExits();
+
   useEffect(() => {
     // Server digests are opaque by design, so the console is where a developer
     // sees what actually happened.
@@ -29,7 +31,7 @@ export default function AppError({
   if (isReadOnly) {
     return (
       <ErrorState
-        backHref="/settings"
+        backHref={exits.settingsHref}
         backLabel="Open settings"
         detail="This workspace is read-only, so that change was not saved. Everything remains readable and exportable."
         digest={error.digest}

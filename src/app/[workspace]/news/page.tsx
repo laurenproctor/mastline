@@ -12,6 +12,8 @@ import { formatConfidence, formatElapsed, humanizeStatus } from "@/lib/format";
 import { formatMoneyRange } from "@/lib/money";
 import { DEMO_NOW } from "@/lib/mock/fixtures";
 import { listOpportunities } from "@/lib/mock/queries";
+import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 function windowLabel(closesAt: string | undefined, now: Date): { text: string; urgent: boolean } {
   if (!closesAt) return { text: "No window", urgent: false };
@@ -27,7 +29,19 @@ export default async function NewsPage({
 }: {
   params: Promise<{ workspace: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
+  const { workspace: requestedWorkspace } = await params;
+  // Resolved rather than echoed: this screen links to settings and to asset
+  // records, and both have to name the workspace that is actually on screen.
+  const { canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const opportunities = await listOpportunities();
   const selected = opportunities[0];
 
@@ -38,7 +52,7 @@ export default async function NewsPage({
           action="Manage sources"
           description="Prioritized by relevance, demand, timing, and the assets already in the archive."
           eyebrow="Manual story entry · live feeds not yet connected"
-          href={`/${workspaceSlug}/settings`}
+          href={routes.settings()}
           title="News opportunities"
         />
 
@@ -118,7 +132,7 @@ export default async function NewsPage({
                 <strong>Top archive matches ({selected.archiveMatch.value.assetIds.length})</strong>
                 <div className="thumb-strip">
                   {selected.archiveMatch.value.assetIds.slice(0, 5).map((assetId, index) => (
-                    <Link href={`/assets/${assetId}`} key={assetId}>
+                    <Link href={routes.asset(assetId)} key={assetId}>
                       <PhotoTile index={index + 1} selected={index < 4} />
                     </Link>
                   ))}
