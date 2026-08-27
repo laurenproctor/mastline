@@ -36,6 +36,71 @@ export const CONSENT_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 export type ConsentChoice = "granted" | "denied";
 
 /**
+ * What the preferences panel offers, and the single source the panel and its
+ * tests both read.
+ *
+ * There is one optional category because the site has one optional collector.
+ * The privacy policy states that Mastline shows no advertising and lets no
+ * advertiser target anyone, so an "advertising" row would be a category
+ * invented for the look of granularity, and a panel that lists choices the site
+ * does not actually make is worse than one that lists the choice it does.
+ *
+ * The cookie stays `granted`/`denied` for the same reason: with one optional
+ * category the existing vocabulary already expresses every reachable state, so
+ * the panel is an affordance over the stored choice rather than a new format.
+ * `consentDefaultsScript()` parses that cookie inline, before the container
+ * loads, and not having to change it is the point.
+ */
+export type ConsentCategoryId = "essential" | "analytics";
+
+export interface ConsentCategory {
+  id: ConsentCategoryId;
+  label: string;
+  /** Optional categories get a switch; the essential one is stated, not asked. */
+  optional: boolean;
+  description: string;
+}
+
+export const CONSENT_CATEGORIES: readonly ConsentCategory[] = [
+  {
+    id: "essential",
+    label: "Essential",
+    optional: false,
+    description:
+      "Keeps you signed in, remembers this choice, and holds the short-lived country code the banner needs to know whether to ask. The site cannot work without them.",
+  },
+  {
+    id: "analytics",
+    label: "Analytics",
+    optional: true,
+    description:
+      "Google Analytics, to understand how the site is used, and Microsoft Clarity, which records how pages are used — pointer movement, scrolling, and clicks — to show where the site is confusing. Neither is loaded, and no cookie of theirs is set, until you turn this on. Clarity is provided by Microsoft, which may set cookies of its own once it runs.",
+  },
+];
+
+/** The optional categories, in panel order. */
+export const OPTIONAL_CONSENT_CATEGORIES = CONSENT_CATEGORIES.filter((c) => c.optional);
+
+export type ConsentPreferences = Record<"analytics", boolean>;
+
+export const DEFAULT_CONSENT_PREFERENCES: ConsentPreferences = { analytics: false };
+
+/**
+ * Collapse the panel's switches into the stored choice.
+ *
+ * A second optional category would make this a per-signal payload rather than a
+ * single choice; today every optional collector is behind `analytics_storage`,
+ * so the fold is exact rather than lossy.
+ */
+export function preferencesToChoice(preferences: ConsentPreferences): ConsentChoice {
+  return preferences.analytics ? "granted" : "denied";
+}
+
+export function choiceToPreferences(choice: ConsentChoice): ConsentPreferences {
+  return { analytics: choice === "granted" };
+}
+
+/**
  * EU27, the three non-EU EEA states, the UK, and Switzerland.
  *
  * Consent Mode reads ISO 3166 codes here. This list decides two things: where

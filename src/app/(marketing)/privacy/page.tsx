@@ -22,7 +22,7 @@ export default function Page() {
         <div className="wrap">
           <div className="legal">
             <p className="meta">
-              Effective August 25, 2026 · Applies to mastline.co and the Mastline application
+              Effective August 27, 2026 · Applies to mastline.co and the Mastline application
             </p>
 
             <h2>1. Who Mastline is</h2>
@@ -64,16 +64,20 @@ export default function Page() {
                 operating system, and approximate location derived from IP address.
               </li>
               <li>
-                <strong>Cookies and analytics:</strong> Mastline uses two analytics services. Google
-                Analytics, loaded through Google Tag Manager, is used to understand how the site is
-                used; in the EEA, the UK, and Switzerland nothing is stored on your device and no
-                analytics identifiers are collected unless you accept, and you can change that
-                choice at any time from &ldquo;Cookie choices&rdquo; in the footer. Vercel
-                Analytics, provided by Mastline&rsquo;s hosting provider, counts page views and
-                records basic browser, device, and country information; it sets no cookie, stores
-                nothing on your device, and does not follow you across other sites, so it is not
-                part of the choice described above. A short-lived cookie recording your country is
-                set to decide whether to ask you; it holds nothing else.
+                <strong>Cookies and analytics:</strong> Mastline uses three analytics services, two
+                of which are optional and behind your choice. Google Analytics, loaded through
+                Google Tag Manager, is used to understand how the site is used. Microsoft Clarity,
+                provided by Microsoft, records how pages are used &mdash; pointer movement,
+                scrolling, and clicks &mdash; to show where the site is confusing; it sets the{" "}
+                <code>_clck</code> and <code>_clsk</code> cookies, and Microsoft may set cookies of
+                its own once it runs. Neither is loaded, and no cookie of either is set, unless you
+                turn on Analytics, and you can change that choice at any time from &ldquo;Cookie
+                choices&rdquo; in the footer. Vercel Analytics, provided by Mastline&rsquo;s hosting
+                provider, counts page views and records basic browser, device, and country
+                information; it sets no cookie, stores nothing on your device, and does not follow
+                you across other sites, so it is not part of the choice described above. A
+                short-lived cookie recording your country is set to decide whether to ask you; it
+                holds nothing else.
               </li>
               <li>
                 <strong>Pitch and license activity:</strong> when a buyer opens a pitch link,

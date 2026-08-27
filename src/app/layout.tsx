@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { AnimatedFavicon } from "@/components/animated-favicon";
+import { Clarity } from "@/components/clarity";
 import { ConsentBanner } from "@/components/consent-banner";
 import { consentDefaultsScript } from "@/lib/consent";
 import { SITE_URL } from "@/lib/site";
@@ -67,6 +68,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <AnimatedFavicon />
         {children}
         <ConsentBanner />
+        <Clarity />
         {/*
           Vercel Analytics, which is deliberately not behind the Consent Mode gate
           above: it sets no cookie and writes nothing to the visitor's device, so

@@ -40,6 +40,118 @@
   margin: 0;
 }
 
+/*
+ * The preferences panel, which is the same banner holding more.
+ *
+ * It stays a bottom-anchored strip rather than becoming a centred modal: the
+ * inset the layout reserves is measured from this element, so a panel that
+ * lives somewhere else would need a second mechanism to avoid the collision
+ * the first one exists to prevent. Capped and scrollable because the category
+ * list is taller than a phone in landscape.
+ */
+.panel {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  /* Half the viewport, so the shell always keeps the other half. The panel
+     scrolls inside itself past that rather than pushing the application into a
+     strip too short to hold its own sidebar. */
+  max-height: 50vh;
+}
+
+.panelBody {
+  overflow-y: auto;
+}
+
+.panelHeading {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+
+.panelHeading:focus-visible {
+  outline: 2px solid #1e5bff;
+  outline-offset: 3px;
+}
+
+.categories {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.category {
+  border-top: 1px solid #d8d4c8;
+  padding-top: 12px;
+}
+
+.categoryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.categoryLabel {
+  font-weight: 600;
+}
+
+/* The switch is a real checkbox with a real label, so the whole row is a hit
+   target and the state is the one assistive technology already understands. */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.switch input {
+  width: 16px;
+  height: 16px;
+  accent-color: #121212;
+  cursor: pointer;
+}
+
+.switch input:focus-visible {
+  outline: 2px solid #1e5bff;
+  outline-offset: 2px;
+}
+
+.always {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a564c;
+}
+
+.categoryCopy {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: #3a372f;
+}
+
+.footnote {
+  max-width: 68ch;
+  margin: 14px 0 0;
+  color: #5a564c;
+  border-top: 1px solid #d8d4c8;
+  padding-top: 12px;
+}
+
+.footnote a,
+.categoryCopy a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.panel .actions {
+  justify-content: flex-end;
+}
+
 .copy a {
   color: inherit;
   text-decoration: underline;
@@ -98,5 +210,6 @@
 
   .button {
     flex: 1;
+    min-height: 44px;
   }
 }

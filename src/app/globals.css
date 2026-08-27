@@ -60,10 +60,25 @@ button {
   display: grid;
   grid-template-columns: var(--sidebar) 1fr;
 }
+/*
+ * Space kept clear at the bottom of the viewport.
+ *
+ * The consent banner is fixed to the bottom, and this shell anchors Sign out to
+ * the bottom too. They occupied the same pixels, and the banner is above: while
+ * a consent choice was outstanding the button could not be clicked at all --
+ * every visitor in the EEA, the UK, or Switzerland, and everyone whose country
+ * could not be resolved. The banner publishes its measured height here while it
+ * is up, and nothing reserves any space once it has gone.
+ */
 .sidebar {
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: calc(100vh - var(--consent-inset, 0px));
+  /* Reserving the banner's height is only half of it: the preferences panel is
+     tall enough that what is left can be shorter than the sidebar's own
+     content, and without this the overflow spills back under the panel and
+     Sign out is unreachable again -- the same bug, one layer further in. */
+  overflow-y: auto;
   border-right: 1px solid var(--line);
   background: #efede7;
   padding: 24px 14px 18px;
@@ -148,7 +163,9 @@ button {
   min-width: 0;
 }
 .page {
-  padding: 38px 40px 64px;
+  /* The last row of a table, and the row action in it, have to be reachable
+     when the banner is up as well. */
+  padding: 38px 40px calc(64px + var(--consent-inset, 0px));
   max-width: 1500px;
   margin: 0 auto;
 }
