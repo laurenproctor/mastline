@@ -927,6 +927,20 @@ button {
   background: #191a1b;
   border-bottom: 1px solid #343538;
 }
+/*
+ * Buttons on the dark side of the contact sheet.
+ *
+ * A <button> does not inherit colour: absent a rule it takes the UA's own
+ * `buttontext`, which is black, and on the #18191b inspector that is 1.19:1.
+ * The toolbar had its own rule and the inspector did not, so "Suggest from the
+ * image" was a black label on a near-black panel -- invisible in practice, and
+ * only missed by the earlier sweep because the control is not drawn at all
+ * unless suggestions are configured.
+ */
+.shoot-layout .button {
+  color: #f4f4f2;
+  border-color: #7c7d80;
+}
 .dark-toolbar .button {
   color: white;
   border-color: #7c7d80;
@@ -1436,17 +1450,34 @@ button {
   .page-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
-    margin: -24px -16px 20px;
-    padding: 24px 16px;
+    gap: 12px;
+    /* The top margin cancels .page's top padding so the header bleeds to the
+       edge; it has to stay the negative of it, whatever that becomes. */
+    margin: -24px -16px 16px;
+    padding: 18px 16px;
     min-height: auto;
   }
+  /*
+   * A display face still, just not one set for a desktop column. At 34px on a
+   * 390px screen the title alone was 51px before its margins, and "Commercial
+   * opportunities" took two lines of it. The clamp keeps a 360px Android from
+   * wrapping what a 430px phone fits on one line.
+   */
   .page-header h1 {
-    font-size: 34px;
+    font-size: clamp(26px, 7.4vw, 32px);
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+  }
+  /* Orientation, not body copy: it is read on the first visit and skimmed
+     after that. --fs-body with tighter leading rather than the interface
+     default, which was setting two lines at 45px. */
+  .page-header p {
+    font-size: var(--fs-body);
+    line-height: 1.45;
   }
   .page-header > .button {
     width: 100%;
-    min-height: 46px;
+    min-height: 44px;
   }
   .form-grid,
   .archive-grid,
