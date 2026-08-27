@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { confirmStatementLine, importStatement, updateStatementLine } from "@/lib/data/statements";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface StatementState {
   readonly ok?: boolean;
@@ -38,7 +39,7 @@ export async function importStatementAction(
       csv,
     });
 
-    revalidatePath(`/${canonicalSlug}/money`);
+    revalidatePath(workspaceRoutes(canonicalSlug).money());
 
     if (result.duplicate) {
       return {
@@ -69,7 +70,7 @@ export async function confirmStatementLineAction(
 
   try {
     await confirmStatementLine({ organizationId, actorId, lineId });
-    revalidatePath(`/${canonicalSlug}/money`);
+    revalidatePath(workspaceRoutes(canonicalSlug).money());
     return { ok: true, message: "Reconciled into a payment." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not reconcile that line." };
@@ -95,7 +96,7 @@ export async function updateStatementLineAction(
       matchedSubmissionId: submissionId,
       matchStatus: status as "suggested" | "ignored" | "disputed" | undefined,
     });
-    revalidatePath(`/${canonicalSlug}/money`);
+    revalidatePath(workspaceRoutes(canonicalSlug).money());
     return { ok: true, message: "Line updated." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not update that line." };

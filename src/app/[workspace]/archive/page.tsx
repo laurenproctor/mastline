@@ -11,6 +11,7 @@ import { signedUrlsFor } from "@/lib/data/imports";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { workspaceContext } from "@/lib/session-context";
+import { type WorkspaceRoutes, workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 
 const FILTERS: readonly { value: EarningFilter; label: string }[] = [
@@ -19,13 +20,19 @@ const FILTERS: readonly { value: EarningFilter; label: string }[] = [
   { value: "earning", label: "Has earned" },
 ];
 
-function linkTo(query: string, filter: EarningFilter, page: number): string {
-  const params = new URLSearchParams();
-  if (query) params.set("q", query);
-  if (filter !== "all") params.set("filter", filter);
-  if (page > 1) params.set("page", String(page));
-  const search = params.toString();
-  return search ? `/archive?${search}` : "/archive";
+function linkTo(
+  routes: WorkspaceRoutes,
+  query: string,
+  filter: EarningFilter,
+  page: number,
+): string {
+  return routes.archive({
+    query: {
+      q: query || undefined,
+      filter: filter === "all" ? undefined : filter,
+      page: page > 1 ? page : undefined,
+    },
+  });
 }
 
 export default async function ArchivePage({
@@ -35,9 +42,18 @@ export default async function ArchivePage({
   params: Promise<{ workspace: string }>;
   searchParams: Promise<{ q?: string; filter?: string; page?: string }>;
 }) {
-  const { workspace: workspaceSlug } = await routeParams;
+  const { workspace: requestedWorkspace } = await routeParams;
   const params = await searchParams;
-  const { organizationId } = await workspaceContext(workspaceSlug);
+  const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
 
   const query = (params.q ?? "").trim();
   const filter = (FILTERS.find((entry) => entry.value === params.filter)?.value ??
@@ -64,7 +80,7 @@ export default async function ArchivePage({
           action="Import a shoot"
           description="Search by subject, place, caption, or keyword. Results carry commercial state, not just pixels."
           eyebrow="Commercial memory"
-          href={`/${workspaceSlug}/shoots/new`}
+          href={routes.newShoot()}
           title="Archive"
         />
 
@@ -94,7 +110,7 @@ export default async function ArchivePage({
               <Link
                 aria-current={filter === entry.value ? "true" : undefined}
                 className={`badge ${filter === entry.value ? "blue" : "neutral"}`}
-                href={linkTo(query, entry.value, 1)}
+                href={linkTo(routes, query, entry.value, 1)}
                 key={entry.value}
               >
                 {entry.label}
@@ -119,7 +135,7 @@ export default async function ArchivePage({
 
               return (
                 <li key={result.assetId}>
-                  <Link className="asset-card" href={`/assets/${result.assetId}`}>
+                  <Link className="asset-card" href={routes.asset(result.assetId)}>
                     {previewUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img alt="" className="asset-card-image" loading="lazy" src={previewUrl} />
@@ -153,7 +169,7 @@ export default async function ArchivePage({
             <Link
               aria-disabled={page <= 1}
               className={`button small${page <= 1 ? " disabled" : ""}`}
-              href={linkTo(query, filter, Math.max(1, page - 1))}
+              href={linkTo(routes, query, filter, Math.max(1, page - 1))}
             >
               Previous
             </Link>
@@ -165,7 +181,7 @@ export default async function ArchivePage({
             <Link
               aria-disabled={page >= results.totalPages}
               className={`button small${page >= results.totalPages ? " disabled" : ""}`}
-              href={linkTo(query, filter, Math.min(results.totalPages, page + 1))}
+              href={linkTo(routes, query, filter, Math.min(results.totalPages, page + 1))}
             >
               Next
             </Link>

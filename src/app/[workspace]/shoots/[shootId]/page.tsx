@@ -18,6 +18,7 @@ import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset, reviewSelection } from "@/lib/metadata-rules";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ShootWorkspacePage({
@@ -25,8 +26,17 @@ export default async function ShootWorkspacePage({
 }: {
   params: Promise<{ workspace: string; shootId: string }>;
 }) {
-  const { workspace: workspaceSlug, shootId } = await params;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace, shootId } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
   const shoot = await getShoot(organizationId, shootId);
@@ -137,7 +147,7 @@ export default async function ShootWorkspacePage({
             <div className="sheet-header">
               <Progress label="Selection ready" value={selectionReport.completionPercent} />
               {mayEdit && (
-                <Link className="button small" href={`/shoots/${shootId}#import`}>
+                <Link className="button small" href={routes.shoot(shootId, { hash: "import" })}>
                   Import more
                 </Link>
               )}
@@ -231,7 +241,10 @@ export default async function ShootWorkspacePage({
                   <ul className="package-list">
                     {packages.map((pkg) => (
                       <li key={pkg.id}>
-                        <Link className="text-link" href={`/dispatch/${shootId}?package=${pkg.id}`}>
+                        <Link
+                          className="text-link"
+                          href={routes.dispatch({ shootId, packageId: pkg.id })}
+                        >
                           {pkg.name}
                         </Link>
                         <small>

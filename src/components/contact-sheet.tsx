@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { setRatingAction, setSelectionAction } from "@/app/[workspace]/shoots/actions";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface SheetAsset {
   readonly id: string;
@@ -64,7 +65,16 @@ export function ContactSheet({
       setPendingIds(new Set());
       startTransition(() => router.refresh());
     },
-    [router, shootId],
+    /*
+     * workspaceSlug belongs here. Without it, a callback captured on first
+     * render kept whichever address was current then, and the client router
+     * re-uses this component across a workspace change -- so a stale closure
+     * would have written a selection into the workspace the operator had left.
+     * The action re-resolves membership from the slug it is handed, so the
+     * write would have been refused rather than misfiled, but a refused write
+     * on a screen that looks fine is its own kind of wrong.
+     */
+    [router, shootId, workspaceSlug],
   );
 
   const toggle = useCallback(
@@ -90,7 +100,7 @@ export function ContactSheet({
       });
       startTransition(() => router.refresh());
     },
-    [router, shootId],
+    [router, shootId, workspaceSlug],
   );
 
   const onKeyDown = useCallback(
@@ -280,7 +290,7 @@ export function ContactSheet({
           Arrows move · Space selects · 0–5 rates · Shift-click extends · Ctrl/Cmd-A selects all
         </span>
         {focused && (
-          <Link className="button small" href={`/assets/${focused.id}`}>
+          <Link className="button small" href={workspaceRoutes(workspaceSlug).asset(focused.id)}>
             Open record
           </Link>
         )}

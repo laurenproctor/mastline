@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DEFAULT_DELIVERY_WINDOW, isDeliveryWindow } from "@/lib/delivery";
 import { createDelivery, revokeDelivery } from "@/lib/data/delivery-links";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface DeliveryState {
   readonly error?: string;
@@ -42,7 +43,7 @@ export async function createDeliveryAction(
     return { error: error instanceof Error ? error.message : "Could not create the link." };
   }
 
-  redirect(`/${canonicalSlug}/submissions/${submissionId}?saved=link`);
+  redirect(workspaceRoutes(canonicalSlug).submission(submissionId, { query: { saved: "link" } }));
 }
 
 export async function revokeDeliveryAction(
@@ -62,5 +63,9 @@ export async function revokeDeliveryAction(
     return { error: error instanceof Error ? error.message : "Could not withdraw the link." };
   }
 
-  redirect(`/${canonicalSlug}/submissions/${submissionId}?saved=link-withdrawn`);
+  redirect(
+    workspaceRoutes(canonicalSlug).submission(submissionId, {
+      query: { saved: "link-withdrawn" },
+    }),
+  );
 }

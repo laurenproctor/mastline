@@ -19,7 +19,8 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000/work`. The interface reads from a typed, relational mock layer so the whole product can be reviewed before auth, storage, and database work are wired in.
+Then open `http://localhost:3000/work`, which redirects to your workspace's
+address. The interface reads from a typed, relational mock layer so the whole product can be reviewed before auth, storage, and database work are wired in.
 
 Use Node.js 22 or later.
 
@@ -106,24 +107,39 @@ No component hard-codes a price, a rate, or a monetary string.
 
 ## Core routes
 
+Every authenticated route lives under a workspace address, which is the first
+path segment. The URL — not the active-workspace cookie — decides which
+workspace a page reads from and writes to, so two workspaces can be open in two
+tabs without either one leaking into the other.
+
+Paths are never written by hand. `workspaceRoutes(canonicalSlug)` in
+`src/lib/workspace-routes.ts` builds them all, and `tests/link-scoping.test.ts`
+fails the build if an unscoped one appears.
+
 | Route | Experience |
 | --- | --- |
-| `/work` | Daily action queue and business pulse |
-| `/news` | News-to-archive opportunity monitor |
-| `/shoots/new` | Fast shoot intake |
-| `/shoots` | All shoots and their progress |
-| `/shoots/sht_chelsea` | Shoot workspace |
-| `/dispatch/sht_chelsea` | Buyer-ready package review |
-| `/submissions` | All submissions |
-| `/submissions/sub_bg_0820_441` | Submission system of record |
-| `/assets/ast_chelsea_472` | Canonical asset record |
-| `/work/commercial` | Commercial opportunity review queue |
-| `/work/commercial/julian-cross-soho` | Product matching, brand-pitch, and Shop-the-Look prototype |
-| `/rights` | Possible-use triage and evidence |
-| `/money` | Revenue, receivables, and reconciliation |
-| `/archive` | Commercial archive search |
+| `/<workspace>/work` | Daily action queue and business pulse |
+| `/<workspace>/news` | News-to-archive opportunity monitor |
+| `/<workspace>/shoots/new` | Fast shoot intake |
+| `/<workspace>/shoots` | All shoots and their progress |
+| `/<workspace>/shoots/<shootId>` | Shoot workspace |
+| `/<workspace>/dispatch/<shootId>?package=<packageId>` | Buyer-ready package review. Addressed by **shoot**; the package is chosen by query |
+| `/<workspace>/submissions` | All submissions |
+| `/<workspace>/submissions/<submissionId>` | Submission system of record |
+| `/<workspace>/assets/<assetId>` | Canonical asset record |
+| `/<workspace>/work/commercial` | Commercial opportunity review queue |
+| `/<workspace>/work/commercial/julian-cross-soho` | Product matching, brand-pitch, and Shop-the-Look prototype |
+| `/<workspace>/rights` | Possible-use triage and evidence |
+| `/<workspace>/money` | Revenue, receivables, and reconciliation |
+| `/<workspace>/archive` | Commercial archive search |
+| `/<workspace>/settings` | Workspace, people, buyer templates, billing, two-factor |
 | `/welcome` | Marketing homepage |
 | `/pricing` | Final Solo, Pro, Studio, and Agency pricing with annual/monthly toggle |
+
+The pre-workspace addresses — `/work`, `/shoots/<id>`, `/money` — still answer:
+the middleware redirects them, preserving the rest of the path and the whole
+query, so bookmarks and links already shared keep working. Nothing the
+application itself renders relies on that redirect.
 
 ## Product boundary
 

@@ -8,6 +8,7 @@ import { requireSession, requireSessionForEnrollment } from "@/lib/auth";
 import { requireWorkspaceContext } from "@/lib/session-context";
 import { workspaceContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * Enrolling, confirming, and removing a second factor.
@@ -156,7 +157,7 @@ export async function disableMfaAction(
   // Resolved rather than echoed: the bound address is a hint, and this is the
   // one place in the function that builds a URL from it.
   const { canonicalSlug } = await workspaceContext(workspaceSlug);
-  redirect(`/${canonicalSlug}/settings?saved=mfa-off`);
+  redirect(workspaceRoutes(canonicalSlug).settings({ query: { saved: "mfa-off" } }));
 }
 
 /**
@@ -178,7 +179,7 @@ export async function setMfaPolicyAction(
 ): Promise<ConfirmState> {
   const required = String(formData.get("required") ?? "") === "on";
 
-  const { organizationId, actorId, session } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { organizationId, actorId, session, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
 
   if (required && !session.hasVerifiedFactor) {
     return {
@@ -210,7 +211,13 @@ export async function setMfaPolicyAction(
     },
   });
 
-  redirect(required ? "/settings?saved=mfa-required" : "/settings?saved=mfa-optional");
+  // Resolved rather than bare: "/settings?saved=..." reached the right screen
+  // only by way of the cookie-driven legacy redirect.
+  redirect(
+    workspaceRoutes(canonicalSlug).settings({
+      query: { saved: required ? "mfa-required" : "mfa-optional" },
+    }),
+  );
 }
 
 export interface RecoveryCodesState {

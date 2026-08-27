@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { NavLabel } from "./app-shell";
 import { Avatar } from "./avatar";
 import { NavIcon } from "./nav-icons";
+import { type WorkspaceRoutes, workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * PROTOTYPE. Not wired on by default -- see NAV_PROTOTYPE_COOKIE in app-shell.
@@ -23,24 +24,24 @@ import { NavIcon } from "./nav-icons";
  * together with the account, which is where the sidebar kept them anyway.
  */
 const PRIMARY = [
-  { href: "/work", icon: "work", label: "Work" },
-  { href: "/shoots", icon: "shoots", label: "Shoots" },
-  { href: "/submissions", icon: "submissions", label: "Submissions" },
-  { href: "/money", icon: "money", label: "Money" },
+  { to: (r: WorkspaceRoutes) => r.work(), icon: "work", label: "Work" },
+  { to: (r: WorkspaceRoutes) => r.shoots(), icon: "shoots", label: "Shoots" },
+  { to: (r: WorkspaceRoutes) => r.submissions(), icon: "submissions", label: "Submissions" },
+  { to: (r: WorkspaceRoutes) => r.money(), icon: "money", label: "Money" },
 ] as const;
 
 const OVERFLOW = [
-  { href: "/news", icon: "news", label: "News radar" },
-  { href: "/work/commercial", icon: "commercial", label: "Commercial" },
-  { href: "/rights", icon: "rights", label: "Rights" },
-  { href: "/archive", icon: "archive", label: "Archive" },
-  { href: "/settings", icon: "settings", label: "Settings" },
+  { to: (r: WorkspaceRoutes) => r.news(), icon: "news", label: "News radar" },
+  { to: (r: WorkspaceRoutes) => r.commercial(), icon: "commercial", label: "Commercial" },
+  { to: (r: WorkspaceRoutes) => r.rights(), icon: "rights", label: "Rights" },
+  { to: (r: WorkspaceRoutes) => r.archive(), icon: "archive", label: "Archive" },
+  { to: (r: WorkspaceRoutes) => r.settings(), icon: "settings", label: "Settings" },
 ] as const;
 
 export function MobileTabBar({
   active,
   avatar,
-  base,
+  workspaceSlug,
   displayName,
   initials,
   workspaceName,
@@ -48,13 +49,14 @@ export function MobileTabBar({
 }: {
   active?: NavLabel;
   avatar?: string;
-  /** "/<workspace-address>". Every destination here hangs off it. */
-  base: string;
+  /** The address the workspace holds. Every destination here is built from it. */
+  workspaceSlug: string;
   displayName: string;
   initials: string;
   workspaceName: string;
   roleLabel: string;
 }) {
+  const routes = workspaceRoutes(workspaceSlug);
   // More is drawn as holding the current destination when one of its own is
   // active, so the bar never looks as though you are nowhere. That is a visual
   // state and not aria-current: exactly one thing on a page is the page you are
@@ -67,8 +69,8 @@ export function MobileTabBar({
         <Link
           aria-current={active === item.label ? "page" : undefined}
           className={active === item.label ? "tab active" : "tab"}
-          href={`${base}${item.href}`}
-          key={item.href}
+          href={item.to(routes)}
+          key={item.label}
         >
           <NavIcon name={item.icon} />
           <span>{item.label}</span>
@@ -114,8 +116,8 @@ export function MobileTabBar({
             <Link
               aria-current={active === item.label ? "page" : undefined}
               className={active === item.label ? "tab-sheet-link active" : "tab-sheet-link"}
-              href={`${base}${item.href}`}
-              key={item.href}
+              href={item.to(routes)}
+              key={item.label}
             >
               <NavIcon name={item.icon} />
               <span>{item.label}</span>

@@ -10,6 +10,7 @@ import { reviewDispatch } from "@/lib/dispatch-rules";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { ApprovePanel } from "../_components/approve-panel";
 import { PackageDetails } from "../_components/package-details";
 
@@ -22,9 +23,18 @@ export default async function DispatchPage({
   params: Promise<{ workspace: string; shootId: string }>;
   searchParams: Promise<{ package?: string }>;
 }) {
-  const { workspace: workspaceSlug, shootId } = await params;
+  const { workspace: requestedWorkspace, shootId } = await params;
   const { package: requestedPackage } = await searchParams;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
   const shoot = await getShoot(organizationId, shootId);
@@ -66,7 +76,7 @@ export default async function DispatchPage({
               <Link
                 aria-current={candidate.id === pkg.id ? "page" : undefined}
                 className={candidate.id === pkg.id ? "package-tab active" : "package-tab"}
-                href={`/dispatch/${shootId}?package=${candidate.id}`}
+                href={routes.dispatch({ shootId, packageId: candidate.id })}
                 key={candidate.id}
               >
                 {candidate.name}
@@ -141,7 +151,7 @@ export default async function DispatchPage({
                         <tr key={entry.assetId}>
                           <td>{entry.position + 1}</td>
                           <td>
-                            <Link className="text-link" href={`/assets/${entry.assetId}`}>
+                            <Link className="text-link" href={routes.asset(entry.assetId)}>
                               {asset?.canonicalFilename ?? "Unreadable asset"}
                             </Link>
                           </td>
@@ -205,7 +215,7 @@ export default async function DispatchPage({
                     {pkg.approvedAt ? ` on ${formatDateTime(pkg.approvedAt)}` : ""}. The submission
                     record holds exactly what went out.
                   </p>
-                  <Link className="button small" href={`/${workspaceSlug}/submissions`}>
+                  <Link className="button small" href={routes.submissions()}>
                     Open submissions
                   </Link>
                 </div>

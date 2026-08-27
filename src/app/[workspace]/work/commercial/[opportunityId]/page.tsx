@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { COMMERCIAL_OPPORTUNITIES, getCommercialOpportunity } from "@/lib/commercial-opportunities";
+import { workspaceContext } from "@/lib/session-context";
 import { OpportunityReview } from "../_components/opportunity-review";
 
 export function generateStaticParams() {
@@ -12,7 +13,9 @@ export default async function CommercialOpportunityReviewPage({
 }: {
   params: Promise<{ workspace: string; opportunityId: string }>;
 }) {
-  const { workspace: workspaceSlug, opportunityId } = await params;
+  const { workspace: requestedWorkspace, opportunityId } = await params;
+  const { canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const workspaceSlug = canonicalSlug;
   const opportunity = getCommercialOpportunity(opportunityId);
   if (!opportunity) notFound();
 

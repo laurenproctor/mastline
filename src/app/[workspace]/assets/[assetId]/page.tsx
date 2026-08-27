@@ -12,6 +12,7 @@ import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset } from "@/lib/metadata-rules";
 import { formatMoney, sum } from "@/lib/money";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 
 interface HistoryRow {
@@ -24,8 +25,17 @@ interface HistoryRow {
 }
 
 export default async function AssetPage({ params }: { params: Promise<{ workspace: string; assetId: string }> }) {
-  const { workspace: workspaceSlug, assetId } = await params;
-  const { organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace, assetId } = await params;
+  const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
 
   const asset = await getAsset(organizationId, assetId);
   if (!asset) notFound();
@@ -70,7 +80,7 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
       counterparty: buyerNames.get(submission.buyerId ?? "") ?? submission.reference,
       detail: humanizeStatus(submission.status),
       value: "—",
-      href: `/submissions/${submission.id}`,
+      href: routes.submission(submission.id),
     })),
     ...assetLicenses.map((license) => ({
       date: license.startsAt ?? "",
@@ -245,7 +255,7 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
                   <dt>Shoot</dt>
                   <dd>
                     {shoot ? (
-                      <Link className="text-link" href={`/shoots/${shoot.id}`}>
+                      <Link className="text-link" href={routes.shoot(shoot.id)}>
                         {shoot.title}
                       </Link>
                     ) : (

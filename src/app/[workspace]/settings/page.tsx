@@ -46,14 +46,20 @@ export default async function SettingsPage({
   params: Promise<{ workspace: string }>;
   searchParams: Promise<{ saved?: string }>;
 }) {
-  const { workspace: workspaceSlug } = await params;
+  const { workspace: requestedWorkspace } = await params;
   // Set by the redirect each successful save performs, so the confirmation
   // survives the fresh request that makes the new state visible.
   const saved = (await searchParams).saved;
   const savedWorkspace = saved === "workspace";
   const savedAddress = saved === "address";
-  const session = await requireWorkspace(workspaceSlug);
+  const session = await requireWorkspace(requestedWorkspace);
   const workspace = session.activeWorkspace;
+  /*
+   * The address the workspace holds now. Everything rendered below -- links,
+   * the export href, and the slug bound into each client component's actions --
+   * uses this rather than the one the request arrived on.
+   */
+  const workspaceSlug = workspace.slug;
 
   const [members, buyers, counts, status] = await Promise.all([
     listWorkspaceMembers(workspace.id),
