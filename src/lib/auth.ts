@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { mfaBlocksAccess, mfaStanding } from "./mfa";
 import { displayNameFrom, initialsFrom } from "./person-name";
 import type { AppRole } from "./domain";
@@ -180,6 +180,64 @@ export async function requireSession(activeWorkspaceId?: string): Promise<Worksp
   if (mfaBlocksAccess(standing)) redirect("/secure-your-account");
 
   return session as WorkspaceSession;
+}
+
+/**
+ * The signed-in person, and nothing about a workspace.
+ *
+ * Authentication and workspace selection used to be one step, which is how the
+ * cookie ended up deciding both. They are separate questions: who is asking is
+ * a property of the session, and which workspace they are asking about is a
+ * property of the URL. Keeping them apart is what stops a cookie pointing at
+ * one workspace from having any say over a request addressed to another.
+ *
+ * Notably this applies no two-factor gate. A workspace's MFA policy belongs to
+ * that workspace, so it is evaluated by requireWorkspace once the workspace is
+ * known -- never against whichever one a cookie happened to name.
+ */
+export async function requireUserSession(): Promise<Session> {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  return session;
+}
+
+/**
+ * The workspace named in the URL, or nothing at all.
+ *
+ * This is the complete gate for a workspace-scoped request, and the only thing
+ * entitled to answer "which organization is this". It never falls back to the
+ * cookie and never falls back to the first workspace in the list: a slug was
+ * supplied, so either it names a workspace this person is an active member of
+ * or the request has no business proceeding.
+ *
+ * A non-member gets 404 rather than 403. Whether a particular studio exists on
+ * Mastline is not something to confirm to somebody who is not in it -- these
+ * are people who are followed for a living, and their working relationships are
+ * inferable from the fact of a workspace existing at all.
+ *
+ * The membership query is the one getSession already ran: it is filtered to the
+ * caller's own active memberships, so resolving a slug costs no extra round
+ * trip and cannot see past what row level security would have allowed anyway.
+ */
+export async function requireWorkspace(slug: string): Promise<WorkspaceSession> {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  if (session.workspaces.length === 0) redirect("/onboarding");
+
+  const workspace = session.workspaces.find((candidate) => candidate.slug === slug);
+  if (!workspace) notFound();
+
+  // Evaluated against the workspace the URL named, which is the whole point.
+  // A cookie pointing at a workspace with optional two-factor must not weaken
+  // a workspace that insists on it.
+  const standing = mfaStanding({
+    role: workspace.role,
+    hasVerifiedFactor: session.hasVerifiedFactor,
+    enforced: workspace.requireMfa,
+  });
+  if (mfaBlocksAccess(standing)) redirect("/secure-your-account");
+
+  return { ...session, activeWorkspace: workspace };
 }
 
 /**
