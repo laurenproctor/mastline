@@ -6,6 +6,7 @@ import { getSubmission } from "@/lib/data/submissions";
 import { fromMajor, money } from "@/lib/money";
 import { calculateSalesEngineSplit, type LicenseOrigin } from "@/lib/sales-engine";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 export interface MoneyActionState {
   readonly ok?: boolean;
@@ -77,8 +78,9 @@ export async function recordSaleAction(
         ? `Sale recorded. Mastline share ${salesEngineShare.minor / 100}, photographer ${photographerShare.minor / 100}.`
         : "Sale recorded. No Mastline share: this licence was not generated inside Mastline.";
 
-    revalidatePath(`/${canonicalSlug}/money`);
-    if (submissionId) revalidatePath(`/${canonicalSlug}/submissions/${submissionId}`);
+    const routes = workspaceRoutes(canonicalSlug);
+    revalidatePath(routes.money());
+    if (submissionId) revalidatePath(routes.submission(submissionId));
     return { ok: true, message: note };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not record the sale." };
@@ -124,8 +126,9 @@ export async function recordPaymentAction(
       expectedAt: String(formData.get("expectedAt") ?? "") || undefined,
     });
 
-    revalidatePath(`/${canonicalSlug}/money`);
-    revalidatePath(`/${canonicalSlug}/work`);
+    const routes = workspaceRoutes(canonicalSlug);
+    revalidatePath(routes.money());
+    revalidatePath(routes.work());
     return { ok: true, message: `Payment recorded. Net ${netMinor / 100}.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not record the payment." };
@@ -156,7 +159,7 @@ export async function allocatePaymentAction(
       amount: money(amountMinor, "USD"),
     });
 
-    revalidatePath(`/${canonicalSlug}/money`);
+    revalidatePath(workspaceRoutes(canonicalSlug).money());
     return { ok: true, message: "Payment attributed." };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not attribute the payment." };

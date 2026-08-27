@@ -3,6 +3,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { getWorkQueue } from "../src/lib/data/work-queue";
+import { workspaceRoutes } from "../src/lib/workspace-routes";
 import { ORG_A, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
@@ -37,7 +38,10 @@ describeIf("work queue cost", () => {
       return calls;
     };
 
-    const buildQueue = () => getWorkQueue(ORG_A, service);
+    // The queue now returns fully scoped destinations, so it is handed the
+    // route builder for the workspace being read.
+    const routes = workspaceRoutes("marcus-hale-studio");
+    const buildQueue = () => getWorkQueue(ORG_A, routes, service);
 
     const baseline = await countQueries(buildQueue);
 

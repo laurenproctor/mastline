@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Badge } from "@/components/primitives";
 import { type CheckoutState, startCheckoutAction } from "@/app/[workspace]/billing/actions";
 import type { BillingPeriod, PlanId } from "@/lib/pricing";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const INITIAL: CheckoutState = {};
 
@@ -68,7 +69,7 @@ export function BillingPanel({
 
       {portalAvailable && (
         <p className="section-note">
-          <a className="text-link" href={`/${workspaceSlug}/billing/portal`}>
+          <a className="text-link" href={workspaceRoutes(workspaceSlug).billingPortal()}>
             Manage card and invoices
           </a>
         </p>

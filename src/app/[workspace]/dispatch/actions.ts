@@ -10,6 +10,7 @@ import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { reviewDispatch } from "@/lib/dispatch-rules";
 import { retryDelivery } from "@/lib/data/delivery";
 import { requireWorkspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import type { SubmissionStatus } from "@/lib/domain";
 
 export interface DispatchState {
@@ -30,6 +31,7 @@ export async function buildPackageAction(
   const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "package.write");
 
   let packageId: string;
+  let createdOnShoot: string;
   try {
     const created = await createPackageFromSelection({
       organizationId,
@@ -43,12 +45,26 @@ export async function buildPackageAction(
       packageNote: String(formData.get("packageNote") ?? "") || undefined,
     });
     packageId = created.id;
+    // The shoot the row actually landed on, not the one the form said. The
+    // browser supplies shootId, and the dispatch review is addressed BY shoot,
+    // so the destination is built from what the database stored.
+    createdOnShoot = created.shootId;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not build the package." };
   }
 
-  revalidatePath(`/${canonicalSlug}/shoots/${shootId}`);
-  redirect(`/${canonicalSlug}/dispatch/${packageId}`);
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.shoot(createdOnShoot));
+
+  /*
+   * The route is /<workspace>/dispatch/<shootId>, and the package is chosen by
+   * query. This redirected to /<workspace>/dispatch/<packageId>, which reads a
+   * package id as a shoot id, finds no such shoot, and 404s -- so building a
+   * package, the whole point of the screen before it, ended on the not-found
+   * page. The package id belongs in `?package=`, which is what the review
+   * screen already reads.
+   */
+  redirect(routes.dispatch({ shootId: createdOnShoot, packageId }));
 }
 
 export async function updatePackageAction(
@@ -76,7 +92,16 @@ export async function updatePackageAction(
     return { error: error instanceof Error ? error.message : "Could not save the package." };
   }
 
-  revalidatePath(`/${canonicalSlug}/dispatch/${packageId}`);
+  /*
+   * Same confusion as the redirect above, with a quieter symptom: this
+   * revalidated /<workspace>/dispatch/<packageId>, a path no route serves, so
+   * the screen the operator was looking at was never actually revalidated. The
+   * shoot is read back from the package rather than taken from the form.
+   */
+  const saved = await getPackage(organizationId, packageId);
+  if (saved) {
+    revalidatePath(workspaceRoutes(canonicalSlug).dispatch({ shootId: saved.shootId }));
+  }
   return { ok: true, message: "Package saved." };
 }
 
@@ -132,10 +157,12 @@ export async function approveAndSendAction(
     return { error: error instanceof Error ? error.message : "Could not record the dispatch." };
   }
 
-  revalidatePath(`/${canonicalSlug}/submissions`);
-  revalidatePath(`/${canonicalSlug}/work`);
-  revalidatePath(`/${canonicalSlug}/shoots/${pkg.shootId}`);
-  redirect(`/${canonicalSlug}/submissions/${submissionId}`);
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.submissions());
+  revalidatePath(routes.work());
+  revalidatePath(routes.shoot(pkg.shootId));
+  revalidatePath(routes.dispatch({ shootId: pkg.shootId }));
+  redirect(routes.submission(submissionId));
 }
 
 export async function recordOutcomeAction(
@@ -161,8 +188,9 @@ export async function recordOutcomeAction(
     return { error: error instanceof Error ? error.message : "Could not record the outcome." };
   }
 
-  revalidatePath(`/${canonicalSlug}/submissions/${submissionId}`);
-  revalidatePath(`/${canonicalSlug}/submissions`);
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.submission(submissionId));
+  revalidatePath(routes.submissions());
   return { ok: true, message: "Outcome recorded. What was sent is unchanged." };
 }
 
@@ -183,8 +211,9 @@ export async function retryDeliveryAction(
 
   try {
     const { attemptNumber } = await retryDelivery({ organizationId, actorId, submissionId });
-    revalidatePath(`/${canonicalSlug}/submissions/${submissionId}`);
-    revalidatePath(`/${canonicalSlug}/work`);
+    const routes = workspaceRoutes(canonicalSlug);
+    revalidatePath(routes.submission(submissionId));
+    revalidatePath(routes.work());
     return { ok: true, message: `Attempt ${attemptNumber} recorded and queued.` };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Could not retry the delivery." };

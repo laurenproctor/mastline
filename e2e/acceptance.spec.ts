@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   SEEDED,
   SEEDED_ASSET,
+  at,
   clearDeliveryLinks,
   clearMfaFactors,
   freshTotp,
@@ -9,6 +10,7 @@ import {
   removeDeliveryFixture,
   setWorkspaceMfaPolicy,
   SEEDED_SHOOT,
+  SEEDED_WORKSPACE,
   collectPageErrors,
   hasHorizontalOverflow,
   overflowingElements,
@@ -25,18 +27,25 @@ import {
 
 test.describe("every documented route renders", () => {
   const PUBLIC_ROUTES = ["/welcome", "/pricing", "/sign-in", "/sign-up", "/reset-password"];
+  /*
+   * Workspace-scoped, deliberately. These were bare paths, which meant the
+   * suite proved the legacy redirect worked and said nothing about whether the
+   * application's own addresses did. The legacy paths are tested on their own
+   * in workspace-routing.spec.ts.
+   */
   const APP_ROUTES = [
-    "/work",
-    "/news",
-    "/shoots",
-    "/shoots/new",
-    `/shoots/${SEEDED_SHOOT}`,
-    `/dispatch/${SEEDED_SHOOT}`,
-    "/submissions",
-    "/money",
-    "/rights",
-    "/archive",
-    "/settings",
+    at("/work"),
+    at("/news"),
+    at("/shoots"),
+    at("/shoots/new"),
+    at(`/shoots/${SEEDED_SHOOT}`),
+    at(`/dispatch/${SEEDED_SHOOT}`),
+    at("/submissions"),
+    at("/money"),
+    at("/rights"),
+    at("/archive"),
+    at("/settings"),
+    at("/work/commercial"),
   ];
 
   for (const route of PUBLIC_ROUTES) {
@@ -75,7 +84,7 @@ test.describe("layout holds at the required sizes", () => {
 
   test("the work queue does not scroll sideways", async ({ page }) => {
     await signIn(page);
-    await page.goto("/work");
+    await page.goto(at("/work"));
     const overflowing = await overflowingElements(page);
     expect(overflowing, `work queue overflows: ${overflowing.join(", ")}`).toEqual([]);
     expect(await hasHorizontalOverflow(page)).toBe(false);
@@ -83,7 +92,7 @@ test.describe("layout holds at the required sizes", () => {
 
   test("the shoot inspector does not scroll sideways", async ({ page }) => {
     await signIn(page);
-    await page.goto(`/shoots/${SEEDED_SHOOT}`);
+    await page.goto(at(`/shoots/${SEEDED_SHOOT}`));
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const overflowing = await overflowingElements(page);
     expect(overflowing, `shoot workspace overflows: ${overflowing.join(", ")}`).toEqual([]);
@@ -92,7 +101,7 @@ test.describe("layout holds at the required sizes", () => {
 
   test("money and archive do not scroll sideways", async ({ page }) => {
     await signIn(page);
-    for (const route of ["/money", "/archive", "/settings"]) {
+    for (const route of [at("/money"), at("/archive"), at("/settings")]) {
       await page.goto(route);
       const overflowing = await overflowingElements(page);
       expect(overflowing, `${route} overflows: ${overflowing.join(", ")}`).toEqual([]);
@@ -125,7 +134,7 @@ test.describe("navigation is reachable", () => {
 
   test("the active destination is marked for assistive technology", async ({ page }) => {
     await signIn(page);
-    await page.goto("/money");
+    await page.goto(at("/money"));
     await expect(page.locator('[aria-current="page"]')).toHaveText(/Money/);
   });
 });
@@ -189,7 +198,7 @@ test.describe("pricing states the approved facts", () => {
 test.describe("status is never colour alone", () => {
   test("every badge carries words", async ({ page }) => {
     await signIn(page);
-    for (const route of ["/work", "/money", "/submissions", "/shoots"]) {
+    for (const route of [at("/work"), at("/money"), at("/submissions"), at("/shoots")]) {
       await page.goto(route);
       const badges = page.locator(".badge");
       const count = await badges.count();
@@ -202,7 +211,7 @@ test.describe("status is never colour alone", () => {
 
   test("a blocked dispatch check says the word, not just a colour", async ({ page }) => {
     await signIn(page);
-    await page.goto(`/dispatch/${SEEDED_SHOOT}`);
+    await page.goto(at(`/dispatch/${SEEDED_SHOOT}`));
     await expect(page.getByText("Blocked").first()).toBeVisible();
   });
 });
@@ -210,7 +219,7 @@ test.describe("status is never colour alone", () => {
 test.describe("the seeded workspace shows real records", () => {
   test("the archive searches in the database and pages", async ({ page }) => {
     await signIn(page);
-    await page.goto("/archive");
+    await page.goto(at("/archive"));
     await page.getByLabel(/Search the archive/i).fill("Avery Hart");
     await page.getByRole("button", { name: "Search" }).click();
     await expect(page.getByRole("heading", { name: /matches?$/ })).toBeVisible();
@@ -218,7 +227,7 @@ test.describe("the seeded workspace shows real records", () => {
 
   test("a malformed record id shows not found rather than an error", async ({ page }) => {
     await signIn(page);
-    await page.goto("/assets/not-a-uuid");
+    await page.goto(at("/assets/not-a-uuid"));
     await expect(page.getByText(/does not exist in this workspace/i)).toBeVisible();
   });
 });
@@ -244,13 +253,21 @@ test.describe("exporting the workspace", () => {
 
   test("an owner downloads the whole commercial record", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
+    /*
+     * The export endpoint names the workspace in its path. It used to be a bare
+     * /api/export that resolved from the active-workspace cookie, which meant
+     * the file you got depended on a browser-wide setting rather than on what
+     * you asked for -- these assertions had been left behind on the old
+     * address.
+     */
+    const exportPath = `/api/workspaces/${SEEDED_WORKSPACE}/export`;
     const link = page.getByRole("link", { name: "Export workspace" });
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute("href", "/api/export");
+    await expect(link).toHaveAttribute("href", exportPath);
 
-    const response = await page.request.get("/api/export");
+    const response = await page.request.get(exportPath);
     expect(response.status()).toBe(200);
     expect(response.headers()["content-disposition"]).toContain("attachment");
 
@@ -273,7 +290,7 @@ test.describe("exporting the workspace", () => {
 
   test("an editor is refused, in the interface and at the route", async ({ page }) => {
     await signIn(page, SEEDED.editor);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     // The control is present but inert, so the capability is discoverable
     // without being usable.
@@ -281,7 +298,7 @@ test.describe("exporting the workspace", () => {
     await expect(page.getByRole("button", { name: "Export workspace" })).toBeVisible();
 
     // The route is the boundary, not the absence of a link.
-    const response = await page.request.get("/api/export");
+    const response = await page.request.get(`/api/workspaces/${SEEDED_WORKSPACE}/export`);
     expect(response.status()).toBe(403);
     expect(await response.text()).toContain("cannot export");
   });
@@ -291,7 +308,7 @@ test.describe("editing the workspace", () => {
   const SEEDED_NAME = "Marcus Hale Studio";
 
   async function setWorkspaceName(page: import("@playwright/test").Page, value: string) {
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await page.getByRole("button", { name: "Edit workspace" }).click();
     await page.getByLabel("Workspace name").fill(value);
     await page.getByRole("button", { name: "Save workspace" }).click();
@@ -299,7 +316,7 @@ test.describe("editing the workspace", () => {
 
   test("an owner renames the workspace and it takes effect everywhere", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await page.getByRole("button", { name: "Edit workspace" }).click();
     await expect(page.getByLabel("Workspace name")).toHaveValue(SEEDED_NAME);
@@ -317,7 +334,7 @@ test.describe("editing the workspace", () => {
       // The name lives in the shell, so a rename has to reach past this screen.
       // Attached rather than visible: the shell hides its identity block on a
       // phone, which is a layout decision this test has no business asserting.
-      await page.goto("/work");
+      await page.goto(at("/work"));
       await expect(page.getByText(renamed).first()).toBeAttached();
     } finally {
       // Leave the seeded workspace as it was found, whatever happened above.
@@ -329,7 +346,7 @@ test.describe("editing the workspace", () => {
   test("the timezone can be changed and is the one offered", async ({ page }) => {
     await signIn(page, SEEDED.owner);
     try {
-      await page.goto("/settings");
+      await page.goto(at("/settings"));
       await page.getByRole("button", { name: "Edit workspace" }).click();
       await page.getByLabel("Timezone").selectOption("Europe/London");
       await page.getByRole("button", { name: "Save workspace" }).click();
@@ -337,7 +354,7 @@ test.describe("editing the workspace", () => {
       await expect(page.getByText("Workspace saved.")).toBeVisible();
       await expect(page.getByText("Europe/London").first()).toBeVisible();
     } finally {
-      await page.goto("/settings");
+      await page.goto(at("/settings"));
       await page.getByRole("button", { name: "Edit workspace" }).click();
       await page.getByLabel("Timezone").selectOption("America/New_York");
       await page.getByRole("button", { name: "Save workspace" }).click();
@@ -347,7 +364,7 @@ test.describe("editing the workspace", () => {
 
   test("an empty name is refused with a sentence, not a constraint error", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await page.getByRole("button", { name: "Edit workspace" }).click();
     // Spaces defeat the required attribute, so the server-side check answers.
@@ -356,13 +373,13 @@ test.describe("editing the workspace", () => {
 
     await expect(page.getByText("A workspace needs a name.")).toBeVisible();
     // A refusal does not redirect, and the real name is untouched.
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await expect(page.getByRole("heading", { level: 3, name: SEEDED_NAME })).toBeVisible();
   });
 
   test("an editor cannot edit the workspace", async ({ page }) => {
     await signIn(page, SEEDED.editor);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await expect(page.getByRole("button", { name: "Edit workspace" })).toHaveCount(0);
   });
@@ -380,7 +397,7 @@ test.describe("saving on the settings screen confirms itself", () => {
     await signIn(page, SEEDED.owner);
 
     for (const attempt of [1, 2, 3]) {
-      await page.goto("/settings");
+      await page.goto(at("/settings"));
       await page.getByRole("button", { name: "Edit template" }).first().click();
       // The seeded value, so the record ends as it started.
       await page.getByLabel("Desk or contact").first().fill("New York picture desk");
@@ -408,7 +425,7 @@ test.describe("a save is reflected on the screen that made it", () => {
 
   test("captioning a frame clears its warning without a reload", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto(`/shoots/${SEEDED_SHOOT}`);
+    await page.goto(at(`/shoots/${SEEDED_SHOOT}`));
 
     const warnings = page.getByRole("button", { name: /^Warnings / });
     const form = page.locator("form.inspector");
@@ -582,7 +599,7 @@ test.describe("two-factor authentication", () => {
     test.setTimeout(180_000);
 
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await page.getByRole("button", { name: "Set up two-factor" }).click();
     const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
@@ -610,9 +627,9 @@ test.describe("two-factor authentication", () => {
 
       // A second factor that could be skipped by typing an address would not be
       // one. This is the assertion the feature exists for.
-      await page.goto("/work");
+      await page.goto(at("/work"));
       await expect(page).toHaveURL(/\/sign-in\/verify/);
-      await page.goto("/money");
+      await page.goto(at("/money"));
       await expect(page).toHaveURL(/\/sign-in\/verify/);
 
       lastCode = await freshTotp(secret, lastCode);
@@ -622,7 +639,7 @@ test.describe("two-factor authentication", () => {
       await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
     } finally {
       // Put the account back, whatever happened above.
-      await page.goto("/settings");
+      await page.goto(at("/settings"));
       await page.getByRole("button", { name: "Turn off two-factor" }).click();
       const off = await freshTotp(secret, lastCode);
       await page.getByLabel("Current code").fill(off);
@@ -643,7 +660,7 @@ test.describe("two-factor authentication", () => {
       await expect(page).toHaveURL(/secure-your-account/);
       await expect(page.getByRole("heading", { name: "Add a second factor" })).toBeVisible();
 
-      for (const route of ["/work", "/money", "/settings"]) {
+      for (const route of [at("/work"), at("/money"), at("/settings")]) {
         await page.goto(route);
         await expect(page, `${route} was reachable without a factor`).toHaveURL(
           /secure-your-account/,
@@ -698,7 +715,7 @@ test.describe("two-factor authentication", () => {
       expect(await page.locator(".recovery-code-list code").allInnerTexts()).toHaveLength(10);
 
       // And the workspace is now reachable, which is the whole point.
-      await page.goto("/work");
+      await page.goto(at("/work"));
       await expect(page).toHaveURL(/\/work/);
       await expect(page.getByRole("navigation", { name: "Primary" })).toBeVisible();
     } finally {
@@ -715,13 +732,13 @@ test.describe("two-factor authentication", () => {
    */
   test("requiring two-factor asks the owner to enrol first", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await page.getByRole("button", { name: "Require for owners and finance" }).click();
     await expect(page.locator(".auth-error")).toContainText("Set up your own authenticator first");
 
     // Nothing was switched on, so the workspace still opens.
-    await page.goto("/work");
+    await page.goto(at("/work"));
     await expect(page).toHaveURL(/\/work/);
   });
 
@@ -732,7 +749,7 @@ test.describe("two-factor authentication", () => {
     test.setTimeout(180_000);
 
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await page.getByRole("button", { name: "Set up two-factor" }).click();
     const secret = (await page.locator(".mfa-secret code").innerText()).replace(/\s/g, "");
     await page.getByLabel("Code from the app").fill(await freshTotp(secret));
@@ -761,7 +778,7 @@ test.describe("two-factor authentication", () => {
 
     // The factor came off, which is what let them in, so the account is back to
     // a password and an invitation to enrol again.
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
 
     // And that code is spent.
@@ -776,14 +793,14 @@ test.describe("two-factor authentication", () => {
 
   test("a wrong code changes nothing", async ({ page }) => {
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await page.getByRole("button", { name: "Set up two-factor" }).click();
     await page.getByLabel("Code from the app").fill("000000");
     await page.getByRole("button", { name: "Confirm and turn on" }).click();
 
     await expect(page.getByText(/That code was not right/)).toBeVisible();
     // Nothing was turned on, so the account is exactly as it was.
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
     await expect(page.getByRole("button", { name: "Set up two-factor" })).toBeVisible();
   });
 });
@@ -850,7 +867,7 @@ test.describe("sending a package to a picture desk", () => {
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
-      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+      await page.goto(at(`/submissions/${SEEDED_SUBMISSION}`));
 
       await page.getByRole("button", { name: "Create a delivery link" }).click();
       await page.getByLabel("Recipient").fill(recipient);
@@ -900,7 +917,7 @@ test.describe("sending a package to a picture desk", () => {
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
-      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+      await page.goto(at(`/submissions/${SEEDED_SUBMISSION}`));
       await page.getByRole("button", { name: "Create a delivery link" }).click();
       await page.getByLabel("Recipient").fill(recipient);
       await page.getByRole("button", { name: "Create the link" }).click();
@@ -958,7 +975,7 @@ test.describe("sending a package to a picture desk", () => {
     const fixtureKey = await putDeliveryFixture();
     try {
       await signIn(page, SEEDED.owner);
-      await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+      await page.goto(at(`/submissions/${SEEDED_SUBMISSION}`));
       await page.getByRole("button", { name: "Create a delivery link" }).click();
       await page.getByLabel("Recipient").fill(recipient);
       await page.getByRole("button", { name: "Create the link" }).click();
@@ -1012,7 +1029,7 @@ test.describe("sending a package to a picture desk", () => {
   }, testInfo) => {
     const recipient = deskLabel(testInfo);
     await signIn(page, SEEDED.owner);
-    await page.goto(`/submissions/${SEEDED_SUBMISSION}`);
+    await page.goto(at(`/submissions/${SEEDED_SUBMISSION}`));
     await page.getByRole("button", { name: "Create a delivery link" }).click();
     await page.getByLabel("Recipient").fill(recipient);
     await page.getByRole("button", { name: "Create the link" }).click();

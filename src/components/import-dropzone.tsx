@@ -179,7 +179,13 @@ export function ImportDropzone({
         return "failed";
       }
     },
-    [shootId, update],
+    /*
+     * workspaceSlug is read three times in here -- prepare, register, and the
+     * preview -- so leaving it out of the dependencies let one captured value
+     * outlive a workspace change and address every upload in a batch to the
+     * workspace that was open when the component first rendered.
+     */
+    [shootId, update, workspaceSlug],
   );
 
   /**
@@ -235,7 +241,7 @@ export function ImportDropzone({
     setSummary(parts.join(" · "));
     setBusy(false);
     startTransition(() => router.refresh());
-  }, [importOne, router, shootId]);
+  }, [importOne, router, shootId, workspaceSlug]);
 
   const enqueue = useCallback(
     (selected: readonly File[]) => {

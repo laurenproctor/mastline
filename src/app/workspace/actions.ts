@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ACTIVE_WORKSPACE_COOKIE } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 
 /**
  * Switch to another workspace.
@@ -46,5 +47,5 @@ export async function switchWorkspace(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/", "layout");
-  redirect(`/${slug}/work`);
+  redirect(workspaceRoutes(slug).work());
 }

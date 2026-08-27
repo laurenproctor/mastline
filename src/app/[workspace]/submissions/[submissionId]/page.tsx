@@ -14,6 +14,7 @@ import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
+import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DeliveryPanel } from "../_components/delivery-panel";
 import { DeliveryLinks } from "../_components/delivery-links-panel";
 import { listAcceptances, listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
@@ -25,8 +26,17 @@ export default async function SubmissionPage({
 }: {
   params: Promise<{ workspace: string; submissionId: string }>;
 }) {
-  const { workspace: workspaceSlug, submissionId } = await params;
-  const { session, organizationId } = await workspaceContext(workspaceSlug);
+  const { workspace: requestedWorkspace, submissionId } = await params;
+  const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
+  const routes = workspaceRoutes(canonicalSlug);
+  /*
+   * Everything below builds on the address the workspace holds NOW, not the one
+   * the request arrived on. A request may land on a retired address, and a link
+   * rendered from that would send the next click back through the rename
+   * redirect; a slug that was never resolved at all would be a value the
+   * browser supplied, sitting in a destination.
+   */
+  const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
   const submission = await getSubmission(organizationId, submissionId);
@@ -157,7 +167,7 @@ export default async function SubmissionPage({
                   <dt>Shoot</dt>
                   <dd>
                     {shoot ? (
-                      <Link className="text-link" href={`/shoots/${shoot.id}`}>
+                      <Link className="text-link" href={routes.shoot(shoot.id)}>
                         {shoot.title}
                       </Link>
                     ) : (
@@ -199,7 +209,7 @@ export default async function SubmissionPage({
                         <tr key={entry.assetId}>
                           <td>{entry.position + 1}</td>
                           <td>
-                            <Link className="text-link" href={`/assets/${entry.assetId}`}>
+                            <Link className="text-link" href={routes.asset(entry.assetId)}>
                               {asset?.canonicalFilename ?? entry.assetId.slice(0, 8)}
                             </Link>
                           </td>
@@ -277,7 +287,7 @@ export default async function SubmissionPage({
                     ? "Generated inside Mastline, so the 70/30 share applies."
                     : "A direct relationship, so Mastline takes nothing."}
                 </p>
-                <Link className="text-link" href={`/${workspaceSlug}/money`}>
+                <Link className="text-link" href={routes.money()}>
                   Open money <span aria-hidden="true">→</span>
                 </Link>
               </div>

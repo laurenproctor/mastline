@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { SEEDED, signIn } from "./helpers";
+import { SEEDED, at, signIn } from "./helpers";
 
 /**
  * Setting a profile photo.
@@ -24,7 +24,7 @@ test.describe("a profile photo", () => {
     test.skip(testInfo.project.name !== "desktop", "the same at every width");
 
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     const panel = page.getByRole("heading", { name: "Your photo" });
     await expect(panel).toBeVisible();
@@ -54,12 +54,12 @@ test.describe("a profile photo", () => {
       expect(fetched.status()).toBe(200);
 
       // It follows the person into the sidebar.
-      await page.goto("/work");
+      await page.goto(at("/work"));
       await expect(page.locator(".sidebar img.avatar")).toBeVisible();
     } finally {
       // Put the account back however the assertions went: a face left behind
       // would change what every later run of this file starts from.
-      await page.goto("/settings");
+      await page.goto(at("/settings"));
       await page.getByRole("button", { name: "Remove" }).click();
       await expect(page.locator(".profile-photo img.avatar")).toHaveCount(0);
     }
@@ -69,7 +69,7 @@ test.describe("a profile photo", () => {
     test.skip(testInfo.project.name !== "desktop", "the same at every width");
 
     await signIn(page, SEEDED.owner);
-    await page.goto("/settings");
+    await page.goto(at("/settings"));
 
     await page.locator('input[type="file"]').setInputFiles({
       name: "notes.txt",

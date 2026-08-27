@@ -142,7 +142,13 @@ export async function createPackageFromSelection(input: {
   packageNote?: string;
   exclusivity?: string;
   embargoUntil?: string;
-}): Promise<{ id: Id; assetCount: number }> {
+  /**
+   * The shoot the package landed on, read back from the row rather than echoed
+   * from the caller. The dispatch review is addressed by shoot, so this is what
+   * the redirect after building a package is built from, and it has to be what
+   * the database actually holds.
+   */
+}): Promise<{ id: Id; shootId: Id; assetCount: number }> {
   const { organizationId, actorId, shootId, buyerId, name } = input;
   const supabase = input.client ?? (await createClient());
 
@@ -176,11 +182,12 @@ export async function createPackageFromSelection(input: {
       embargo_until: input.embargoUntil ?? null,
       created_by: actorId,
     })
-    .select("id")
+    .select("id, shoot_id")
     .single();
 
   if (error || !pkg) throw new Error(`Could not create the package: ${error?.message}`);
   const packageId = pkg.id as string;
+  const storedShootId = pkg.shoot_id as string;
 
   const members = assets.map((asset, position) => {
     const versions = (asset.asset_versions ?? []) as { id: string; version_kind: string }[];
@@ -219,7 +226,7 @@ export async function createPackageFromSelection(input: {
     },
   });
 
-  return { id: packageId, assetCount: members.length };
+  return { id: packageId, shootId: storedShootId, assetCount: members.length };
 }
 
 export async function updatePackage(input: {
