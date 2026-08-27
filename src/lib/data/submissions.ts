@@ -95,6 +95,21 @@ export async function getSubmission(
   return data ? toSubmission(data as unknown as SubmissionRow) : null;
 }
 
+/**
+ * How many references to try before giving up.
+ *
+ * The tail is one of nine thousand values, and the constraint is per workspace
+ * per reference, so a collision needs the same buyer, the same day, and the
+ * same draw. That is rare per dispatch and not rare at all across a busy day:
+ * at forty dispatches to one agency it is roughly one run in twelve, which is a
+ * birthday problem rather than bad luck. Six attempts takes the chance of
+ * exhausting them to nothing a photographer will meet.
+ */
+const REFERENCE_ATTEMPTS = 6;
+
+/** Postgres unique_violation. What the database says when the tail is taken. */
+const UNIQUE_VIOLATION = "23505";
+
 /** A reference a picture desk can quote back, e.g. BG-0820-4417. */
 function buildReference(buyerName: string | null, sentAt: Date): string {
   const initials = (buyerName ?? "MS")
@@ -166,7 +181,7 @@ export async function approveAndSend(input: {
 
   const sentAt = new Date();
   const buyer = pkg.buyers as unknown as { name: string; contact_name: string | null } | null;
-  const reference = buildReference(buyer?.name ?? null, sentAt);
+  let reference = buildReference(buyer?.name ?? null, sentAt);
 
   // The package records that it was approved, by whom, and when.
   const { error: approveError } = await supabase
@@ -187,35 +202,75 @@ export async function approveAndSend(input: {
     position: row.position as number,
   }));
 
-  const { data: submission, error: submissionError } = await supabase
-    .from("submissions")
-    .insert({
-      organization_id: organizationId,
-      package_id: packageId,
-      buyer_id: pkg.buyer_id,
-      status: "sent",
-      recipient_snapshot: {
-        desk: recipientLabel ?? buyer?.contact_name ?? null,
-        buyer_name: buyer?.name ?? null,
-      },
-      terms_snapshot: pkg.proposed_terms,
-      restrictions_snapshot: pkg.restrictions,
-      // Exactly which versions went out, frozen at this moment.
-      delivery_manifest: {
-        assets: manifest,
-        asset_count: manifest.length,
-        exclusivity: pkg.exclusivity,
-        embargo_until: pkg.embargo_until,
-        package_note: pkg.package_note,
-      },
-      delivery_method: pkg.delivery_method,
-      external_reference: reference,
-      sent_at: sentAt.toISOString(),
-      follow_up_at: followUpAt ?? null,
-      created_by: actorId,
-    })
-    .select("id")
-    .single();
+  /**
+   * Everything about the dispatch except the reference, which is the one field
+   * that may have to be drawn again.
+   */
+  const record = {
+    organization_id: organizationId,
+    package_id: packageId,
+    buyer_id: pkg.buyer_id,
+    status: "sent",
+    recipient_snapshot: {
+      desk: recipientLabel ?? buyer?.contact_name ?? null,
+      buyer_name: buyer?.name ?? null,
+    },
+    terms_snapshot: pkg.proposed_terms,
+    restrictions_snapshot: pkg.restrictions,
+    // Exactly which versions went out, frozen at this moment.
+    delivery_manifest: {
+      assets: manifest,
+      asset_count: manifest.length,
+      exclusivity: pkg.exclusivity,
+      embargo_until: pkg.embargo_until,
+      package_note: pkg.package_note,
+    },
+    delivery_method: pkg.delivery_method,
+    sent_at: sentAt.toISOString(),
+    follow_up_at: followUpAt ?? null,
+    created_by: actorId,
+  };
+
+  /*
+   * Draw a reference, and let the database be the one that says it is free.
+   *
+   * The tail was a single random draw with no second chance, so two dispatches
+   * to the same agency on the same day that happened to draw the same number
+   * ended here: "duplicate key value violates unique constraint", raised at the
+   * point of no return, with the package rolled back and nothing the
+   * photographer could do differently. It is not a rare shape either -- same
+   * buyer, same day is the ordinary case, and the numbers collide long before
+   * anybody would expect them to.
+   *
+   * Checking first would not fix it. Between a select and an insert another
+   * dispatch can take the number, and this is exactly the moment not to have a
+   * race. So the insert is the check: a unique violation means that reference
+   * is taken, and only that, so it draws another and tries again. Any other
+   * error is a real failure and breaks out immediately rather than being
+   * retried into a storm.
+   */
+  let submission: { id: string } | null = null;
+  let submissionError: { code?: string; message: string } | null = null;
+
+  for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt += 1) {
+    const result = await supabase
+      .from("submissions")
+      .insert({ ...record, external_reference: reference })
+      .select("id")
+      .single();
+
+    if (!result.error && result.data) {
+      submission = result.data as { id: string };
+      submissionError = null;
+      break;
+    }
+
+    submissionError = result.error;
+    if (result.error?.code !== UNIQUE_VIOLATION) break;
+
+    // Taken. The next draw is independent, so this converges quickly.
+    reference = buildReference(buyer?.name ?? null, sentAt);
+  }
 
   if (submissionError || !submission) {
     // Put the package back so the operator can try again rather than being
