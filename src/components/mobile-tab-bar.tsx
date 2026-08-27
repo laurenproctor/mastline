@@ -55,8 +55,10 @@ export function MobileTabBar({
   workspaceName: string;
   roleLabel: string;
 }) {
-  // More carries the current destination's mark when the destination is inside
-  // it, so the bar never looks as though you are nowhere.
+  // More is drawn as holding the current destination when one of its own is
+  // active, so the bar never looks as though you are nowhere. That is a visual
+  // state and not aria-current: exactly one thing on a page is the page you are
+  // on, and it is the link inside the sheet, not the control that opens it.
   const activeInOverflow = OVERFLOW.some((item) => item.label === active);
 
   return (
@@ -79,7 +81,6 @@ export function MobileTabBar({
        */}
       <details className="tab-more">
         <summary
-          aria-current={activeInOverflow ? "page" : undefined}
           className={activeInOverflow ? "tab tab-more-summary active" : "tab tab-more-summary"}
         >
           <svg
