@@ -8,48 +8,9 @@ import { Avatar } from "./avatar";
 import { getProfile, signAvatarUrl } from "@/lib/data/profiles";
 import { WorkspaceBanner } from "./workspace-banner";
 import { WorkspaceSwitcher } from "./workspace-switcher";
-
-/**
- * Navigation icons, drawn.
- *
- * These were Unicode glyphs -- ⌂ ◉ ▣ ➤ $ © □ -- which every platform renders at
- * a different weight, size and baseline, so the column read as seven unrelated
- * marks. One 18px grid, one stroke width, currentColor throughout.
- */
-const ICONS = {
-  work: "M3 8.5 9 3.5l6 5V15a.5.5 0 0 1-.5.5h-3v-4h-5v4h-3A.5.5 0 0 1 3 15z",
-  news: "M4.5 5.5h9v7h-9zM6.5 8h5M6.5 10h3",
-  shoots: "M2.5 6h13v8.5h-13zM6 6l1.2-2h3.6L12 6M9 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8",
-  submissions: "M15 3.5 8 10M15 3.5l-4.4 11.6-2.2-5-5-2.2z",
-  money:
-    "M9 3v12M11.8 5.6c-.6-.7-1.6-1.1-2.8-1.1-1.7 0-2.8.8-2.8 2s1 1.8 2.8 2.1c1.9.4 3 1 3 2.2s-1.2 2.1-3 2.1c-1.3 0-2.4-.4-3-1.2",
-  rights:
-    "M9 2.5a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13M11.2 7.2A2.6 2.6 0 0 0 9 6.1a2.9 2.9 0 0 0 0 5.8 2.6 2.6 0 0 0 2.2-1.1",
-  commercial:
-    "M9.6 2.6H15.4v5.8l-6.6 6.6a1.1 1.1 0 0 1-1.6 0L2.6 10.2a1.1 1.1 0 0 1 0-1.6zM12.8 5.9a.85.85 0 1 1-1.7 0 .85.85 0 0 1 1.7 0",
-  archive: "M2.5 4h13v3h-13zM4 7v7.5h10V7M7 10h4",
-  settings:
-    "M9 6.6a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8M9 2.5l.5 1.8 1.8.5 1.5-1.1 1.5 1.5-1.1 1.5.5 1.8 1.8.5v2.1l-1.8.5-.5 1.8 1.1 1.5-1.5 1.5-1.5-1.1-1.8.5-.5 1.8H7.9l-.5-1.8-1.8-.5-1.5 1.1-1.5-1.5 1.1-1.5-.5-1.8-1.8-.5V9.6l1.8-.5.5-1.8L2.6 5.8l1.5-1.5 1.5 1.1 1.8-.5.5-1.8z",
-} as const;
-
-export function NavIcon({ name }: { name: keyof typeof ICONS }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className="nav-icon"
-      fill="none"
-      height="18"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.35"
-      viewBox="0 0 18 18"
-      width="18"
-    >
-      <path d={ICONS[name]} />
-    </svg>
-  );
-}
+import { MobileTabBar } from "./mobile-tab-bar";
+import { NavIcon } from "./nav-icons";
+import { NavPrototypeToggle } from "./nav-prototype-toggle";
 
 /** Primary navigation. The order is the operating loop, not alphabetical. */
 const NAV = [
@@ -64,6 +25,22 @@ const NAV = [
 ] as const;
 
 export type NavLabel = (typeof NAV)[number]["label"] | "Settings";
+
+export { NavIcon };
+
+/*
+ * PROTOTYPE. Which phone navigation to draw.
+ *
+ * "tiles" is what ships: the sidebar lying down across the top of the page as a
+ * grid of icon-over-label tiles. "bottom" is the alternative under evaluation,
+ * where the four loop destinations move to a fixed bar at the bottom of the
+ * window and the rest go behind More.
+ *
+ * Absent cookie means tiles, so nothing changes for anybody who has not asked
+ * to see the other one. Delete this, MobileTabBar, and NavPrototypeToggle
+ * together once the question is settled either way.
+ */
+const NAV_PROTOTYPE_COOKIE = "mastline_nav";
 
 const ROLE_LABELS: Record<string, string> = {
   owner: "Owner · all access",
@@ -85,9 +62,12 @@ export async function AppShell({
   const session = await requireSession(cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
   const { activeWorkspace } = session;
   const status = await getWorkspaceStatus(activeWorkspace);
+  const avatar = await signAvatarUrl((await getProfile(session.userId))?.avatarPath);
+  const roleLabel = ROLE_LABELS[activeWorkspace.role] ?? humanizeStatus(activeWorkspace.role);
+  const navMode = cookieStore.get(NAV_PROTOTYPE_COOKIE)?.value === "bottom" ? "bottom" : "tiles";
 
   return (
-    <div className="app-shell">
+    <div className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"}>
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
@@ -133,15 +113,11 @@ export async function AppShell({
           </Link>
 
           <div className="profile">
-            <Avatar
-              initials={session.initials}
-              url={await signAvatarUrl((await getProfile(session.userId))?.avatarPath)}
-            />
+            <Avatar initials={session.initials} url={avatar} />
             <span>
               <strong>{session.displayName}</strong>
               <small>
-                {activeWorkspace.name} ·{" "}
-                {ROLE_LABELS[activeWorkspace.role] ?? humanizeStatus(activeWorkspace.role)}
+                {activeWorkspace.name} · {roleLabel}
               </small>
             </span>
           </div>
@@ -154,10 +130,37 @@ export async function AppShell({
         </div>
       </aside>
 
+      {/* PROTOTYPE. Only drawn under the flag, and only on a phone by CSS. */}
+      {navMode === "bottom" && (
+        <>
+          <div className="mobile-top">
+            <Link className="mobile-top-brand" href="/work">
+              <Image
+                alt="Mastline — go to the work queue"
+                height={26}
+                priority
+                src="/mastline-wordmark.png"
+                width={150}
+              />
+            </Link>
+          </div>
+          <MobileTabBar
+            active={active}
+            avatar={avatar}
+            displayName={session.displayName}
+            initials={session.initials}
+            roleLabel={roleLabel}
+            workspaceName={activeWorkspace.name}
+          />
+        </>
+      )}
+
       <main className="workspace" id="main">
         <WorkspaceBanner notice={status.notice} />
         {children}
       </main>
+
+      <NavPrototypeToggle mode={navMode} />
     </div>
   );
 }

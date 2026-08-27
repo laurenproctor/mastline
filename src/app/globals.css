@@ -2073,6 +2073,206 @@ button {
   }
 }
 
+/* --- PROTOTYPE: the phone tab bar -------------------------------------------
+ *
+ * Everything here is inert unless .app-shell also carries .nav-bottom, which
+ * only the mastline_nav cookie sets, and inert above 680px at any setting: the
+ * sidebar is the right shape for a window with a column to spare. Delete this
+ * block with the components when the question is settled.
+ *
+ * What it is trying to buy: the tile header costs 257px at the top of a 390px
+ * phone and then scrolls away, so on a page five screens long -- Settings is --
+ * every move between destinations starts with a scroll back to the top. A bar
+ * fixed to the bottom is 64px that never has to be found again, and it sits
+ * where a thumb already is.
+ */
+
+.mobile-top,
+.tab-bar {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  /* The sidebar is not hidden with visibility or a clip: display:none takes it
+     out of the accessibility tree too, so exactly one navigation landmark
+     called "Primary" is exposed at any width, never two. */
+  .nav-bottom .sidebar {
+    display: none;
+  }
+
+  /* The wordmark, and nothing else. It scrolls away, because the navigation no
+     longer lives up here and a signed-in operator does not need to be told
+     which product they are in twice a screen. */
+  .nav-bottom .mobile-top {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+  .nav-bottom .mobile-top-brand img {
+    width: 132px;
+    height: auto;
+  }
+
+  /*
+   * Above the consent banner, not under it -- the same fault the sidebar's
+   * Sign out and the onboarding rail both had. And clear of the home
+   * indicator, which is what env(safe-area-inset-bottom) answers on a phone
+   * with no physical button.
+   */
+  .nav-bottom .tab-bar {
+    position: fixed;
+    z-index: 40;
+    inset: auto 0 var(--consent-inset, 0px) 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .nav-bottom .page {
+    padding-bottom: calc(84px + var(--consent-inset, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .nav-bottom .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-height: 64px;
+    padding: 8px 2px;
+    color: var(--muted);
+    font-size: var(--fs-label);
+    line-height: 1.2;
+    text-align: center;
+    /* The mark for the destination you are on, drawn on the edge the bar
+       shares with the page rather than under the label, so it reads as the tab
+       being attached to what is above it. */
+    border-top: 2px solid transparent;
+    margin-top: -1px;
+  }
+  .nav-bottom .tab .nav-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .nav-bottom .tab.active {
+    color: var(--ink);
+    border-top-color: var(--blue);
+    font-weight: 750;
+    background: #fff;
+  }
+  .nav-bottom .tab.active .nav-icon {
+    opacity: 1;
+  }
+  .nav-bottom .tab:focus-visible {
+    outline-offset: -3px;
+  }
+
+  /* More, and the sheet it opens. */
+  .nav-bottom .tab-more {
+    min-width: 0;
+  }
+  .nav-bottom .tab-more-summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .nav-bottom .tab-more-summary::-webkit-details-marker {
+    display: none;
+  }
+  .nav-bottom .tab-more[open] .tab-more-summary {
+    background: #fff;
+    color: var(--ink);
+  }
+  /*
+   * The sheet rises from the bar rather than covering the screen. Anchored to
+   * the bar's own bottom edge so it never lands under it, and capped at two
+   * thirds of the window so a short phone can still see what it is in front of.
+   */
+  .nav-bottom .tab-sheet {
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    z-index: 41;
+    width: min(280px, 100vw);
+    max-height: 66vh;
+    overflow-y: auto;
+    display: grid;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    background: var(--surface);
+    box-shadow: 0 -14px 34px rgba(17, 17, 15, 0.14);
+  }
+  .nav-bottom .tab-sheet-account {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-bottom .tab-sheet-account span:last-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .nav-bottom .tab-sheet-account small {
+    color: var(--muted);
+  }
+  .nav-bottom .tab-sheet-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    border-left: 2px solid transparent;
+    color: #55534c;
+  }
+  .nav-bottom .tab-sheet-link.active {
+    border-left-color: var(--blue);
+    color: var(--ink);
+    background: #fff;
+    font-weight: 750;
+  }
+  .nav-bottom .tab-sheet-signout {
+    width: 100%;
+    min-height: 48px;
+    border: 0;
+    background: transparent;
+    padding: 0 16px;
+    color: var(--muted);
+    font-size: var(--fs-note);
+    font-weight: 700;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* The prototype's own switch. Deliberately plain and deliberately in the way:
+   it is not part of the product and should not be mistaken for it. */
+.nav-prototype-toggle {
+  position: fixed;
+  z-index: 90;
+  right: 10px;
+  bottom: calc(10px + var(--consent-inset, 0px));
+  border: 1px dashed var(--field-line);
+  border-radius: 99px;
+  background: rgba(251, 250, 246, 0.94);
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: var(--fs-label);
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 680px) {
+  .nav-bottom .nav-prototype-toggle {
+    bottom: calc(78px + var(--consent-inset, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* --- Authentication and workspace ------------------------------------------ */
 
 .auth-page {
