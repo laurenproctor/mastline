@@ -1,4 +1,5 @@
 import { type Page, expect, test } from "@playwright/test";
+import { BLINK_FRAMES } from "../src/lib/favicon-frames";
 
 /**
  * The 32-second favicon blink, in a real browser.
@@ -50,13 +51,31 @@ test("holds the mark, then blinks the focus square", async ({ page }) => {
   expect(resting).toContain('opacity="1"');
   expect(resting).not.toContain("transform=");
 
-  // Most of the cycle is a hold. A tab strip that flickers every few seconds is
-  // an irritation, not a signal.
-  await page.clock.fastForward(29_000);
+  /*
+   * Most of the cycle is a hold. A tab strip that flickers every few seconds is
+   * an irritation, not a signal.
+   *
+   * Sampled well inside the hold rather than at the edge of it. This used to
+   * advance to 29,000ms, which is 440ms before the first blink frame, and a
+   * fake clock does not hold that line: every round trip to the page leaks a
+   * little real time into it, and on a loaded machine the drift crossed 440ms
+   * and the icon had already started blinking. The failure looked like a broken
+   * animation and was a broken measurement. The margin is taken from the frame
+   * table so it cannot drift from it.
+   */
+  const firstBlinkAt = BLINK_FRAMES[1].at;
+  const HOLD_MARGIN_MS = 5_000;
+  await page.clock.fastForward(firstBlinkAt - HOLD_MARGIN_MS);
   expect(await currentIcon(page)).toBe(resting);
 
   // Then the shutter: the green square is transformed about its own centre.
-  const blinking = await advanceUntilIcon(page, (icon) => icon !== resting, 4_000, "blinked");
+  // The budget covers the margin just skipped, plus room for the same drift.
+  const blinking = await advanceUntilIcon(
+    page,
+    (icon) => icon !== resting,
+    HOLD_MARGIN_MS + 4_000,
+    "blinked",
+  );
   expect(blinking).toContain("translate(128.5 69.5) scale(");
 
   // And it settles back at rest.
