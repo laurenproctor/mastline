@@ -173,6 +173,37 @@ test.describe("consent banner", () => {
     expect(await page.locator("#ms-clarity").count()).toBe(0);
   });
 
+  /**
+   * Outside the regulated regions no banner appears, so nobody ever grants.
+   * Gating Clarity on a stored "granted" therefore turned it off for everyone
+   * who is not asked -- stricter looking, and simply wrong. It follows Consent
+   * Mode's own default instead: run where no choice is required.
+   */
+  test("clarity runs where no choice is required", async ({ page }) => {
+    await visitFrom(page, "US");
+
+    await expect(banner(page)).toBeHidden();
+    await expect(page.locator("#ms-clarity")).toHaveCount(1);
+  });
+
+  test("refusing stops clarity even where it was not required to ask", async ({ page }) => {
+    await visitFrom(page, "US");
+    await expect(page.locator("#ms-clarity")).toHaveCount(1);
+
+    // The footer is the only way in when the banner never appeared.
+    await page.getByRole("button", { name: /cookie choices/i }).click();
+    await expect(banner(page)).toBeVisible();
+    await page.getByTestId("consent-reject").click();
+
+    const cookies = await page.context().cookies();
+    expect(cookies.find((c) => c.name === "ml_consent")?.value).toBe("denied");
+
+    // The script already on the page cannot be un-run; what must not happen is
+    // it coming back on the next load.
+    await page.reload();
+    await expect(page.locator("#ms-clarity")).toHaveCount(0);
+  });
+
   test("clarity loads once analytics is turned on", async ({ page }) => {
     await visitFrom(page, "FR");
     await page.getByTestId("consent-manage").click();

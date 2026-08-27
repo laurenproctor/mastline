@@ -74,7 +74,7 @@ export const CONSENT_CATEGORIES: readonly ConsentCategory[] = [
     label: "Analytics",
     optional: true,
     description:
-      "Google Analytics, to understand how the site is used, and Microsoft Clarity, which records how pages are used — pointer movement, scrolling, and clicks — to show where the site is confusing. Neither is loaded, and no cookie of theirs is set, until you turn this on. Clarity is provided by Microsoft, which may set cookies of its own once it runs.",
+      "Google Analytics, to understand how the site is used, and Microsoft Clarity, which records how pages are used — pointer movement, scrolling, and clicks — to show where the site is confusing. Where a choice is required, neither is loaded and no cookie of theirs is set until you turn this on; everywhere else they run unless you turn this off. Clarity is provided by Microsoft, which may set cookies of its own once it runs.",
   },
 ];
 
