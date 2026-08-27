@@ -98,3 +98,62 @@ describe("selection roll-up", () => {
     expect(report.reports.map((entry) => entry.assetId)).toEqual(["a", "b"]);
   });
 });
+
+/**
+ * The rule that makes drafting a caption at import safe.
+ *
+ * Every case here is about the same failure: a sentence the caption writer
+ * produced, sitting in a field, looking exactly like one the photographer
+ * typed. If these pass, that sentence cannot reach a buyer without somebody
+ * having read it.
+ */
+describe("a caption drafted at import", () => {
+  const drafted = (overrides: Partial<Asset> = {}) =>
+    asset({
+      caption: "A man in a dark coat leaves a hotel side entrance at night.",
+      captionOrigin: "model",
+      captionAwaitsReview: true,
+      captionBasis: "Read from the image.",
+      captionConfidence: 0.7,
+      ...overrides,
+    });
+
+  it("does not make a frame dispatch ready on its own", () => {
+    const report = reviewAsset(drafted());
+    expect(report.isDispatchReady).toBe(false);
+    expect(report.missingRequired.map((rule) => rule.field)).toContain("caption");
+  });
+
+  it("counts once a person has read it and saved", () => {
+    const report = reviewAsset(
+      drafted({
+        captionOrigin: "human",
+        captionAwaitsReview: false,
+        captionReviewedAt: "2026-08-27T09:00:00.000Z",
+      }),
+    );
+    expect(report.isDispatchReady).toBe(true);
+  });
+
+  it("counts when the reviewer kept the words but signed for them", () => {
+    // Accepting a draft unchanged is still authoring it. What clears the gate
+    // is the review, not the text having been edited.
+    const report = reviewAsset(drafted({ captionAwaitsReview: false }));
+    expect(report.isDispatchReady).toBe(true);
+  });
+
+  it("leaves captions written before any of this existed alone", () => {
+    // No provenance at all: every caption in the archive on the day this
+    // shipped. Treating those as unread would block approved dispatches.
+    const { captionOrigin, captionAwaitsReview, ...rest } = drafted();
+    void captionOrigin;
+    void captionAwaitsReview;
+    expect(reviewAsset(rest as Asset).isDispatchReady).toBe(true);
+  });
+
+  it("blocks a whole selection on one unread draft", () => {
+    const report = reviewSelection([asset({ id: "a" }), drafted({ id: "b" })]);
+    expect(report.ready).toBe(1);
+    expect(report.blocked).toBe(1);
+  });
+});

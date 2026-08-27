@@ -14,6 +14,7 @@ import {
   supportsEffort,
 } from "../metadata-suggestions";
 import { createClient } from "../supabase/server";
+import { recordEventWith } from "./activity";
 import { getShoot } from "./shoots";
 
 /**
@@ -269,4 +270,129 @@ export async function suggestMetadataForAsset(input: {
       error: error instanceof Error ? error.message : "The suggestion could not be made.",
     };
   }
+}
+
+/**
+ * Draft a caption for a frame that has just been imported.
+ *
+ * This is the automatic path: the browser registers a preview, and this runs
+ * behind the response so that by the time the operator looks at the shoot, the
+ * frames already carry words. It is the same model call as the inspector
+ * button; what differs is that nobody asked for this one, so everything below
+ * is about being safe to run unattended.
+ *
+ * Four rules hold it together:
+ *
+ *   1. The workspace has to want it. Read here rather than trusted from the
+ *      caller, so the switch cannot be forgotten at a call site.
+ *   2. It only ever fills an empty field. The guarded update means a caption
+ *      the operator typed while the model was still reading -- entirely
+ *      possible, since an import returns long before a vision call does --
+ *      wins, and the draft is dropped rather than written over it.
+ *   3. What it writes is marked as a draft. `caption_origin` is "model" and no
+ *      reviewer is recorded, so `caption_awaits_review` is true and the
+ *      dispatch gate refuses the frame until a person reads it.
+ *   4. Nothing here throws. A frame with no caption is a normal state that the
+ *      inspector already handles; a failed draft must never fail an import that
+ *      has already safely stored an original.
+ */
+export interface DraftOutcome {
+  readonly written: boolean;
+  /** Why not, when nothing was written. For logs and tests, not for a buyer. */
+  readonly reason?: string;
+}
+
+export async function draftCaptionOnImport(input: {
+  organizationId: Id;
+  actorId: Id;
+  assetId: Id;
+  client?: SupabaseClient;
+}): Promise<DraftOutcome> {
+  const supabase = input.client ?? (await createClient());
+
+  const { data: organization } = await supabase
+    .from("organizations")
+    .select("auto_caption_on_import")
+    .eq("id", input.organizationId)
+    .maybeSingle();
+
+  if (!organization) return { written: false, reason: "workspace-unreadable" };
+  if (organization.auto_caption_on_import === false) return { written: false, reason: "disabled" };
+
+  const outcome = await suggestMetadataForAsset({
+    organizationId: input.organizationId,
+    assetId: input.assetId,
+    client: supabase,
+  });
+
+  if (!outcome.ok || !outcome.suggestion) {
+    return { written: false, reason: outcome.error ?? "no-suggestion" };
+  }
+
+  const suggestion = outcome.suggestion;
+  if (!suggestion.caption) return { written: false, reason: "no-caption-in-suggestion" };
+
+  /*
+   * Read the neighbouring fields before deciding what to write.
+   *
+   * The headline and keywords are drafted in the same call and are worth
+   * keeping, but they are not what this feature is for and they must not
+   * overwrite anything. Each is written only if it is still empty, which is why
+   * this is a read rather than a blind update: `is null` in the WHERE clause
+   * can guard one column, not three independently.
+   */
+  const { data: current } = await supabase
+    .from("assets")
+    .select("headline, keywords")
+    .eq("organization_id", input.organizationId)
+    .eq("id", input.assetId)
+    .maybeSingle();
+
+  const headlineIsEmpty = !String(current?.headline ?? "").trim();
+  const keywordsAreEmpty = !Array.isArray(current?.keywords) || current.keywords.length === 0;
+
+  const { data: written, error } = await supabase
+    .from("assets")
+    .update({
+      caption: suggestion.caption,
+      caption_origin: "model",
+      caption_drafted_at: new Date().toISOString(),
+      caption_basis: suggestion.basis,
+      caption_confidence: suggestion.confidence,
+      caption_model: MODEL,
+      ...(headlineIsEmpty && suggestion.headline ? { headline: suggestion.headline } : {}),
+      ...(keywordsAreEmpty && suggestion.keywords.length > 0
+        ? { keywords: suggestion.keywords }
+        : {}),
+    })
+    .eq("organization_id", input.organizationId)
+    .eq("id", input.assetId)
+    // The race guard. Whoever typed first keeps their words.
+    .is("caption", null)
+    .select("id");
+
+  if (error) return { written: false, reason: error.message };
+  if (!written || written.length === 0) return { written: false, reason: "caption-already-set" };
+
+  /*
+   * Recorded as an event because it is a change to a commercial record that no
+   * person asked for. The basis and confidence go in the event as well as the
+   * row: the row keeps the current answer, the event keeps what was true when
+   * the decision was made, which is the question an audit actually asks.
+   */
+  await recordEventWith(supabase, {
+    organizationId: input.organizationId,
+    actorId: input.actorId,
+    entityType: "asset",
+    entityId: input.assetId,
+    action: "asset.caption_drafted",
+    data: {
+      summary: "Caption drafted at import, awaiting review",
+      basis: suggestion.basis,
+      confidence: suggestion.confidence,
+      model: MODEL,
+    },
+  });
+
+  return { written: true };
 }

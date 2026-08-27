@@ -28,6 +28,15 @@
   settled before charging a non-US customer.
 - Storage/scale: Solo 250 GB and 1 photographer; Pro 1 TB; Studio up to 5 people and 5 TB shared; Agency flexible/custom
 - Optional Mastline Sales Engine split: photographer 70%, Mastline 30%, only on licenses generated inside Mastline
+- **Confirmation belongs at the point of consequence.** Creating a shoot is
+  private, reversible workspace activity, so it happens on one page with one
+  button and no confirmation step: brief, photographs, shared metadata, rights
+  facts, and a review that reports rather than gates. The consequential act is
+  dispatch, and its two-motion confirmation is untouched. Files chosen before
+  the shoot exists are hashed and staged in the workspace's private staging
+  area, then registered by the same `registerImport` the shoot workspace uses.
+  There was never a separate confirmation ROUTE to retire — the second screen
+  was the shoot workspace itself, which is still where the flow lands.
 - Human review before outbound or consequential actions
 - Warm off-white/light editorial interface is the default product direction; blue is the primary action signal
 
@@ -173,6 +182,38 @@ Item numbers below are permanent. Resolved items keep their number so older note
 - The cookie is a preference, never a tenancy or authorization input. It answers
   "where was I?" for a legacy path or a bare sign-in and is checked against live
   membership before it is used.
+
+## Captions drafted at import
+
+- **The caption writer runs on every frame as it is imported, not only when
+  somebody asks for it.** A photographer who has just dumped a card is not
+  sitting in the inspector, and the frames a desk wants are wanted within the
+  hour. Waiting for a click meant the feature was never used at the one moment
+  it was worth anything.
+- **The draft is written into `assets.caption`, not parked in a drafts table.**
+  A caption that is not in the field is not searchable, not exportable, and not
+  visible in the archive, so a drafts table would have delivered the promise in
+  name only.
+- **A drafted caption carries its origin and does not satisfy the dispatch
+  gate.** `caption_origin`, `caption_reviewed_at` and the generated
+  `caption_awaits_review` sit beside the text. `BASELINE_RULES` requires a
+  caption that a person has read and saved, so an unread machine sentence
+  cannot reach a buyer, an invoice, or a newspaper. Automation buys the typing;
+  the judgement is still required, and still the photographer's.
+- **Reading is the confirm step, and only the inspector counts as reading.**
+  Saving in the inspector marks the caption reviewed and makes it theirs, even
+  if they changed nothing — accepting a sentence is authoring it. A bulk
+  metadata apply deliberately does not, because setting a credit line across two
+  hundred frames is not reading two hundred captions.
+- **On by default, with a workspace switch.** The opposite of the two-factor
+  policy next to it, and for the opposite reason: the worst this can do is put a
+  sentence in a field somebody overwrites, at roughly half a cent a frame.
+- **People are still never suggested.** Unchanged, and the reason it is safe to
+  run this unattended: naming a face is a factual claim with legal consequences,
+  and the People field is left for the photographer, who was there.
+- Open: whether a low-confidence draft should be written at all, or left empty
+  with the reason recorded. Nothing is known yet about where a working
+  photographer would put that line.
 
 ## Strategic pushback
 

@@ -31,6 +31,11 @@ export interface Workspace {
   readonly seatLimit?: number;
   /** Whether this workspace insists on a second factor for owners and finance. */
   readonly requireMfa: boolean;
+  /**
+   * Whether the caption writer drafts a caption for each frame as it is
+   * imported. On by default; the draft always arrives marked unreviewed.
+   */
+  readonly autoCaptionOnImport: boolean;
   readonly billingPeriod?: "annual" | "monthly";
   readonly paymentMethodAttachedAt?: string;
   readonly pastDueSince?: string;
@@ -77,7 +82,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
   const { data: memberships } = await supabase
     .from("memberships")
     .select(
-      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit, billing_period, payment_method_attached_at, past_due_since, current_period_end, cancel_at_period_end, stripe_customer_id, require_mfa)",
+      "role, status, user_id, organizations(id, name, slug, timezone, currency, plan, subscription_status, trial_ends_at, storage_limit_bytes, seat_limit, billing_period, payment_method_attached_at, past_due_since, current_period_end, cancel_at_period_end, stripe_customer_id, require_mfa, auto_caption_on_import)",
     )
     .eq("user_id", user.id)
     .eq("status", "active");
@@ -96,6 +101,7 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
         storage_limit_bytes: number | null;
         seat_limit: number | null;
         require_mfa: boolean | null;
+        auto_caption_on_import: boolean | null;
         billing_period: "annual" | "monthly" | null;
         payment_method_attached_at: string | null;
         past_due_since: string | null;
@@ -118,6 +124,9 @@ export const getSession = cache(async (activeWorkspaceId?: string): Promise<Sess
           org.storage_limit_bytes === null ? undefined : Number(org.storage_limit_bytes),
         seatLimit: org.seat_limit === null ? undefined : Number(org.seat_limit),
         requireMfa: org.require_mfa ?? false,
+        // Defaulting to true mirrors the column: a workspace that has never
+        // been asked gets the captions.
+        autoCaptionOnImport: org.auto_caption_on_import ?? true,
         billingPeriod: org.billing_period ?? undefined,
         paymentMethodAttachedAt: org.payment_method_attached_at ?? undefined,
         pastDueSince: org.past_due_since ?? undefined,

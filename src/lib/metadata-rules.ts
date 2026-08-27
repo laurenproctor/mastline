@@ -10,6 +10,7 @@
  */
 
 import type { Asset } from "./domain";
+import { captionAwaitsReview } from "./metadata-suggestions";
 
 export type MetadataSeverity = "required" | "recommended";
 
@@ -37,8 +38,19 @@ export const BASELINE_RULES: readonly MetadataRule[] = [
     field: "caption",
     label: "Caption",
     severity: "required",
-    describe: "What is happening, who is in frame, where, and when.",
-    isSatisfied: (asset) => nonEmpty(asset.caption),
+    describe:
+      "What is happening, who is in frame, where, and when. A caption drafted at import counts once someone has read it and saved it.",
+    /*
+     * Text alone is not enough, and this is the line that makes drafting a
+     * caption at import safe to do at all.
+     *
+     * The caption writer fills this field for every frame as it lands, so from
+     * here on "the field is not empty" says nothing about whether a person has
+     * ever looked at the sentence. An unread draft failing the requirement is
+     * what keeps a machine description out of a submission, an invoice, and a
+     * newspaper.
+     */
+    isSatisfied: (asset) => nonEmpty(asset.caption) && !captionAwaitsReview(asset),
   },
   {
     field: "headline",

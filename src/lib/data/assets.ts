@@ -6,7 +6,7 @@ import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
-import { recordEvent } from "./activity";
+import { recordEvent, recordEventWith } from "./activity";
 
 /**
  * Assets, their versions, and their caption history.
@@ -17,7 +17,7 @@ import { recordEvent } from "./activity";
  */
 
 const ASSET_COLUMNS =
-  "id, organization_id, shoot_id, status, asset_kind, canonical_filename, captured_at, headline, caption, subjects, location_name, keywords, creator_name, copyright_notice, copyright_owner, credit_line, usage_restrictions, selected, rating, currency, created_at, updated_at";
+  "id, organization_id, shoot_id, status, asset_kind, canonical_filename, captured_at, headline, caption, caption_origin, caption_drafted_at, caption_reviewed_at, caption_basis, caption_confidence, caption_awaits_review, subjects, location_name, keywords, creator_name, copyright_notice, copyright_owner, credit_line, usage_restrictions, selected, rating, currency, created_at, updated_at";
 
 const VERSION_COLUMNS =
   "id, asset_id, version_kind, storage_bucket, object_key, sha256, bytes, mime_type, width, height, created_at";
@@ -32,6 +32,12 @@ interface AssetRow {
   captured_at: string | null;
   headline: string | null;
   caption: string | null;
+  caption_origin: string | null;
+  caption_drafted_at: string | null;
+  caption_reviewed_at: string | null;
+  caption_basis: string | null;
+  caption_confidence: number | string | null;
+  caption_awaits_review: boolean | null;
   subjects: unknown;
   location_name: string | null;
   keywords: unknown;
@@ -62,6 +68,16 @@ function toAsset(
     capturedAt: row.captured_at ?? undefined,
     headline: row.headline ?? undefined,
     caption: row.caption ?? undefined,
+    captionOrigin: row.caption_origin === "model" ? "model" : "human",
+    captionDraftedAt: row.caption_drafted_at ?? undefined,
+    captionReviewedAt: row.caption_reviewed_at ?? undefined,
+    captionBasis: row.caption_basis ?? undefined,
+    // numeric(3,2) arrives as a string over the Data API, not a number.
+    captionConfidence:
+      row.caption_confidence === null || row.caption_confidence === undefined
+        ? undefined
+        : Number(row.caption_confidence),
+    captionAwaitsReview: row.caption_awaits_review ?? false,
     subjects: list(row.subjects),
     locationName: row.location_name ?? undefined,
     keywords: list(row.keywords),
@@ -222,13 +238,29 @@ export async function listCaptionHistory(
  * something described by it actually changed.
  */
 export async function updateAssetMetadata(input: {
+  /** The caller's client, when they already hold one. See createPackageFromSelection. */
+  client?: SupabaseClient;
   organizationId: Id;
   actorId: Id;
   assetId: Id;
   metadata: AssetMetadataInput;
+  /**
+   * Whether this save is a person standing behind the caption.
+   *
+   * True only from the inspector, where the caption was on screen in an
+   * editable field and they pressed Save. That is the confirm step, and it is
+   * what clears `caption_awaits_review` and lets the frame be dispatched.
+   *
+   * Deliberately absent from the bulk apply. Setting a credit line across two
+   * hundred frames is not reading two hundred captions, and a flag that treated
+   * it as such would hand every drafted caption a review nobody performed --
+   * which is the one way this feature could put a machine sentence in front of
+   * a buyer.
+   */
+  captionReviewed?: boolean;
 }): Promise<void> {
   const { organizationId, actorId, assetId, metadata } = input;
-  const supabase = await createClient();
+  const supabase = input.client ?? (await createClient());
 
   const { data: current, error: readError } = await supabase
     .from("assets")
@@ -265,6 +297,30 @@ export async function updateAssetMetadata(input: {
     }
   }
 
+  /*
+   * A reviewed save makes the caption the person's own.
+   *
+   * Origin flips to "human" whether they rewrote the draft or left it word for
+   * word: accepting a sentence is authoring it, and a caption still marked
+   * "model" after somebody chose to keep it would understate what they did.
+   * caption_basis and caption_model are left alone -- how a caption started is
+   * history, and the revisions table keeps text but not provenance.
+   *
+   * An empty caption is not a review of anything, so it clears the reviewer
+   * rather than recording one against a blank field.
+   */
+  const reviewed = input.captionReviewed === true;
+  const hasCaption = typeof metadata.caption === "string" && metadata.caption.trim().length > 0;
+  const review = reviewed
+    ? hasCaption
+      ? {
+          caption_origin: "human",
+          caption_reviewed_at: new Date().toISOString(),
+          caption_reviewed_by: actorId,
+        }
+      : { caption_origin: "human", caption_reviewed_at: null, caption_reviewed_by: null }
+    : {};
+
   const { error } = await supabase
     .from("assets")
     .update({
@@ -276,6 +332,7 @@ export async function updateAssetMetadata(input: {
       credit_line: metadata.creditLine ?? null,
       copyright_notice: metadata.copyrightNotice ?? null,
       usage_restrictions: metadata.usageRestrictions ?? null,
+      ...review,
     })
     .eq("organization_id", organizationId)
     .eq("id", assetId);
@@ -283,7 +340,7 @@ export async function updateAssetMetadata(input: {
   if (error) throw new Error(`Could not save the metadata: ${error.message}`);
 
   if (describedFieldsChanged) {
-    await recordEvent({
+    await recordEventWith(supabase, {
       organizationId,
       actorId,
       entityType: "asset",

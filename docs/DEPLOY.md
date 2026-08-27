@@ -109,9 +109,38 @@ is what Supabase puts in reset and confirmation emails.
 ## Metadata suggestions
 
 `ANTHROPIC_API_KEY` is set for production. It is server-only and must never
-become `NEXT_PUBLIC_`. It gates one control: "Suggest from the image" in the
-asset inspector. With no key the control is not offered at all rather than
-offered and failing, so an unset key is a degradation and not an outage.
+become `NEXT_PUBLIC_`. With no key the inspector's "Suggest from the image"
+control is not offered at all rather than offered and failing, so an unset key
+is a degradation and not an outage.
+
+It now gates two paths, not one:
+
+- "Suggest from the image" in the asset inspector, on demand.
+- The caption drafted for every frame as it is imported, which runs in an
+  `after()` behind `registerPreviewAction` and writes into `assets.caption`
+  marked unreviewed. The workspace switch is
+  `organizations.auto_caption_on_import`, on by default.
+
+**Known dead at time of writing.** The key in local `.env.local` is
+identity-linked, and every Messages API call with it returns:
+
+    400 invalid_request_error: anthropic-workspace-id is required when
+    authenticating with an identity-linked API key; send the id of the
+    workspace this request acts in.
+
+Whether production's key has the same problem is unverified — Vercel stores
+production values as sensitive and `vercel env pull` reads them back empty, so
+it cannot be checked from outside. If it does, both caption paths fail
+identically and invisibly: the import logs one `Could not draft a caption for
+<id>` warning per frame and writes nothing, and the Suggest button reports
+"The suggestion service returned 400."
+
+The fix is either a key that is not identity-linked, or passing the workspace id
+in `defaultHeaders` when constructing `new Anthropic()` in
+`src/lib/data/metadata-suggestions.ts`. Nothing else in the product depends on
+it: an import still stores the original, and a caption can still be typed.
+Confirm with one import into a real workspace before assuming the feature is
+live.
 
 The model is `claude-haiku-4-5` by default, overridable with
 `MASTLINE_SUGGESTION_MODEL` (unset in production, so the default applies).

@@ -5,6 +5,7 @@ import {
   MAX_KEYWORDS,
   SUGGESTION_SYSTEM_PROMPT,
   buildSuggestionPrompt,
+  captionAwaitsReview,
   describeBasis,
   normaliseSuggestion,
   supportsEffort,
@@ -164,5 +165,29 @@ describe("supportsEffort", () => {
   it("falls back to the model's own default rather than guessing", () => {
     expect(supportsEffort("claude-something-7")).toBe(false);
     expect(supportsEffort("")).toBe(false);
+  });
+});
+
+describe("whether a caption still needs reading", () => {
+  it("trusts the database's answer when it has one", () => {
+    // The generated column is derived from the same two facts, so the only way
+    // it can disagree is if something has gone wrong upstream -- and in that
+    // case the row is what the dispatch gate must obey, not a recomputation.
+    expect(captionAwaitsReview({ captionAwaitsReview: true, captionOrigin: "human" })).toBe(true);
+    expect(captionAwaitsReview({ captionAwaitsReview: false, captionOrigin: "model" })).toBe(false);
+  });
+
+  it("derives it when the column is absent", () => {
+    expect(captionAwaitsReview({ captionOrigin: "model" })).toBe(true);
+    expect(
+      captionAwaitsReview({ captionOrigin: "model", captionReviewedAt: "2026-08-27T09:00:00Z" }),
+    ).toBe(false);
+  });
+
+  it("treats a caption of unknown origin as one somebody typed", () => {
+    // Every caption written before the caption writer existed. Marking these
+    // unread would block dispatches that were already approved.
+    expect(captionAwaitsReview({ caption: "Typed by hand." })).toBe(false);
+    expect(captionAwaitsReview({})).toBe(false);
   });
 });

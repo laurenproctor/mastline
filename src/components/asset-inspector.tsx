@@ -29,6 +29,14 @@ export interface InspectorAsset {
   readonly revisionCount: number;
   /** True when the file is a clip rather than a still. */
   readonly isVideo?: boolean;
+  /**
+   * True when the caption below was drafted by the caption writer at import and
+   * nobody has read it yet. The frame is not dispatch ready until they have.
+   */
+  readonly captionAwaitsReview?: boolean;
+  /** What that draft was made from. Shown, never hidden. */
+  readonly captionBasis?: string;
+  readonly captionConfidence?: number;
 }
 
 /**
@@ -157,6 +165,32 @@ function InspectorForm({
         </p>
       )}
 
+      {/*
+        * Two banners, because they describe two genuinely different situations
+        * and collapsing them would misstate one of them.
+        *
+        * The draft banner is about a caption that is already in the record: the
+        * writer put it there when the frame landed, it is in the archive and in
+        * an export, and the only thing missing is a person's agreement. Saying
+        * "nothing is recorded until you save" there would be false.
+        *
+        * The suggestion banner below is the on-demand button, where that
+        * sentence is exactly true. `suggestion` wins when both could apply,
+        * since a fresh read has replaced whatever the field held.
+        */}
+      {asset.captionAwaitsReview && !suggestion && (
+        <div className="suggestion-note" role="status">
+          <Badge tone="warn">Drafted at import</Badge>
+          <p>
+            {asset.captionBasis ?? "Read from the image when this frame was imported."}
+            {typeof asset.captionConfidence === "number" &&
+              ` Confidence ${formatConfidence(asset.captionConfidence)}.`}{" "}
+            Nobody has read it yet, so this frame is not dispatch ready. Correct it if it is wrong,
+            then save — saving is what makes the caption yours.
+          </p>
+        </div>
+      )}
+
       {suggestion && (
         <div className="suggestion-note" role="status">
           <Badge tone="blue">Suggested</Badge>
@@ -175,7 +209,11 @@ function InspectorForm({
       />
       <Field
         control="textarea"
-        hint="What is happening, who is in frame, where, and when."
+        hint={
+          asset.captionAwaitsReview
+            ? "Drafted at import. It counts as a caption once you save it."
+            : "What is happening, who is in frame, where, and when."
+        }
         label="Caption"
         name="caption"
         onChange={(event) => setCaption(event.target.value)}

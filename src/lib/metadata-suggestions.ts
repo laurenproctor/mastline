@@ -7,9 +7,13 @@
  *
  * So this module is deliberately conservative:
  *
- *   - Nothing here writes to an asset. A suggestion is returned to the browser,
- *     shown as a suggestion, edited if the operator wants, and saved only by
- *     the existing save action -- `suggest -> explain -> confirm`.
+ *   - A suggestion is never a finished caption. It is drafted for the operator
+ *     -- at import for every frame, or on demand from the inspector -- and it
+ *     carries its origin with it: `captionAwaitsReview` stays true until a
+ *     person has read the words and saved them. The dispatch gate reads that
+ *     flag, so `suggest -> explain -> confirm` survives the draft being written
+ *     straight into the field. What automation saves here is the typing; the
+ *     judgement is still the photographer's, and it is still required.
  *   - People are never suggested. Naming a face is a factual claim with legal
  *     consequences under publicity and privacy law, and a wrong name attached
  *     to a licensed frame is the worst failure this product could produce.
@@ -95,6 +99,37 @@ export function normaliseSuggestion(
     basis: collapse(record.basis) || fallbackBasis,
     confidence,
   };
+}
+
+/**
+ * The caption facts every consumer of a caption needs, and nothing else.
+ *
+ * Structural rather than `Asset`, so the dispatch rules, the inspector, and a
+ * test can all ask the question without one pure module having to import the
+ * whole domain.
+ */
+export interface CaptionProvenance {
+  readonly caption?: string;
+  readonly captionOrigin?: "human" | "model";
+  readonly captionReviewedAt?: string;
+  readonly captionAwaitsReview?: boolean;
+}
+
+/**
+ * Is this caption still waiting to be read by the person who will stand behind it?
+ *
+ * The database generates `captionAwaitsReview` and it is the answer wherever it
+ * is present. The fallback derives the same thing from origin and review time,
+ * so a record assembled in a test, a fixture, or an older read path cannot
+ * silently report "reviewed" and let an unread sentence through the gate.
+ * Defaulting the other way -- treating an unknown origin as human -- is
+ * deliberate: every caption written before the caption writer existed was typed
+ * by someone, and marking that work unread would block dispatches that were
+ * already approved.
+ */
+export function captionAwaitsReview(asset: CaptionProvenance): boolean {
+  if (typeof asset.captionAwaitsReview === "boolean") return asset.captionAwaitsReview;
+  return asset.captionOrigin === "model" && !asset.captionReviewedAt;
 }
 
 /**

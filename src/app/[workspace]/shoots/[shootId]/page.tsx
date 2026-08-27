@@ -21,12 +21,30 @@ import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
 
+/*
+ * The caption writer runs after the response to registerPreviewAction, and a
+ * Server Action inherits the duration budget of the route it was invoked from.
+ * Reading a frame is a download plus a vision call; the platform default cuts
+ * that off often enough to make the feature look broken rather than slow.
+ */
+export const maxDuration = 60;
+
 export default async function ShootWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string; shootId: string }>;
+  searchParams: Promise<{ created?: string; importFailed?: string }>;
 }) {
   const { workspace: requestedWorkspace, shootId } = await params;
+  /*
+   * Set by the redirect createShootAction performs, so the confirmation lands
+   * on the record itself rather than on a screen between the form and the work.
+   * A reload drops it, which is right: it confirms an action, it is not a fact
+   * about the shoot.
+   */
+  const { created: justCreated, importFailed } = await searchParams;
+  const failedImports = Number.parseInt(importFailed ?? "", 10);
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);
   /*
@@ -90,8 +108,16 @@ export default async function ShootWorkspacePage({
       missingRecommended: report.missingRecommended.map((rule) => rule.label),
       revisionCount: histories[index].length,
       isVideo: asset.assetKind === "video",
+      captionAwaitsReview: asset.captionAwaitsReview ?? false,
+      captionBasis: asset.captionBasis,
+      captionConfidence: asset.captionConfidence,
     };
   });
+
+  // Frames the caption writer has described and nobody has read yet. Counted
+  // here rather than in the metric so the number and the sentence beneath it
+  // come from the same pass over the same assets.
+  const awaitingCaptionReview = assets.filter((asset) => asset.captionAwaitsReview).length;
 
   const sensitiveNote = shoot.hasSensitiveNote
     ? await getSensitiveNote(organizationId, shootId)
@@ -114,6 +140,27 @@ export default async function ShootWorkspacePage({
           eyebrow={humanizeStatus(shoot.status)}
           title={shoot.title}
         />
+
+        {justCreated === "1" && (
+          <Panel className="created-notice">
+            <div className="panel-body" role="status">
+              <Badge tone="good">Draft</Badge>
+              <h2>Shoot created as a draft</h2>
+              <p className="section-note">
+                It is private to this workspace. Nothing has been sent, published, or offered to a
+                buyer, and nothing will be until you approve a dispatch.
+              </p>
+              {Number.isFinite(failedImports) && failedImports > 0 && (
+                <p className="auth-error" role="alert">
+                  {failedImports} {failedImports === 1 ? "file" : "files"} could not be imported and{" "}
+                  {failedImports === 1 ? "was" : "were"} not saved. Add{" "}
+                  {failedImports === 1 ? "it" : "them"} again below.
+                </p>
+              )}
+            </div>
+          </Panel>
+        )}
+
 
         <div className="metrics">
           <div className="metric">
@@ -139,6 +186,15 @@ export default async function ShootWorkspacePage({
             <span>Completeness</span>
             <strong>{selectionReport.completionPercent}%</strong>
             <small>Across the selection</small>
+          </div>
+          <div className="metric">
+            <span>Captions to read</span>
+            <strong>{awaitingCaptionReview}</strong>
+            <small className={awaitingCaptionReview > 0 ? "warn" : "good"}>
+              {awaitingCaptionReview > 0
+                ? "Drafted at import, not yet yours"
+                : "No unread drafts"}
+            </small>
           </div>
         </div>
 

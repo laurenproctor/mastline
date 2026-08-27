@@ -211,6 +211,26 @@ export interface Asset {
   readonly capturedAt?: IsoTimestamp;
   readonly headline?: string;
   readonly caption?: string;
+  /**
+   * Who wrote the caption in this row.
+   *
+   * "model" means the caption writer drafted it at import. It stays "model"
+   * until a person reads it and saves, at which point the caption is theirs.
+   */
+  readonly captionOrigin?: "human" | "model";
+  /** When the caption writer drafted it. Absent for a caption someone typed. */
+  readonly captionDraftedAt?: IsoTimestamp;
+  /** When a person read the draft and stood behind it. */
+  readonly captionReviewedAt?: IsoTimestamp;
+  /** What the draft was made from, shown beside the field. Never hidden. */
+  readonly captionBasis?: string;
+  /** 0 to 1, as the model reported it. */
+  readonly captionConfidence?: number;
+  /**
+   * True while a drafted caption has not been read. Generated in the database
+   * from the two columns above so it can never disagree with them.
+   */
+  readonly captionAwaitsReview?: boolean;
   readonly subjects: readonly string[];
   readonly locationName?: string;
   readonly keywords: readonly string[];

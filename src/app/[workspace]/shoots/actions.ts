@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import {
   applyMetadataToMany,
@@ -10,26 +11,103 @@ import {
   updateAssetMetadata,
 } from "@/lib/data/assets";
 import { registerDerivative, registerImport, stagingKeyFor } from "@/lib/data/imports";
-import { suggestMetadataForAsset } from "@/lib/data/metadata-suggestions";
+import { draftCaptionOnImport, suggestMetadataForAsset } from "@/lib/data/metadata-suggestions";
 import type { MetadataSuggestion } from "@/lib/metadata-suggestions";
-import { createShoot, getShoot, setShootStatus, updateShootBrief } from "@/lib/data/shoots";
+import {
+  createShoot,
+  getShoot,
+  setShootStatus,
+  shootCreatedWithToken,
+  updateShootBrief,
+} from "@/lib/data/shoots";
+import { assertCan } from "@/lib/permissions";
 import { requireWorkspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { createClient } from "@/lib/supabase/server";
-import { type FieldErrors, parseAssetMetadata, parseShootBrief } from "@/lib/validation";
-import type { ShootBriefInput } from "@/lib/validation";
+import {
+  type FieldErrors,
+  parseAssetMetadata,
+  parseShootAssetDefaults,
+  parseShootBrief,
+  parseStagedPhotographs,
+} from "@/lib/validation";
+import type {
+  AssetMetadataInput,
+  ShootAssetDefaultsInput,
+  ShootBriefInput,
+  StagedPhotographInput,
+} from "@/lib/validation";
+
+/**
+ * The errors a brief can produce, plus the one the photographs can.
+ *
+ * `photographs` is not a field of the brief -- it is a hidden input carrying a
+ * list -- but it is rendered next to the others and read the same way, so it
+ * shares the shape rather than needing a second channel.
+ */
+export type CreateShootErrors = FieldErrors<ShootBriefInput> & { photographs?: string };
 
 export interface ActionState {
-  readonly errors?: FieldErrors<ShootBriefInput>;
+  readonly errors?: CreateShootErrors;
   readonly message?: string;
   readonly ok?: boolean;
 }
 
 /**
- * Create a shoot from a brief.
+ * The metadata one photograph ends up with.
+ *
+ * One fact entered once: the shoot supplies the credit, the copyright, the
+ * restrictions, the shared keywords and the place, and anything typed against
+ * an individual frame wins over its shoot-level counterpart. Nothing is
+ * invented -- a field nobody filled in stays empty rather than being guessed,
+ * which is what keeps the dispatch gate meaningful.
+ */
+function mergeMetadata(
+  photograph: StagedPhotographInput,
+  defaults: ShootAssetDefaultsInput,
+  shootLocationName: string | undefined,
+): AssetMetadataInput {
+  const own = photograph.metadata;
+  return {
+    headline: own.headline,
+    caption: own.caption,
+    subjects: own.subjects,
+    locationName: own.locationName ?? shootLocationName,
+    keywords: [...new Set([...defaults.keywords, ...own.keywords])],
+    creditLine: own.creditLine ?? defaults.creditLine,
+    copyrightNotice: own.copyrightNotice ?? defaults.copyrightNotice,
+    usageRestrictions: own.usageRestrictions ?? defaults.usageRestrictions,
+  };
+}
+
+/** True when there is anything to write beyond what registerImport stored. */
+function hasOwnMetadata(metadata: AssetMetadataInput): boolean {
+  return Boolean(
+    metadata.headline ||
+      metadata.caption ||
+      metadata.subjects.length > 0 ||
+      metadata.keywords.length > 0,
+  );
+}
+
+/**
+ * Create a shoot from the brief, its photographs, and its metadata.
+ *
+ * This writes a PRIVATE DRAFT and nothing else. It does not build a package,
+ * does not create a submission, does not contact a buyer, and does not move the
+ * shoot past `draft`. Sending is a separate screen with its own confirmation
+ * (approveAndSendAction), and the two must never be reachable from one button.
  *
  * Files are not required and never have been: the brief usually exists before
- * anyone has left for the location.
+ * anyone has left for the location. When files ARE present they have already
+ * been hashed and staged by the browser, so all that happens here is
+ * registration -- the same registerImport() the shoot workspace uses, against
+ * the shoot that was just created.
+ *
+ * A file that fails to register does not lose the shoot. The draft is written
+ * first and the failures are reported on the shoot it landed on, so a partial
+ * batch leaves one shoot with some frames rather than no shoot at all, and
+ * never two shoots.
  */
 export async function createShootAction(
   workspaceSlug: string,
@@ -37,22 +115,134 @@ export async function createShootAction(
   formData: FormData,
 ): Promise<ActionState> {
   const parsed = parseShootBrief(formData);
-  if (!parsed.ok) return { errors: parsed.errors };
+  const staged = parseStagedPhotographs(formData);
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "shoot.write");
+  // Both are reported at once. Fixing the title only to be told about the
+  // photographs is two round trips for one form.
+  if (!parsed.ok || !staged.ok) {
+    return {
+      errors: {
+        ...(parsed.ok ? {} : parsed.errors),
+        ...(staged.ok ? {} : { photographs: staged.error }),
+      },
+    };
+  }
+
+  const defaults = parseShootAssetDefaults(formData);
+  const clientToken = String(formData.get("clientToken") ?? "").slice(0, 64);
+
+  const { organizationId, actorId, canonicalSlug, session, workspace } =
+    await requireWorkspaceContext(workspaceSlug, "shoot.write");
+
+  // Importing is a capability of its own. A role that may brief a shoot but not
+  // touch assets gets told so, rather than having the files silently dropped.
+  if (staged.value.length > 0) assertCan(workspace.role, "asset.write");
+
+  const routes = workspaceRoutes(canonicalSlug);
+  // One client for the whole action: the shoot, the imports, and the metadata
+  // all run as the caller, so row level security applies to every step.
+  const supabase = await createClient();
+
+  // A repeat of a submission that already succeeded lands on what it made.
+  const alreadyCreated = clientToken
+    ? await shootCreatedWithToken({ client: supabase, organizationId, actorId, clientToken })
+    : null;
+  if (alreadyCreated) redirect(routes.shoot(alreadyCreated, { query: { created: "1" } }));
 
   let shootId: string;
   try {
-    const created = await createShoot({ organizationId, actorId, brief: parsed.value });
+    const created = await createShoot({
+      client: supabase,
+      organizationId,
+      actorId,
+      brief: parsed.value,
+      clientToken,
+    });
     shootId = created.id;
   } catch (error) {
     return { errors: { _form: error instanceof Error ? error.message : "Unknown error" } };
   }
 
-  const routes = workspaceRoutes(canonicalSlug);
+  let failed = 0;
+  if (staged.value.length > 0) {
+    // Sequential: each registration moves an object into place and the storage
+    // API is the slow part, so this is politeness rather than caution. The
+    // shoot workspace's queue is the path for a card dump.
+    for (const photograph of staged.value) {
+      try {
+        const imported = await registerImport({
+          supabase,
+          organizationId,
+          actorId,
+          shootId,
+          facts: {
+            filename: photograph.filename,
+            sha256: photograph.sha256,
+            bytes: photograph.bytes,
+            mimeType: photograph.mimeType,
+            capturedAt: photograph.capturedAt,
+            width: photograph.width,
+            height: photograph.height,
+            stagingKey: photograph.stagingKey,
+          },
+          defaults: {
+            creatorName: session.displayName,
+            creditLine:
+              defaults.creditLine ?? `${session.displayName} / ${session.activeWorkspace.name}`,
+            copyrightNotice:
+              defaults.copyrightNotice ?? `© ${new Date().getFullYear()} ${session.displayName}`,
+            locationName: parsed.value.locationName,
+            usageRestrictions: defaults.usageRestrictions,
+          },
+        });
+
+        const metadata = mergeMetadata(photograph, defaults, parsed.value.locationName);
+        if (hasOwnMetadata(metadata)) {
+          await updateAssetMetadata({
+            client: supabase,
+            organizationId,
+            actorId,
+            assetId: imported.assetId,
+            metadata,
+          });
+        }
+
+        // A missing preview costs a thumbnail, never a frame.
+        if (photograph.preview) {
+          try {
+            await registerDerivative({
+              supabase,
+              organizationId,
+              actorId,
+              assetId: imported.assetId,
+              versionKind: "preview",
+              facts: {
+                filename: "preview.jpg",
+                sha256: photograph.preview.sha256,
+                bytes: photograph.preview.bytes,
+                mimeType: "image/jpeg",
+                width: photograph.preview.width,
+                height: photograph.preview.height,
+                stagingKey: photograph.preview.stagingKey,
+              },
+            });
+          } catch {
+            // Reported by its absence on the contact sheet, not by failing.
+          }
+        }
+      } catch {
+        failed += 1;
+      }
+    }
+  }
+
   revalidatePath(routes.shoots());
   revalidatePath(routes.work());
-  redirect(routes.shoot(shootId));
+  redirect(
+    routes.shoot(shootId, {
+      query: { created: "1", ...(failed > 0 ? { importFailed: String(failed) } : {}) },
+    }),
+  );
 }
 
 export async function updateShootBriefAction(
@@ -185,6 +375,60 @@ export async function registerPreviewAction(
         stagingKey: input.stagingKey,
       },
     });
+
+    /*
+     * The caption is drafted here, and only here, because this is the first
+     * moment it is possible.
+     *
+     * A vision model needs an image. The preview is that image -- resized in
+     * the browser, and for a clip it is the poster frame -- so the instant it
+     * is registered is the earliest a frame can be described at all. A RAW or a
+     * container with no browser preview never reaches this action, which is
+     * exactly right: there would be nothing to read, and a caption guessed from
+     * a filename is worse than an empty field.
+     *
+     * after() rather than an await, and rather than a call from the browser:
+     *
+     *   - The import queue is not made to wait on a model. Uploading is what
+     *     the operator is watching, and a four second read per frame would show
+     *     up as the import being slower than it was.
+     *   - It survives them navigating away. A card dump is started and then
+     *     abandoned to get on with something else; the captions still arrive.
+     *   - The dropzone already limits itself to three files in flight, so this
+     *     inherits a sane concurrency without inventing another queue.
+     *
+     * The draft failing is never surfaced here. The import has already stored
+     * the original safely, and an uncaptioned frame is a state the inspector
+     * has always handled -- with the manual Suggest button still sitting there.
+     */
+    after(async () => {
+      /*
+       * Warned rather than swallowed, and warned rather than surfaced.
+       *
+       * Nobody is waiting on this, so there is no screen to put a failure on --
+       * but an automation that can fail invisibly is one nobody can hold to
+       * account. A key that has stopped working, or a model returning 400 for
+       * every frame, should be findable in a log rather than inferred from a
+       * shoot full of empty captions.
+       */
+      try {
+        const outcome = await draftCaptionOnImport({
+          organizationId,
+          actorId,
+          assetId: input.assetId,
+        });
+        if (!outcome.written && outcome.reason !== "disabled") {
+          console.warn(`Could not draft a caption for ${input.assetId}: ${outcome.reason}`);
+        }
+      } catch (error) {
+        console.warn(
+          `Could not draft a caption for ${input.assetId}: ${
+            error instanceof Error ? error.message : "unknown error"
+          }`,
+        );
+      }
+    });
+
     return { ok: true };
   } catch {
     // A missing preview degrades the contact sheet; it never blocks an import.
@@ -270,7 +514,16 @@ export async function saveAssetMetadataAction(
   const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
 
   try {
-    await updateAssetMetadata({ organizationId, actorId, assetId, metadata: parsed.value });
+    await updateAssetMetadata({
+      organizationId,
+      actorId,
+      assetId,
+      metadata: parsed.value,
+      // This save came from the inspector, where the caption was on screen in
+      // an editable field. That is the confirm step: whatever it says now, a
+      // person has read it and is standing behind it.
+      captionReviewed: true,
+    });
   } catch (error) {
     return { errors: { _form: error instanceof Error ? error.message : "Save failed." } };
   }

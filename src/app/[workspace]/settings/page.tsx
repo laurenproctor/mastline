@@ -19,6 +19,7 @@ import { BuyerTemplate } from "./_components/buyer-template";
 import { EditWorkspace } from "./_components/edit-workspace";
 import { WorkspaceAddress } from "./_components/workspace-address";
 import { MfaPolicy, TwoFactor } from "./_components/two-factor";
+import { CaptionDrafting } from "./_components/caption-drafting";
 import { ProfilePhoto } from "./_components/profile-photo";
 import { Avatar } from "@/components/avatar";
 import { getProfile, signAvatarUrl } from "@/lib/data/profiles";
@@ -305,6 +306,24 @@ export default async function SettingsPage({
               workspaceSlug={workspaceSlug}
               canEnforce={can(workspace.role, "workspace.settings")}
               required={workspace.requireMfa}
+            />
+          </Panel>
+
+          <Panel title="Captions at import">
+            {saved === "captions-on" && (
+              <p className="inspector-saved" role="status">
+                Captions will be drafted as frames are imported.
+              </p>
+            )}
+            {saved === "captions-off" && (
+              <p className="inspector-saved" role="status">
+                Captions are no longer drafted automatically.
+              </p>
+            )}
+            <CaptionDrafting
+              workspaceSlug={workspaceSlug}
+              canChange={can(workspace.role, "workspace.settings")}
+              enabled={workspace.autoCaptionOnImport}
             />
           </Panel>
 

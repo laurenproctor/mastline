@@ -29,7 +29,14 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
  * workspace's settings. The address is now a required argument, and it is the
  * canonical one the action just resolved.
  */
-type SavedReason = "buyer" | "invite" | "removed" | "workspace" | "address";
+type SavedReason =
+  | "buyer"
+  | "invite"
+  | "removed"
+  | "workspace"
+  | "address"
+  | "captions-on"
+  | "captions-off";
 
 function savedAt(canonicalSlug: string, reason: SavedReason): string {
   return workspaceRoutes(canonicalSlug).settings({ query: { saved: reason } });
@@ -348,4 +355,61 @@ export async function renameWorkspaceAddressAction(
   if (outcome === "unchanged") redirect(savedAt(canonicalSlug, "address"));
 
   return { error: REFUSALS[outcome] ?? "That address could not be used." };
+}
+
+
+export interface CaptionDraftingState {
+  readonly error?: string;
+}
+
+/**
+ * Turn the caption writer at import on or off for this workspace.
+ *
+ * On by default, which is the opposite of the two-factor policy next to it and
+ * for the opposite reason: the worst this can do is put a sentence in a field
+ * somebody overwrites, while requiring a second factor can lock an owner out of
+ * their own workspace. So this one is a thing a workspace turns off, not a
+ * thing it has to find and turn on.
+ *
+ * Turning it off changes nothing that has already been drafted. Captions
+ * already written stay in their frames, still marked unread, still waiting for
+ * somebody to stand behind them -- deleting a photographer's records because
+ * they changed a preference would be a strange reading of a switch.
+ */
+export async function setCaptionDraftingAction(
+  workspaceSlug: string,
+  _previous: CaptionDraftingState,
+  formData: FormData,
+): Promise<CaptionDraftingState> {
+  const enabled = String(formData.get("enabled") ?? "") === "on";
+
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("organizations")
+    .update({ auto_caption_on_import: enabled })
+    .eq("id", organizationId);
+
+  if (error) return { error: `Could not change the setting: ${error.message}` };
+
+  await supabase.from("activity_events").insert({
+    organization_id: organizationId,
+    actor_id: actorId,
+    entity_type: "organization",
+    entity_id: organizationId,
+    action: "workspace.caption_drafting_changed",
+    event_data: {
+      summary: enabled
+        ? "Captions drafted automatically at import"
+        : "Automatic caption drafting turned off",
+      enabled,
+    },
+  });
+
+  redirect(savedAt(canonicalSlug, enabled ? "captions-on" : "captions-off"));
 }
