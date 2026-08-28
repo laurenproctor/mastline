@@ -15,9 +15,16 @@ const ROLES = [
 ] as const;
 
 export function InviteMember({
-  workspaceSlug, seatsLeft }: {
-  workspaceSlug: string; seatsLeft: number | null }) {
-  const [state, formAction, pending] = useActionState(inviteMemberAction.bind(null, workspaceSlug), INITIAL);
+  workspaceSlug,
+  seatsLeft,
+}: {
+  workspaceSlug: string;
+  seatsLeft: number | null;
+}) {
+  const [state, formAction, pending] = useActionState(
+    inviteMemberAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   const full = seatsLeft !== null && seatsLeft <= 0;

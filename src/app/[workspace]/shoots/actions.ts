@@ -84,9 +84,9 @@ function mergeMetadata(
 function hasOwnMetadata(metadata: AssetMetadataInput): boolean {
   return Boolean(
     metadata.headline ||
-      metadata.caption ||
-      metadata.subjects.length > 0 ||
-      metadata.keywords.length > 0,
+    metadata.caption ||
+    metadata.subjects.length > 0 ||
+    metadata.keywords.length > 0,
   );
 }
 
@@ -255,7 +255,10 @@ export async function updateShootBriefAction(
   const parsed = parseShootBrief(formData);
   if (!parsed.ok) return { errors: parsed.errors };
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "shoot.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "shoot.write",
+  );
 
   try {
     await updateShootBrief({ organizationId, actorId, shootId, brief: parsed.value });
@@ -275,7 +278,9 @@ export async function updateShootBriefAction(
  * the same thing independently.
  */
 export async function prepareUploadAction(
-  workspaceSlug: string,token: string): Promise<{ stagingKey: string }> {
+  workspaceSlug: string,
+  token: string,
+): Promise<{ stagingKey: string }> {
   const { organizationId } = await requireWorkspaceContext(workspaceSlug, "asset.write");
   const safeToken = token.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
   if (!safeToken) throw new Error("Invalid upload token.");
@@ -292,18 +297,23 @@ export interface ImportResult {
 
 /** Register one staged upload against a shoot. */
 export async function registerImportAction(
-  workspaceSlug: string,input: {
-  shootId: string;
-  filename: string;
-  sha256: string;
-  bytes: number;
-  mimeType: string;
-  capturedAt?: string;
-  width?: number;
-  height?: number;
-  stagingKey: string;
-}): Promise<ImportResult> {
-  const { organizationId, actorId, session } = await requireWorkspaceContext(workspaceSlug, "asset.write");
+  workspaceSlug: string,
+  input: {
+    shootId: string;
+    filename: string;
+    sha256: string;
+    bytes: number;
+    mimeType: string;
+    capturedAt?: string;
+    width?: number;
+    height?: number;
+    stagingKey: string;
+  },
+): Promise<ImportResult> {
+  const { organizationId, actorId, session } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.write",
+  );
 
   try {
     const shoot = await getShoot(organizationId, input.shootId);
@@ -350,14 +360,16 @@ export async function registerImportAction(
 }
 
 export async function registerPreviewAction(
-  workspaceSlug: string,input: {
-  assetId: string;
-  sha256: string;
-  bytes: number;
-  width: number;
-  height: number;
-  stagingKey: string;
-}): Promise<{ ok: boolean }> {
+  workspaceSlug: string,
+  input: {
+    assetId: string;
+    sha256: string;
+    bytes: number;
+    width: number;
+    height: number;
+    stagingKey: string;
+  },
+): Promise<{ ok: boolean }> {
   const { organizationId, actorId } = await requireWorkspaceContext(workspaceSlug, "asset.write");
   try {
     await registerDerivative({
@@ -437,9 +449,11 @@ export async function registerPreviewAction(
   }
 }
 
-export async function finishImportAction(
-  workspaceSlug: string,shootId: string): Promise<void> {
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "shoot.write");
+export async function finishImportAction(workspaceSlug: string, shootId: string): Promise<void> {
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "shoot.write",
+  );
   await setShootStatus({ organizationId, actorId, shootId, status: "preparing" });
   const routes = workspaceRoutes(canonicalSlug);
   revalidatePath(routes.shoot(shootId));
@@ -447,12 +461,17 @@ export async function finishImportAction(
 }
 
 export async function setSelectionAction(
-  workspaceSlug: string,input: {
-  shootId: string;
-  assetIds: string[];
-  selected: boolean;
-}): Promise<{ updated: number }> {
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
+  workspaceSlug: string,
+  input: {
+    shootId: string;
+    assetIds: string[];
+    selected: boolean;
+  },
+): Promise<{ updated: number }> {
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.write",
+  );
   const result = await setSelection({
     organizationId,
     actorId,
@@ -464,12 +483,17 @@ export async function setSelectionAction(
 }
 
 export async function setRatingAction(
-  workspaceSlug: string,input: {
-  shootId: string;
-  assetId: string;
-  rating: number | null;
-}): Promise<void> {
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
+  workspaceSlug: string,
+  input: {
+    shootId: string;
+    assetId: string;
+    rating: number | null;
+  },
+): Promise<void> {
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.write",
+  );
   await setRating({ organizationId, actorId, assetId: input.assetId, rating: input.rating });
   revalidatePath(workspaceRoutes(canonicalSlug).shoot(input.shootId));
 }
@@ -489,7 +513,9 @@ export interface SuggestionState {
  * human deciding it should.
  */
 export async function suggestAssetMetadataAction(
-  workspaceSlug: string,assetId: string): Promise<SuggestionState> {
+  workspaceSlug: string,
+  assetId: string,
+): Promise<SuggestionState> {
   const { organizationId } = await requireWorkspaceContext(workspaceSlug, "asset.write");
   const outcome = await suggestMetadataForAsset({ organizationId, assetId });
   return { ok: outcome.ok, suggestion: outcome.suggestion, error: outcome.error };
@@ -512,7 +538,10 @@ export async function saveAssetMetadataAction(
   const parsed = parseAssetMetadata(formData);
   if (!parsed.ok) return { errors: parsed.errors as Record<string, string> };
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.write",
+  );
 
   try {
     await updateAssetMetadata({
@@ -558,7 +587,10 @@ export async function applyMetadataToManyAction(
   const parsed = parseAssetMetadata(formData);
   if (!parsed.ok) return { errors: parsed.errors as Record<string, string> };
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.write",
+  );
 
   // A field left empty is left alone. Blanking eighteen captions because a box
   // was untouched would be a far worse mistake than not applying anything.
@@ -592,12 +624,17 @@ export async function applyMetadataToManyAction(
 }
 
 export async function tombstoneAssetAction(
-  workspaceSlug: string,input: {
-  shootId: string;
-  assetId: string;
-  reason: string;
-}): Promise<void> {
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "asset.tombstone");
+  workspaceSlug: string,
+  input: {
+    shootId: string;
+    assetId: string;
+    reason: string;
+  },
+): Promise<void> {
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "asset.tombstone",
+  );
   await tombstoneAsset({
     organizationId,
     actorId,

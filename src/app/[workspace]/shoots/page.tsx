@@ -22,11 +22,7 @@ const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "blue"> = {
   cancelled: "neutral",
 };
 
-export default async function ShootsPage({
-  params,
-}: {
-  params: Promise<{ workspace: string }>;
-}) {
+export default async function ShootsPage({ params }: { params: Promise<{ workspace: string }> }) {
   const { workspace: requestedWorkspace } = await params;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);

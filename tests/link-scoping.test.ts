@@ -137,9 +137,7 @@ describe("authenticated links carry a workspace", () => {
   });
 
   it("has no unscoped application path outside the documented exceptions", () => {
-    const offences = files
-      .filter((file) => !(relative(ROOT, file) in ALLOWED))
-      .flatMap(offencesIn);
+    const offences = files.filter((file) => !(relative(ROOT, file) in ALLOWED)).flatMap(offencesIn);
 
     const rendered = offences.map(
       (offence) => `${offence.file}:${offence.line} → ${JSON.stringify(offence.value)}`,
@@ -158,11 +156,16 @@ describe("authenticated links carry a workspace", () => {
 
   it("keeps its allowlist honest", () => {
     for (const [file, reason] of Object.entries(ALLOWED)) {
-      expect(() => statSync(join(ROOT, file)), `${file} is allowlisted for: ${reason}`).not.toThrow();
+      expect(
+        () => statSync(join(ROOT, file)),
+        `${file} is allowlisted for: ${reason}`,
+      ).not.toThrow();
       // An allowlisted file that no longer contains an unscoped path does not
       // need excusing, and leaving it listed hides the next one.
-      expect(offencesIn(join(ROOT, file)).length, `${file} no longer needs its exception`)
-        .toBeGreaterThan(0);
+      expect(
+        offencesIn(join(ROOT, file)).length,
+        `${file} no longer needs its exception`,
+      ).toBeGreaterThan(0);
     }
   });
 

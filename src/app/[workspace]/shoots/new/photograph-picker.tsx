@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Field } from "@/components/primitives";
-import { type StagedOriginal, type StagedPreview, stageOriginal, stagePreview } from "@/components/upload-staging";
+import {
+  type StagedOriginal,
+  type StagedPreview,
+  stageOriginal,
+  stagePreview,
+} from "@/components/upload-staging";
 import type { DraftPhotograph } from "@/lib/shoot-draft";
 import { formatBytes } from "@/lib/upload";
 

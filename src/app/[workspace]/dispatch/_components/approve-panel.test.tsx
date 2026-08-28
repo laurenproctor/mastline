@@ -19,10 +19,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const submitted: FormData[] = [];
 
 vi.mock("../actions", () => ({
-  approvePackageAction: vi.fn(async (_workspaceSlug: string, _previous: unknown, form: FormData) => {
-    submitted.push(form);
-    return {};
-  }),
+  approvePackageAction: vi.fn(
+    async (_workspaceSlug: string, _previous: unknown, form: FormData) => {
+      submitted.push(form);
+      return {};
+    },
+  ),
 }));
 
 const { ApprovePanel } = await import("./approve-panel");
@@ -86,9 +88,7 @@ describe("approval keeps its own confirmation", () => {
     await user.click(screen.getByRole("button", { name: /go back/i }));
 
     expect(submitted).toHaveLength(0);
-    expect(
-      screen.getByRole("button", { name: /approve package/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /approve package/i })).toBeInTheDocument();
   });
 
   it("stays disabled while any check is blocking", () => {

@@ -30,10 +30,14 @@ export function OutcomePanel({
   canRecordOutcome: boolean;
   canRecordSale: boolean;
 }) {
-  const [outcomeState, outcomeAction, outcomePending] = useActionState(recordOutcomeAction.bind(null, workspaceSlug),
+  const [outcomeState, outcomeAction, outcomePending] = useActionState(
+    recordOutcomeAction.bind(null, workspaceSlug),
     OUTCOME_INITIAL,
   );
-  const [saleState, saleAction, salePending] = useActionState(recordSaleAction.bind(null, workspaceSlug), SALE_INITIAL);
+  const [saleState, saleAction, salePending] = useActionState(
+    recordSaleAction.bind(null, workspaceSlug),
+    SALE_INITIAL,
+  );
   const [origin, setOrigin] = useState<"external" | "mastline_sales_engine">("external");
   const [base, setBase] = useState("");
 

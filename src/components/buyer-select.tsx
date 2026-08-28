@@ -58,7 +58,12 @@ export function AddBuyerInline({
   const submit = () => {
     setError(null);
     startTransition(async () => {
-      const result = await createBuyerAction(workspaceSlug, { name, buyerType, contactName, contactEmail });
+      const result = await createBuyerAction(workspaceSlug, {
+        name,
+        buyerType,
+        contactName,
+        contactEmail,
+      });
       if (!result.ok || !result.id) {
         setError(result.error ?? "Could not add the buyer.");
         return;

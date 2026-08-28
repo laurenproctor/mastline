@@ -27,7 +27,10 @@ export async function importStatementAction(
     return { error: "That file is larger than 5 MB. Split it and import in parts." };
   }
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "payment.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "payment.write",
+  );
 
   try {
     const csv = await file.text();
@@ -66,7 +69,10 @@ export async function confirmStatementLineAction(
   formData: FormData,
 ): Promise<StatementState> {
   const lineId = String(formData.get("lineId") ?? "");
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "payment.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "payment.write",
+  );
 
   try {
     await confirmStatementLine({ organizationId, actorId, lineId });
@@ -86,7 +92,10 @@ export async function updateStatementLineAction(
   const submissionId = String(formData.get("matchedSubmissionId") ?? "") || null;
   const status = String(formData.get("matchStatus") ?? "") || undefined;
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "payment.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "payment.write",
+  );
 
   try {
     await updateStatementLine({

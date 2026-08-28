@@ -514,9 +514,7 @@ export async function deletePackage(packageId: string): Promise<void> {
     body: JSON.stringify({ target_package: packageId }),
   });
   if (!purged.ok) {
-    throw new Error(
-      `Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`,
-    );
+    throw new Error(`Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`);
   }
 }
 
@@ -541,7 +539,13 @@ export async function deleteShoot(shootId: string): Promise<void> {
 
 /** The assets on a shoot: id and the fields the creation flow should have set. */
 export async function assetsOnShoot(shootId: string): Promise<
-  { id: string; status: string; caption: string | null; credit_line: string | null; selected: boolean }[]
+  {
+    id: string;
+    status: string;
+    caption: string | null;
+    credit_line: string | null;
+    selected: boolean;
+  }[]
 > {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -742,11 +746,13 @@ export async function engagementForRecipient(recipientLabel: string): Promise<{
     `${url}/rest/v1/delivery_engagement_totals?delivery_id=eq.${deliveryId}&select=active_visible_ms,session_count,visitor_count`,
     { headers: auth },
   );
-  const total = ((await totals.json()) as {
-    active_visible_ms: number;
-    session_count: number;
-    visitor_count: number;
-  }[])[0];
+  const total = (
+    (await totals.json()) as {
+      active_visible_ms: number;
+      session_count: number;
+      visitor_count: number;
+    }[]
+  )[0];
 
   const assets = await fetch(
     `${url}/rest/v1/delivery_asset_engagement_totals?delivery_id=eq.${deliveryId}&select=asset_id`,

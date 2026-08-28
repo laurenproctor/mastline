@@ -154,9 +154,7 @@ describe("the action creates a draft and says so", () => {
 
     const submit = screen.getByRole("button", { name: "Create shoot" });
     expect(submit).toHaveAttribute("type", "submit");
-    expect(
-      screen.getByText(/remain private until you choose to dispatch it/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/remain private until you choose to dispatch it/i)).toBeInTheDocument();
   });
 
   it("never borrows the dispatch gate's words for anything clickable", () => {
@@ -202,16 +200,11 @@ describe("what the submission carries", () => {
     await user.type(screen.getByLabelText(/Subject or event/), "Hotel Chelsea departure");
     await user.type(screen.getByLabelText(/Credit line/), "Marcus Hale / Mastline");
     await user.type(screen.getByLabelText(/Copyright notice/), "© 2026 Marcus Hale");
-    await user.upload(screen.getByLabelText("Add photographs"), [
-      jpeg("MH_0001.jpg"),
-    ]);
+    await user.upload(screen.getByLabelText("Add photographs"), [jpeg("MH_0001.jpg")]);
 
     await screen.findByText(/1 of 1 ready/);
 
-    await user.type(
-      screen.getByLabelText(/^Caption$/),
-      "Marcus Hale leaves the Hotel Chelsea.",
-    );
+    await user.type(screen.getByLabelText(/^Caption$/), "Marcus Hale leaves the Hotel Chelsea.");
 
     await user.click(screen.getByRole("button", { name: "Create shoot" }));
 
@@ -262,9 +255,7 @@ describe("what the submission carries", () => {
     renderForm();
 
     await user.type(screen.getByLabelText(/Subject or event/), "Hotel Chelsea departure");
-    await user.upload(screen.getByLabelText("Add photographs"), [
-      jpeg("MH_0001.jpg"),
-    ]);
+    await user.upload(screen.getByLabelText("Add photographs"), [jpeg("MH_0001.jpg")]);
 
     await screen.findByText(/One photograph is still uploading/i);
     expect(screen.getByRole("button", { name: "Create shoot" })).toBeDisabled();
@@ -316,9 +307,7 @@ describe("the review reports rather than gates", () => {
     renderForm();
 
     await user.type(screen.getByLabelText(/Subject or event/), "Hotel Chelsea departure");
-    await user.upload(screen.getByLabelText("Add photographs"), [
-      jpeg("MH_0001.jpg"),
-    ]);
+    await user.upload(screen.getByLabelText("Add photographs"), [jpeg("MH_0001.jpg")]);
     await screen.findByText(/1 of 1 ready/);
 
     expect(screen.getByText(/1 of 1 photograph has no caption/i)).toBeInTheDocument();

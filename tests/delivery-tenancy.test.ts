@@ -240,12 +240,14 @@ describeIf("Postgres refuses a forged organization pairing", () => {
   });
 
   it("will not attach a viewing session to a delivery in another organization", async () => {
-    const { error } = await serviceClient().from("delivery_view_sessions").insert({
-      organization_id: ORG_B,
-      delivery_id: orgADelivery,
-      visitor_key: "f".repeat(64),
-      session_key: "e".repeat(64),
-    });
+    const { error } = await serviceClient()
+      .from("delivery_view_sessions")
+      .insert({
+        organization_id: ORG_B,
+        delivery_id: orgADelivery,
+        visitor_key: "f".repeat(64),
+        session_key: "e".repeat(64),
+      });
     expect(error).toBeTruthy();
   });
 
@@ -275,13 +277,15 @@ describeIf("Postgres refuses a forged organization pairing", () => {
   });
 
   it("will not attach a submission to a package in another organization", async () => {
-    const { error } = await serviceClient().from("submissions").insert({
-      organization_id: ORG_A,
-      package_id: orgBPackage,
-      status: "queued",
-      external_reference: `FORGED-${Date.now()}`,
-      created_by: OWNER_A,
-    });
+    const { error } = await serviceClient()
+      .from("submissions")
+      .insert({
+        organization_id: ORG_A,
+        package_id: orgBPackage,
+        status: "queued",
+        external_reference: `FORGED-${Date.now()}`,
+        created_by: OWNER_A,
+      });
     expect(error).toBeTruthy();
   });
 });
@@ -300,14 +304,13 @@ describeIf("what an anonymous link holder can reach", () => {
     expect(data ?? []).toHaveLength(0);
   });
 
-  it.each([
-    "submission_deliveries",
-    "delivery_view_sessions",
-    "delivery_engagement_totals",
-  ])("cannot write to %s directly", async (table) => {
-    const { error } = await anonClient().from(table).insert({ organization_id: ORG_A });
-    expect(error).toBeTruthy();
-  });
+  it.each(["submission_deliveries", "delivery_view_sessions", "delivery_engagement_totals"])(
+    "cannot write to %s directly",
+    async (table) => {
+      const { error } = await anonClient().from(table).insert({ organization_id: ORG_A });
+      expect(error).toBeTruthy();
+    },
+  );
 
   it("cannot call the operator-only share function", async () => {
     const { error } = await anonClient().rpc("mark_delivery_shared", {
@@ -319,7 +322,10 @@ describeIf("what an anonymous link holder can reach", () => {
   it("cannot call the retention or purge routines", async () => {
     const anon = anonClient();
     for (const fn of ["prune_delivery_analytics", "purge_delivery_analytics"]) {
-      const { error } = await anon.rpc(fn, fn === "prune_delivery_analytics" ? { retain_days: 1 } : {});
+      const { error } = await anon.rpc(
+        fn,
+        fn === "prune_delivery_analytics" ? { retain_days: 1 } : {},
+      );
       expect(error, `${fn} should be closed to anon`).toBeTruthy();
     }
   });

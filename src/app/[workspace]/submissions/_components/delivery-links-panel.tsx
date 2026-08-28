@@ -24,13 +24,7 @@ const INITIAL: DeliveryState = {};
  * was shared is not a link that was opened.
  */
 export type LinkStage =
-  | "created"
-  | "shared"
-  | "opened"
-  | "accepted"
-  | "downloaded"
-  | "withdrawn"
-  | "expired";
+  "created" | "shared" | "opened" | "accepted" | "downloaded" | "withdrawn" | "expired";
 
 export interface DeliveryLinkView {
   readonly id: string;
@@ -120,9 +114,7 @@ function ParameterEditor({
   scope?: string;
 }) {
   const [rows, setRows] = useState<{ key: string; value: string }[]>(
-    initial.length > 0
-      ? initial.map(([key, value]) => ({ key, value }))
-      : [{ key: "", value: "" }],
+    initial.length > 0 ? initial.map(([key, value]) => ({ key, value })) : [{ key: "", value: "" }],
   );
 
   return (

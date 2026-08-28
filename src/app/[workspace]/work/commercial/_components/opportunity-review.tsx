@@ -14,9 +14,13 @@ const MATCH_OPTIONS: readonly ProductMatchKind[] = [
   "Similar style",
 ];
 
-export function OpportunityReview({  workspaceSlug,
- opportunity }: {
-  workspaceSlug: string; opportunity: CommercialOpportunity }) {
+export function OpportunityReview({
+  workspaceSlug,
+  opportunity,
+}: {
+  workspaceSlug: string;
+  opportunity: CommercialOpportunity;
+}) {
   const [mode, setMode] = useState<ReviewMode>("licensing");
   const [confirmedIds, setConfirmedIds] = useState<readonly string[]>([]);
   const [matchKinds, setMatchKinds] = useState<Record<string, ProductMatchKind>>(() =>

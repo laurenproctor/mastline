@@ -145,9 +145,7 @@ export function RecipientAnalytics({ rows }: { rows: readonly RecipientAnalytics
               <div>
                 <dt>Last opened</dt>
                 <dd>
-                  {row.engagement.lastOpenedAt
-                    ? formatDateTime(row.engagement.lastOpenedAt)
-                    : "—"}
+                  {row.engagement.lastOpenedAt ? formatDateTime(row.engagement.lastOpenedAt) : "—"}
                 </dd>
               </div>
               <div>
@@ -175,8 +173,7 @@ export function RecipientAnalytics({ rows }: { rows: readonly RecipientAnalytics
               <div className="delivery-acceptance">
                 <Badge tone="good">Terms accepted</Badge>
                 <p className="section-note">
-                  <strong>{row.acceptedBy}</strong> accepted on{" "}
-                  {formatDateTime(row.acceptedAt)}
+                  <strong>{row.acceptedBy}</strong> accepted on {formatDateTime(row.acceptedAt)}
                   {row.acceptedIpAddress ? ` from ${row.acceptedIpAddress}` : ""}. This is the one
                   point at which a person identified themselves.
                 </p>
@@ -221,9 +218,7 @@ export function RecipientAnalytics({ rows }: { rows: readonly RecipientAnalytics
                         <td>{asset.filename}</td>
                         <td>{asset.viewed ? "Yes" : "Not recorded"}</td>
                         <td>{asset.viewed ? asset.viewCount : "—"}</td>
-                        <td>
-                          {asset.viewed ? describeActiveTime(asset.activeVisibleMs) : "—"}
-                        </td>
+                        <td>{asset.viewed ? describeActiveTime(asset.activeVisibleMs) : "—"}</td>
                         <td>{asset.downloaded ? "Yes" : "No"}</td>
                       </tr>
                     ))}

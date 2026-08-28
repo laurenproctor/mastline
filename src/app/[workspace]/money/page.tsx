@@ -27,11 +27,7 @@ const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue
 
 const OUTSTANDING = new Set(["expected", "invoiced", "partial", "overdue"]);
 
-export default async function MoneyPage({
-  params,
-}: {
-  params: Promise<{ workspace: string }>;
-}) {
+export default async function MoneyPage({ params }: { params: Promise<{ workspace: string }> }) {
   const { workspace: requestedWorkspace } = await params;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);

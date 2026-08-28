@@ -27,7 +27,10 @@ export async function buildPackageAction(
   const buyerId = String(formData.get("buyerId") ?? "") || null;
   const name = String(formData.get("name") ?? "").trim();
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "package.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "package.write",
+  );
 
   let packageId: string;
   let createdOnShoot: string;
@@ -72,7 +75,10 @@ export async function updatePackageAction(
   formData: FormData,
 ): Promise<DispatchState> {
   const packageId = String(formData.get("packageId") ?? "");
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "package.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "package.write",
+  );
 
   try {
     await updatePackage({
@@ -128,7 +134,10 @@ export async function approvePackageAction(
     return { error: "Approval needs an explicit confirmation before anything is recorded." };
   }
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "submission.send");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "submission.send",
+  );
 
   const pkg = await getPackage(organizationId, packageId);
   if (!pkg) return { error: "That package could not be found." };
@@ -177,7 +186,10 @@ export async function recordOutcomeAction(
   const status = String(formData.get("status") ?? "") as SubmissionStatus;
   const outcomeNote = String(formData.get("outcomeNote") ?? "") || undefined;
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "submission.send");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "submission.send",
+  );
 
   try {
     await recordSubmissionOutcome({

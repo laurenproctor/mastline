@@ -24,11 +24,7 @@ function windowLabel(closesAt: string | undefined, now: Date): { text: string; u
   return { text: `${hours}h ${minutes % 60}m`, urgent: false };
 }
 
-export default async function NewsPage({
-  params,
-}: {
-  params: Promise<{ workspace: string }>;
-}) {
+export default async function NewsPage({ params }: { params: Promise<{ workspace: string }> }) {
   const { workspace: requestedWorkspace } = await params;
   // Resolved rather than echoed: this screen links to settings and to asset
   // records, and both have to name the workspace that is actually on screen.

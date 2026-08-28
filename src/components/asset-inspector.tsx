@@ -86,7 +86,10 @@ function InspectorForm({
   shootLocationName?: string;
   suggestionsAvailable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(saveAssetMetadataAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    saveAssetMetadataAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
 
   // One fact entered once: a frame with no location of its own starts at the
   // shoot's, and the operator can overwrite it like any other field. This is a
@@ -166,18 +169,18 @@ function InspectorForm({
       )}
 
       {/*
-        * Two banners, because they describe two genuinely different situations
-        * and collapsing them would misstate one of them.
-        *
-        * The draft banner is about a caption that is already in the record: the
-        * writer put it there when the frame landed, it is in the archive and in
-        * an export, and the only thing missing is a person's agreement. Saying
-        * "nothing is recorded until you save" there would be false.
-        *
-        * The suggestion banner below is the on-demand button, where that
-        * sentence is exactly true. `suggestion` wins when both could apply,
-        * since a fresh read has replaced whatever the field held.
-        */}
+       * Two banners, because they describe two genuinely different situations
+       * and collapsing them would misstate one of them.
+       *
+       * The draft banner is about a caption that is already in the record: the
+       * writer put it there when the frame landed, it is in the archive and in
+       * an export, and the only thing missing is a person's agreement. Saying
+       * "nothing is recorded until you save" there would be false.
+       *
+       * The suggestion banner below is the on-demand button, where that
+       * sentence is exactly true. `suggestion` wins when both could apply,
+       * since a fresh read has replaced whatever the field held.
+       */}
       {asset.captionAwaitsReview && !suggestion && (
         <div className="suggestion-note" role="status">
           <Badge tone="warn">Drafted at import</Badge>

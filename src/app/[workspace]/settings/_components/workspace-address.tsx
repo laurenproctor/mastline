@@ -21,10 +21,11 @@ const INITIAL: AddressState = {};
  * that can be known without asking; whether it is already taken is the
  * database's answer and arrives on submit.
  */
-export function WorkspaceAddress({
-  workspaceSlug, slug }: {
-  workspaceSlug: string; slug: string }) {
-  const [state, formAction, pending] = useActionState(renameWorkspaceAddressAction.bind(null, workspaceSlug), INITIAL);
+export function WorkspaceAddress({ workspaceSlug, slug }: { workspaceSlug: string; slug: string }) {
+  const [state, formAction, pending] = useActionState(
+    renameWorkspaceAddressAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(slug);
 

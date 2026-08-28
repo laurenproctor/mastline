@@ -328,12 +328,12 @@ export function OnboardingFlow({
               </dl>
             </div>
             {/*
-              * .stage-form is a grid, and its rows stretch to fill the column.
-              * Every other step has enough fields that the rows come out at
-              * their natural height; this one has a single field, so without
-              * this the input grows to about a hundred pixels tall and the note
-              * beneath it drifts to the bottom of the screen.
-              */}
+             * .stage-form is a grid, and its rows stretch to fill the column.
+             * Every other step has enough fields that the rows come out at
+             * their natural height; this one has a single field, so without
+             * this the input grows to about a hundred pixels tall and the note
+             * beneath it drifts to the bottom of the screen.
+             */}
             <div className="stage-form" style={{ alignContent: "start" }}>
               <label className="onboarding-field" htmlFor="onboarding-slug">
                 <span>Workspace address</span>
@@ -360,9 +360,7 @@ export function OnboardingFlow({
                   {slugIssue === "reserved" ? (
                     <>That address is reserved. Choose another.</>
                   ) : slugIssue === "invalid" ? (
-                    <>
-                      Lowercase letters, numbers and hyphens, up to {SLUG_MAX_LENGTH} characters.
-                    </>
+                    <>Lowercase letters, numbers and hyphens, up to {SLUG_MAX_LENGTH} characters.</>
                   ) : (
                     <>
                       Your workspace will be at <strong>mastline.co/{effectiveSlug}</strong>

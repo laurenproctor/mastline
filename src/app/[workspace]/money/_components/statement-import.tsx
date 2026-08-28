@@ -11,8 +11,17 @@ import {
 
 const INITIAL: StatementState = {};
 
-export function ImportStatement({ workspaceSlug, buyers }: { workspaceSlug: string; buyers: readonly { id: string; name: string }[] }) {
-  const [state, formAction, pending] = useActionState(importStatementAction.bind(null, workspaceSlug), INITIAL);
+export function ImportStatement({
+  workspaceSlug,
+  buyers,
+}: {
+  workspaceSlug: string;
+  buyers: readonly { id: string; name: string }[];
+}) {
+  const [state, formAction, pending] = useActionState(
+    importStatementAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   if (!open) {
@@ -34,7 +43,11 @@ export function ImportStatement({ workspaceSlug, buyers }: { workspaceSlug: stri
     <form action={formAction} className="side-card">
       <h3>Import a statement</h3>
 
-      <BuyerSelect workspaceSlug={workspaceSlug} buyers={buyers} emptyLabel="Not linked to a buyer" />
+      <BuyerSelect
+        workspaceSlug={workspaceSlug}
+        buyers={buyers}
+        emptyLabel="Not linked to a buyer"
+      />
       <div className="spacer" />
       <Field
         accept=".csv,text/csv"
@@ -82,7 +95,10 @@ export function ConfirmLine({
   lineId: string;
   disabled?: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(confirmStatementLineAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    confirmStatementLineAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
 
   if (state.ok) {
     return <Badge tone="good">Reconciled</Badge>;
