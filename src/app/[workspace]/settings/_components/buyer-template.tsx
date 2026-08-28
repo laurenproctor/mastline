@@ -29,7 +29,10 @@ export function BuyerTemplate({
     paymentTermsDays?: number;
   };
 }) {
-  const [state, formAction, pending] = useActionState(saveBuyerTemplateAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    saveBuyerTemplateAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   if (!open) {

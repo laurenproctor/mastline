@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WORKSPACE_SECTIONS, isProtected } from "./routes";
-import {
-  isPublicPath,
-  workspaceRoutes,
-  workspaceSlugFromPathname,
-} from "./workspace-routes";
+import { isPublicPath, workspaceRoutes, workspaceSlugFromPathname } from "./workspace-routes";
 
 /**
  * The route builder.

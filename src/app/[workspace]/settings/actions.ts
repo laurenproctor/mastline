@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/session-context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { RENAME_LIMIT_PER_YEAR, type RenameOutcome, SLUG_MAX_LENGTH, slugProblem } from "@/lib/slug";
+import {
+  RENAME_LIMIT_PER_YEAR,
+  type RenameOutcome,
+  SLUG_MAX_LENGTH,
+  slugProblem,
+} from "@/lib/slug";
 import { isSupportedTimezone, parseWorkspaceName } from "@/lib/timezones";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 
@@ -30,13 +35,7 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
  * canonical one the action just resolved.
  */
 type SavedReason =
-  | "buyer"
-  | "invite"
-  | "removed"
-  | "workspace"
-  | "address"
-  | "captions-on"
-  | "captions-off";
+  "buyer" | "invite" | "removed" | "workspace" | "address" | "captions-on" | "captions-off";
 
 function savedAt(canonicalSlug: string, reason: SavedReason): string {
   return workspaceRoutes(canonicalSlug).settings({ query: { saved: reason } });
@@ -68,7 +67,10 @@ export async function saveBuyerTemplateAction(
     return { error: "Payment terms must be a whole number of days." };
   }
 
-  const { organizationId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { organizationId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -122,7 +124,10 @@ export async function inviteMemberAction(
     return { error: "Choose a role. An owner cannot be invited; transfer ownership instead." };
   }
 
-  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "member.invite");
+  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "member.invite",
+  );
   const admin = createAdminClient();
 
   // Find the person, or create a dormant account for them.
@@ -177,7 +182,10 @@ export async function removeMemberAction(
   formData: FormData,
 ): Promise<InviteState> {
   const userId = String(formData.get("userId") ?? "");
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "member.invite");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "member.invite",
+  );
 
   if (userId === actorId) {
     return { error: "A workspace cannot be left without an owner." };
@@ -229,7 +237,10 @@ export async function updateWorkspaceAction(
     return { error: "Choose a timezone from the list." };
   }
 
-  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { session, organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
   const supabase = await createClient();
 
   const previousName = session.activeWorkspace.name;
@@ -327,7 +338,10 @@ export async function renameWorkspaceAddressAction(
   const problem = slugProblem(requested);
   if (problem) return { error: REFUSALS[problem] };
 
-  const { session, organizationId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { session, organizationId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
 
   // The capability is held by admins too; moving the address is an owner's
   // decision, and the database refuses anyone else regardless of this.
@@ -356,7 +370,6 @@ export async function renameWorkspaceAddressAction(
 
   return { error: REFUSALS[outcome] ?? "That address could not be used." };
 }
-
 
 export interface CaptionDraftingState {
   readonly error?: string;

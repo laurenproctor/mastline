@@ -24,7 +24,11 @@ interface HistoryRow {
   href?: string;
 }
 
-export default async function AssetPage({ params }: { params: Promise<{ workspace: string; assetId: string }> }) {
+export default async function AssetPage({
+  params,
+}: {
+  params: Promise<{ workspace: string; assetId: string }>;
+}) {
   const { workspace: requestedWorkspace, assetId } = await params;
   const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);

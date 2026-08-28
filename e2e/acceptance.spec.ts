@@ -606,10 +606,7 @@ test.describe("the marketing site", () => {
     await setSlider(page, "Licensing revenue a month", 10_000);
     await setSlider(page, "Share of revenue sold by Mastline", 50);
     await calc.getByRole("button", { name: "Pro" }).click();
-    await expect(calc.getByRole("button", { name: "Pro" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    await expect(calc.getByRole("button", { name: "Pro" })).toHaveAttribute("aria-pressed", "true");
 
     /*
      * Worked by hand from the same constants the modules hold: 30% of the

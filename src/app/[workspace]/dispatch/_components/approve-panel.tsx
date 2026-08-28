@@ -42,7 +42,10 @@ export function ApprovePanel({
   blockingTitles: readonly string[];
   defaultRecipient: string | null;
 }) {
-  const [state, formAction, pending] = useActionState(approvePackageAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    approvePackageAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [confirming, setConfirming] = useState(false);
 
   if (!isApprovable) {
@@ -70,8 +73,8 @@ export function ApprovePanel({
         <Badge tone="good">Ready</Badge>
         <h3>Every check passes</h3>
         <p>
-          {assetCount} {assetCount === 1 ? "frame" : "frames"} to{" "}
-          {buyerName ?? "the selected buyer"}.
+          {assetCount} {assetCount === 1 ? "frame" : "frames"} for{" "}
+          {buyerName ?? "the selected potential buyer"}.
         </p>
         <button className="button blue" onClick={() => setConfirming(true)} type="button">
           Approve package
@@ -99,7 +102,9 @@ export function ApprovePanel({
           <dd>{assetCount}</dd>
         </div>
         <div>
-          <dt>Buyer</dt>
+          {/* The visible words describe what this is: a proposed recipient
+              nobody has contacted. The payload posted below is unchanged. */}
+          <dt>Potential buyer</dt>
           <dd>{buyerName ?? "—"}</dd>
         </div>
         <div>

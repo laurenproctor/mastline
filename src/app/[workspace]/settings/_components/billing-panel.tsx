@@ -47,7 +47,10 @@ export function BillingPanel({
   savingsClaim: string;
   portalAvailable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(startCheckoutAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    startCheckoutAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [period, setPeriod] = useState<BillingPeriod>("annual");
   const [chosen, setChosen] = useState<PlanId | null>(null);
 

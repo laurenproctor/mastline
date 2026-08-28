@@ -17,9 +17,18 @@ const INITIAL: WorkspaceState = {};
  * explains why it redirects rather than revalidating.
  */
 export function EditWorkspace({
-  workspaceSlug, name, timezone }: {
-  workspaceSlug: string; name: string; timezone: string }) {
-  const [state, formAction, pending] = useActionState(updateWorkspaceAction.bind(null, workspaceSlug), INITIAL);
+  workspaceSlug,
+  name,
+  timezone,
+}: {
+  workspaceSlug: string;
+  name: string;
+  timezone: string;
+}) {
+  const [state, formAction, pending] = useActionState(
+    updateWorkspaceAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   if (!open) {

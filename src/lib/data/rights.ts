@@ -141,7 +141,13 @@ export async function getRightsMatch(
  * demand or a takedown -- and is deliberately absent here, so no form, action,
  * or call site in the application can reach it.
  */
-export const TRIAGE_STATUSES = ["reviewing", "monitoring", "ignored", "licensed", "resolved"] as const;
+export const TRIAGE_STATUSES = [
+  "reviewing",
+  "monitoring",
+  "ignored",
+  "licensed",
+  "resolved",
+] as const;
 export type TriageStatus = (typeof TRIAGE_STATUSES)[number];
 
 export function isTriageStatus(value: string): value is TriageStatus {
@@ -232,7 +238,9 @@ export const LICENSE_REQUIRED_MESSAGE =
 export function parseDecisionNote(
   status: TriageStatus,
   raw: string | undefined | null,
-): { readonly ok: true; readonly note?: string } | { readonly ok: false; readonly error: RightsReviewError } {
+):
+  | { readonly ok: true; readonly note?: string }
+  | { readonly ok: false; readonly error: RightsReviewError } {
   const note = typeof raw === "string" ? raw.trim() : "";
 
   if (note === "") {
@@ -293,9 +301,7 @@ export interface ReviewRightsMatchInput {
  * working the same queue cannot silently overwrite one another: the second one
  * matches no row, is told what happened, and writes no event.
  */
-export async function reviewRightsMatch(
-  input: ReviewRightsMatchInput,
-): Promise<RightsMatchDetail> {
+export async function reviewRightsMatch(input: ReviewRightsMatchInput): Promise<RightsMatchDetail> {
   const { organizationId, actorId, matchId, status, expectedUpdatedAt } = input;
   const supabase = input.client ?? (await createClient());
 

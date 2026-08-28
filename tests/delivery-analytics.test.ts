@@ -348,7 +348,11 @@ describeIf("per-photograph viewing", () => {
       claimed_visible_ms: 10_000,
       // A real asset, in another workspace entirely.
       asset_beats: [
-        { asset_id: "b0000000-0000-0000-0000-0000000000d1", visible_ms: 10_000, view_started: true },
+        {
+          asset_id: "b0000000-0000-0000-0000-0000000000d1",
+          visible_ms: 10_000,
+          view_started: true,
+        },
       ],
     });
 

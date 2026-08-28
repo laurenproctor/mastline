@@ -347,11 +347,17 @@ export function parseStagedPhotographs(form: FormData): StagedPhotographsResult 
 
     const caption = stagedString(metadata, "caption");
     if (caption.length > MAX_CAPTION) {
-      return { ok: false, error: `Keep the caption on ${filename} under ${MAX_CAPTION} characters.` };
+      return {
+        ok: false,
+        error: `Keep the caption on ${filename} under ${MAX_CAPTION} characters.`,
+      };
     }
     const headline = stagedString(metadata, "headline");
     if (headline.length > MAX_TITLE) {
-      return { ok: false, error: `Keep the headline on ${filename} under ${MAX_TITLE} characters.` };
+      return {
+        ok: false,
+        error: `Keep the headline on ${filename} under ${MAX_TITLE} characters.`,
+      };
     }
 
     photographs.push({
@@ -496,8 +502,7 @@ export function parseOnboarding(form: FormData): ParseResult<OnboardingInput> {
   else {
     const problem = slugProblem(workspaceSlug);
     if (problem === "invalid") {
-      errors.workspaceSlug =
-        `Use lowercase letters, numbers and hyphens, up to ${SLUG_MAX_LENGTH} characters.`;
+      errors.workspaceSlug = `Use lowercase letters, numbers and hyphens, up to ${SLUG_MAX_LENGTH} characters.`;
     } else if (problem === "reserved") {
       errors.workspaceSlug = "That address is reserved. Choose another.";
     }

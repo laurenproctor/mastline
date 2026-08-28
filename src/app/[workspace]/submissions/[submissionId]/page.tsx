@@ -16,11 +16,12 @@ import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DeliveryPanel } from "../_components/delivery-panel";
-import { DeliveryLinks, type DeliveryLinkView, type LinkStage } from "../_components/delivery-links-panel";
 import {
-  RecipientAnalytics,
-  type RecipientAnalyticsRow,
-} from "../_components/recipient-analytics";
+  DeliveryLinks,
+  type DeliveryLinkView,
+  type LinkStage,
+} from "../_components/delivery-links-panel";
+import { RecipientAnalytics, type RecipientAnalyticsRow } from "../_components/recipient-analytics";
 import { listAcceptances, listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
 import { listDeliveryEngagement } from "@/lib/data/delivery-analytics";
 import { deliveryStanding } from "@/lib/delivery";
@@ -193,9 +194,7 @@ export default async function SubmissionPage({
    * is.
    */
   const sharedLink = linkViews.find((view) => view.sharedAt);
-  const openedLink = linkViews.find(
-    (view) => (engagement.get(view.id)?.openCount ?? 0) > 0,
-  );
+  const openedLink = linkViews.find((view) => (engagement.get(view.id)?.openCount ?? 0) > 0);
   const headerDescription = openedLink
     ? `Opened through the link created for ${openedLink.recipientLabel ?? "a recipient"}${
         submission.deliveredAt ? ` · ${formatDateTime(submission.deliveredAt)}` : ""
@@ -381,10 +380,10 @@ export default async function SubmissionPage({
 
           <Panel title="Delivery links">
             {/*
-              * The order of this panel is the order of the real work: make a
-              * link for one recipient, add any attribution, copy it, send it
-              * yourself, tell Mastline you have, then read what came back.
-              */}
+             * The order of this panel is the order of the real work: make a
+             * link for one recipient, add any attribution, copy it, send it
+             * yourself, tell Mastline you have, then read what came back.
+             */}
             <ol className="section-note delivery-next-steps">
               <li>Create a recipient-specific delivery link.</li>
               <li>Add optional attribution parameters.</li>
