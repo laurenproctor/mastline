@@ -29,13 +29,41 @@ Queue actions: open/continue, assign, review, reconcile, snooze, and complete. P
 
 ## 2. News Radar — `/news`
 
-Question answered: **What is becoming commercially relevant to work I already own?**
+Question answered: **What is happening right now that this workspace should sell into or go shoot?**
 
-Columns: signal, story/source/time, archive match, matching assets, estimated value range, time window, next action.
+One canonical news signal, evaluated through two independent paths and shown
+as two modes of one radar, chosen by a prominent control and addressed in the
+URL (`?mode=archive`, `?mode=shoot`):
 
-Selected detail: story summary, related topics, top archive matches, asset/licensing clearance, recommended buyer/play, estimated range, and Build Pitch. All matching, value, and buyer-fit outputs are labeled suggestions with basis and confidence.
+- **Archive Matches** — can this story reactivate photographs the workspace
+  already owns?
+- **Shoot Opportunities** — does this story justify creating new photographs
+  now?
 
-No automatic buyer contact. First release may use manually entered stories so the archive-matching workflow can be tested before live feeds.
+A story is entered ONCE and appears in both modes; the tabs are two
+evaluations of the same underlying signal, not two independently entered
+copies. Queue columns: signal, story/source/time (from the canonical signal),
+why it matters (stated basis plus confidence labelled as a suggestion), useful
+window, status, next action. Watch and dismiss sit on the row for roles that
+may decide; dismissing takes a second motion, keeps the optional reason on the
+record, and never touches the story's other path.
+
+Detail at `/news/[opportunityId]` reviews ONE path and says which: the
+canonical story facts (shared, labelled as such), this path's suggestion kept
+visibly apart from them, this path's lifecycle and history, a link to the same
+story's other evaluation, and an honestly drawn not-yet-built region — matched
+photographs for the archive path (Build Package stays unavailable until
+matching exists), a shoot-brief handoff for the shoot path.
+
+**Implemented:** manual entry at `/news/new` — the headline is the only
+required fact, there is no archive-or-shoot choice, and one atomic submission
+creates the signal and both paths (a repeated source URL is answered with the
+existing records); watch and dismiss per path; the two-mode interface; all on
+real records with activity events distinguishing the story's entry from each
+path's decisions.
+**Not yet connected:** live monitoring, archive matching, shoot creation from
+a story, pitches, and estimated value. No buyer is contacted automatically and
+nothing outbound happens from this screen.
 
 ## Commercial Opportunities — `/work/commercial`
 

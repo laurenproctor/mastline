@@ -3743,3 +3743,201 @@ img.avatar {
     padding-left: 8px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   News Radar: two modes of one radar.
+   --------------------------------------------------------------------------- */
+
+/* The mode control is the screen's central decision, so it is drawn as two
+   large addressable cards rather than a small tab strip. Selection is carried
+   by aria-current and the wording as well as the fill. */
+.news-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.news-mode {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.news-mode strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.news-mode small {
+  color: var(--muted);
+}
+.news-mode-count {
+  font-size: var(--fs-note);
+  color: var(--blue);
+  background: #e9eeff;
+  border-radius: 99px;
+  padding: 3px 9px;
+}
+.news-mode.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+.news-mode.selected small {
+  color: rgba(255, 255, 255, 0.75);
+}
+.news-mode.selected .news-mode-count {
+  background: var(--blue);
+  color: white;
+}
+
+/* The queue. The basis column carries prose, so it is capped rather than left
+   to stretch the row into one long line. */
+.news-table .news-basis {
+  max-width: 340px;
+}
+.news-table .news-basis small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.news-table .story-link {
+  color: inherit;
+}
+.news-table .story-link:hover {
+  color: var(--blue);
+}
+.news-row-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.row-decisions .actions {
+  margin: 0;
+}
+
+/* Dismissing is final, so it takes a second motion and says why out loud.
+   The same component renders inside a queue cell and as a card on the detail
+   screen; only the padding differs. */
+.dismiss-confirm {
+  display: grid;
+  gap: 8px;
+  max-width: 340px;
+}
+.dismiss-warning {
+  margin: 0;
+  font-size: var(--fs-note);
+  color: var(--ink-2);
+}
+.dismiss-confirm textarea {
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  background: white;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--fs-note);
+}
+
+/* Manual entry: the kind is the first decision, drawn as two labelled cards. */
+.kind-choice {
+  border: 0;
+  padding: 0;
+  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.kind-choice legend {
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.kind-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--field-line);
+  background: white;
+  cursor: pointer;
+}
+.kind-option input {
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+.kind-option span {
+  display: grid;
+  gap: 3px;
+}
+.kind-option small {
+  color: var(--muted);
+}
+.kind-option.selected {
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+  background: #f6f8ff;
+}
+.story-form .form-grid + .form-grid {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.story-form .actions {
+  margin-top: 16px;
+}
+
+/* A region a later stage will fill. Drawn honestly as not yet built: dashed,
+   quiet, and holding no invented records. */
+.future-region {
+  border: 1px dashed var(--field-line);
+  margin: 12px 18px;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.empty-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1.375rem;
+  margin: 4px 0 8px;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-list li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+}
+.history-list li:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+.history-list small {
+  color: var(--muted);
+}
+
+@media (max-width: 680px) {
+  .news-mode-switch,
+  .kind-choice {
+    grid-template-columns: 1fr;
+  }
+  .news-table .news-basis {
+    max-width: 260px;
+  }
+}
+
+.story-form .field textarea {
+  min-height: 84px;
+}

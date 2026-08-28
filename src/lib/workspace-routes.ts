@@ -90,6 +90,10 @@ export interface WorkspaceRoutes {
   readonly commercial: (options?: RouteOptions) => string;
   readonly opportunity: (opportunityId: string, options?: RouteOptions) => string;
   readonly news: (options?: RouteOptions) => string;
+  /** One News Radar opportunity: /<workspace>/news/<opportunityId>. */
+  readonly newsOpportunity: (opportunityId: string, options?: RouteOptions) => string;
+  /** Manual story entry. "new" is a static segment, never a record id. */
+  readonly newNewsStory: (options?: RouteOptions) => string;
   readonly shoots: (options?: RouteOptions) => string;
   readonly newShoot: (options?: RouteOptions) => string;
   readonly shoot: (shootId: string, options?: RouteOptions) => string;
@@ -130,6 +134,9 @@ export function workspaceRoutes(canonicalSlug: string): WorkspaceRoutes {
     opportunity: (opportunityId: string, options?: RouteOptions) =>
       build(slug, ["work", "commercial", opportunityId], options),
     news: (options?: RouteOptions) => build(slug, ["news"], options),
+    newsOpportunity: (opportunityId: string, options?: RouteOptions) =>
+      build(slug, ["news", opportunityId], options),
+    newNewsStory: (options?: RouteOptions) => build(slug, ["news", "new"], options),
     shoots: (options?: RouteOptions) => build(slug, ["shoots"], options),
     newShoot: (options?: RouteOptions) => build(slug, ["shoots", "new"], options),
     shoot: (shootId: string, options?: RouteOptions) => build(slug, ["shoots", shootId], options),

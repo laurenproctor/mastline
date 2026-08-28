@@ -8,6 +8,7 @@
  * them.
  */
 
+import { OPPORTUNITY_SIGNALS, type OpportunitySignal } from "./domain";
 import {
   type OnboardingGoal,
   type Specialty,
@@ -386,6 +387,137 @@ export function parseStagedPhotographs(form: FormData): StagedPhotographsResult 
   }
 
   return { ok: true, value: photographs };
+}
+
+export interface ManualStoryInput {
+  title: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourcePublishedAt?: string;
+  summary?: string;
+  signal: OpportunitySignal;
+  windowClosesAt?: string;
+  suggestionBasis?: string;
+  /** 0 to 1. The form field takes a whole percentage. */
+  confidence?: number;
+}
+
+const MAX_SOURCE_NAME = 120;
+const MAX_SUMMARY = 2000;
+export const MAX_SUGGESTION_BASIS = 500;
+const MAX_SOURCE_URL = 2048;
+
+/**
+ * A story's web address, or a reason it cannot be one.
+ *
+ * Only http(s) is a story source. Anything else -- javascript:, data:, a bare
+ * word -- is refused rather than repaired, because this value is rendered back
+ * as a link for the whole workspace to click.
+ */
+function parseSourceUrl(value: string | undefined): string | undefined | null {
+  if (!value) return undefined;
+  if (value.length > MAX_SOURCE_URL) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  return url.href;
+}
+
+export function isOpportunitySignal(value: string): value is OpportunitySignal {
+  return (OPPORTUNITY_SIGNALS as readonly string[]).includes(value);
+}
+
+/**
+ * A manually entered News Radar story.
+ *
+ * There is no kind to choose: one entry creates the canonical signal and BOTH
+ * evaluation paths, because deciding whether a story serves the archive and
+ * whether it justifies a shoot are the radar's job, not a form field's. Only
+ * the headline is required -- this creates a private workspace record, and a
+ * photographer typing between jobs should not be blocked on facts they do not
+ * have yet. Everything else is optional and checked only for shape.
+ *
+ * One rule crosses fields, and the database repeats it as a check constraint:
+ * a confidence may not arrive without a stated basis. A bare percentage is a
+ * claim with nothing behind it, and this product does not record those.
+ */
+export function parseManualStory(form: FormData): ParseResult<ManualStoryInput> {
+  const errors: FieldErrors<ManualStoryInput> = {};
+
+  const title = text(form, "title");
+  if (!title) errors.title = "Give the story a headline.";
+  else if (title.length > MAX_TITLE) errors.title = `Keep this under ${MAX_TITLE} characters.`;
+
+  const signalRaw = text(form, "signal") || "watch";
+  const signal = isOpportunitySignal(signalRaw) ? signalRaw : null;
+  if (!signal) errors.signal = "Choose a signal.";
+
+  const sourceName = optionalText(form, "sourceName");
+  if (sourceName && sourceName.length > MAX_SOURCE_NAME) {
+    errors.sourceName = `Keep the source name under ${MAX_SOURCE_NAME} characters.`;
+  }
+
+  const sourceUrl = parseSourceUrl(optionalText(form, "sourceUrl"));
+  if (sourceUrl === null) {
+    errors.sourceUrl = "That does not read as a web address. Use a full http(s) link.";
+  }
+
+  const sourcePublishedAt = parseTimestamp(optionalText(form, "sourcePublishedAt"));
+  if (sourcePublishedAt === null) {
+    errors.sourcePublishedAt = "That date and time could not be read.";
+  }
+
+  const windowClosesAt = parseTimestamp(optionalText(form, "windowClosesAt"));
+  if (windowClosesAt === null) {
+    errors.windowClosesAt = "That date and time could not be read.";
+  }
+
+  const summary = optionalText(form, "summary");
+  if (summary && summary.length > MAX_SUMMARY) {
+    errors.summary = `Keep the summary under ${MAX_SUMMARY} characters.`;
+  }
+
+  const suggestionBasis = optionalText(form, "suggestionBasis");
+  if (suggestionBasis && suggestionBasis.length > MAX_SUGGESTION_BASIS) {
+    errors.suggestionBasis = `Keep this under ${MAX_SUGGESTION_BASIS} characters.`;
+  }
+
+  // The form takes a whole percentage; the record keeps 0 to 1.
+  const confidenceRaw = optionalText(form, "confidence");
+  let confidence: number | undefined;
+  if (confidenceRaw !== undefined) {
+    const parsed = Number(confidenceRaw);
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+      errors.confidence = "Confidence is a percentage between 0 and 100.";
+    } else {
+      confidence = Math.round(parsed) / 100;
+    }
+  }
+  if (confidence !== undefined && !suggestionBasis && !errors.suggestionBasis) {
+    errors.suggestionBasis =
+      "A confidence needs a stated basis. Say what the number is a confidence in.";
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      title,
+      sourceName,
+      sourceUrl: sourceUrl ?? undefined,
+      sourcePublishedAt: sourcePublishedAt ?? undefined,
+      summary,
+      signal: signal as OpportunitySignal,
+      windowClosesAt: windowClosesAt ?? undefined,
+      suggestionBasis,
+      confidence,
+    },
+  };
 }
 
 /**

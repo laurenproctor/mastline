@@ -72,6 +72,17 @@ describe("separation of duties", () => {
     expect([...allowed].sort()).toEqual(["dispatcher", "owner"]);
   });
 
+  it("keeps News Radar entry and decisions with owner and editor", () => {
+    const writers = APP_ROLES.filter((role: AppRole) => can(role, "opportunity.write"));
+    expect([...writers].sort()).toEqual(["editor", "owner"]);
+    const reviewers = APP_ROLES.filter((role: AppRole) => can(role, "opportunity.review"));
+    expect([...reviewers].sort()).toEqual(["editor", "owner"]);
+    // Everyone can read the radar; deciding is the privileged half.
+    for (const role of APP_ROLES) {
+      expect(can(role, "opportunity.read")).toBe(true);
+    }
+  });
+
   it("does not let a dispatcher rewrite a shoot brief", () => {
     expect(can("dispatcher", "shoot.write")).toBe(false);
   });
