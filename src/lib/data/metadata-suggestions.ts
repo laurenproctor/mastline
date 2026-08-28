@@ -46,6 +46,21 @@ import { getShoot } from "./shoots";
 const MODEL = process.env.MASTLINE_SUGGESTION_MODEL ?? "claude-haiku-4-5";
 
 /**
+ * Which Anthropic workspace this deployment's requests act in.
+ *
+ * Only needed because the key is identity-backed and not scoped to a single
+ * workspace. Such a key can act in several, so the API refuses to guess and
+ * returns a 400 naming this header rather than billing the wrong one. A key
+ * created against one workspace carries its own scope and needs nothing here.
+ *
+ * Left unset, no header is sent -- which is correct for a scoped key and is
+ * also what makes moving to one later a matter of clearing a variable rather
+ * than a code change. Sending a workspace id that contradicts a scoped key's
+ * own workspace is a 404, so this is not a value to set speculatively.
+ */
+const WORKSPACE_ID = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+
+/**
  * A suggestion is a short, structured draft, not an essay. The cap is generous
  * enough for the tool call plus whatever thinking the model does on the way to
  * it, and small enough that a runaway response cannot become an expensive one.
@@ -71,9 +86,16 @@ const SUGGESTION_TOOL: Anthropic.Tool = {
       },
       keywords: {
         type: "array",
-        maxItems: MAX_KEYWORDS,
         items: { type: "string" },
-        description: "Lowercase search terms. No names of people.",
+        /*
+         * The cap is stated here rather than expressed as `maxItems`, which
+         * `strict: true` rejects outright -- "For 'array' type, property
+         * 'maxItems' is not supported" -- taking every suggestion with it. It
+         * was never the thing enforcing the limit anyway: normaliseSuggestion
+         * slices to MAX_KEYWORDS on the way in, because a cap that lives only
+         * in a schema the model is asked to honour is not a cap.
+         */
+        description: `Lowercase search terms, at most ${MAX_KEYWORDS}. No names of people.`,
       },
       basis: {
         type: "string",
@@ -212,7 +234,9 @@ export async function suggestMetadataForAsset(input: {
   };
 
   try {
-    const client = new Anthropic();
+    const client = new Anthropic(
+      WORKSPACE_ID ? { defaultHeaders: { "anthropic-workspace-id": WORKSPACE_ID } } : {},
+    );
 
     const response = await client.messages.create({
       model: MODEL,
