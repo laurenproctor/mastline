@@ -66,7 +66,10 @@ export function MfaPolicy({
   required: boolean;
   canEnforce: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(setMfaPolicyAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    setMfaPolicyAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   if (!canEnforce) return null;
 
   return (
@@ -123,10 +126,14 @@ export function TwoFactor({
 }) {
   const [enrollment, setEnrollment] = useState<EnrollState | null>(null);
   const [starting, startEnrollment] = useTransition();
-  const [confirmState, confirmAction, confirming] = useActionState(confirmEnrollmentAction.bind(null, workspaceSlug),
+  const [confirmState, confirmAction, confirming] = useActionState(
+    confirmEnrollmentAction.bind(null, workspaceSlug),
     INITIAL,
   );
-  const [removeState, removeAction, removing] = useActionState(disableMfaAction.bind(null, workspaceSlug), INITIAL);
+  const [removeState, removeAction, removing] = useActionState(
+    disableMfaAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [removeOpen, setRemoveOpen] = useState(false);
   const [newCodes, setNewCodes] = useState<{ codes?: readonly string[]; error?: string }>({});
   const [issuing, issueCodes] = useTransition();

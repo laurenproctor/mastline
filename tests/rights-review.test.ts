@@ -153,13 +153,25 @@ afterAll(async () => {
 describeIf("who may record a decision", () => {
   it("owner can start review", async () => {
     const match = await makeMatch();
-    expect(await decideAs("owner", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("owner", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
     expect((await rowOf(match.id)).status).toBe("reviewing");
   });
 
   it("rights reviewer can start review", async () => {
     const match = await makeMatch();
-    expect(await decideAs("rights", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("rights", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
     expect((await rowOf(match.id)).status).toBe("reviewing");
   });
 
@@ -235,7 +247,13 @@ describeIf("what each decision records", () => {
   it("reviewing stamps the reviewer and the review time", async () => {
     const match = await makeMatch();
     const before = Date.now();
-    expect(await decideAs("rights", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("rights", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
 
     const row = await rowOf(match.id);
     expect(row.status).toBe("reviewing");
@@ -262,7 +280,13 @@ describeIf("what each decision records", () => {
 
   it("monitoring is allowed with no note at all", async () => {
     const match = await makeMatch();
-    expect(await decideAs("rights", { matchId: match.id, status: "monitoring", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("rights", {
+        matchId: match.id,
+        status: "monitoring",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
     const row = await rowOf(match.id);
     expect(row.status).toBe("monitoring");
     expect(row.decision_note).toBeNull();
@@ -385,7 +409,13 @@ describeIf("what each decision records", () => {
     ).toMatchObject({ ok: false, reason: "invalid_transition" });
 
     const match = await makeMatch();
-    expect(await decideAs("rights", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("rights", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
     const reviewing = await rowOf(match.id);
 
     expect(
@@ -414,7 +444,15 @@ describeIf("escalation is not part of this sprint", () => {
   });
 
   it("is not reachable from any status", () => {
-    for (const from of ["new", "reviewing", "monitoring", "licensed", "ignored", "resolved", "escalated"] as const) {
+    for (const from of [
+      "new",
+      "reviewing",
+      "monitoring",
+      "licensed",
+      "ignored",
+      "resolved",
+      "escalated",
+    ] as const) {
       expect(allowedTransitions(from)).not.toContain("escalated");
     }
   });
@@ -437,7 +475,13 @@ describeIf("escalation is not part of this sprint", () => {
 describeIf("the activity history", () => {
   it("writes exactly one correct event per successful transition", async () => {
     const match = await makeMatch();
-    expect(await decideAs("owner", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("owner", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
 
     const afterFirst = await rowOf(match.id);
     expect(
@@ -457,8 +501,16 @@ describeIf("the activity history", () => {
     expect(events[0].entity_type).toBe("rights_match");
     expect(events[0].actor_id).toBe(UID.owner);
     expect(events[1].actor_id).toBe(UID.rights);
-    expect(events[0].event_data).toMatchObject({ previousStatus: "new", status: "reviewing", noteRecorded: false });
-    expect(events[1].event_data).toMatchObject({ previousStatus: "reviewing", status: "monitoring", noteRecorded: true });
+    expect(events[0].event_data).toMatchObject({
+      previousStatus: "new",
+      status: "reviewing",
+      noteRecorded: false,
+    });
+    expect(events[1].event_data).toMatchObject({
+      previousStatus: "reviewing",
+      status: "monitoring",
+      noteRecorded: true,
+    });
 
     // The note lives on the match. An event stream is a wider audience than the
     // record it describes, so the reasoning itself is not copied into it.
@@ -467,9 +519,23 @@ describeIf("the activity history", () => {
 
   it("writes nothing when the transition fails", async () => {
     const match = await makeMatch();
-    await decideAs("rights", { matchId: match.id, status: "ignored", note: "", expectedUpdatedAt: match.updatedAt });
-    await decideAs("viewer", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt });
-    await decideAs("rights", { matchId: match.id, status: "resolved", note: "Closing without review.", expectedUpdatedAt: match.updatedAt });
+    await decideAs("rights", {
+      matchId: match.id,
+      status: "ignored",
+      note: "",
+      expectedUpdatedAt: match.updatedAt,
+    });
+    await decideAs("viewer", {
+      matchId: match.id,
+      status: "reviewing",
+      expectedUpdatedAt: match.updatedAt,
+    });
+    await decideAs("rights", {
+      matchId: match.id,
+      status: "resolved",
+      note: "Closing without review.",
+      expectedUpdatedAt: match.updatedAt,
+    });
     expect(await eventsFor(match.id)).toHaveLength(0);
   });
 });
@@ -477,7 +543,13 @@ describeIf("the activity history", () => {
 describeIf("two reviewers on one queue", () => {
   it("a stale updated_at loses safely", async () => {
     const match = await makeMatch();
-    expect(await decideAs("owner", { matchId: match.id, status: "reviewing", expectedUpdatedAt: match.updatedAt })).toEqual({ ok: true });
+    expect(
+      await decideAs("owner", {
+        matchId: match.id,
+        status: "reviewing",
+        expectedUpdatedAt: match.updatedAt,
+      }),
+    ).toEqual({ ok: true });
 
     // The second reviewer is still holding the version they loaded.
     const late = await decideAs("rights", {

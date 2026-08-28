@@ -147,7 +147,9 @@ export async function listDeliveryEngagement(
       .in("delivery_id", ids),
     supabase
       .from("delivery_asset_engagement_totals")
-      .select("delivery_id, asset_id, active_visible_ms, view_count, first_visible_at, last_visible_at")
+      .select(
+        "delivery_id, asset_id, active_visible_ms, view_count, first_visible_at, last_visible_at",
+      )
       .eq("organization_id", organizationId)
       .in("delivery_id", ids),
     supabase

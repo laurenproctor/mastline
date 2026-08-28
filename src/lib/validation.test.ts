@@ -112,7 +112,6 @@ describe("parseOnboarding: the workspace address", () => {
   });
 });
 
-
 /**
  * The photographs a Create shoot carries.
  *

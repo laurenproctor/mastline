@@ -110,13 +110,7 @@ export function slugProblem(candidate: string): SlugProblem | null {
  * and the person typing does not need to know which of the two it was.
  */
 export type RenameOutcome =
-  | "renamed"
-  | "unchanged"
-  | "invalid"
-  | "reserved"
-  | "taken"
-  | "rate_limited"
-  | "not_found";
+  "renamed" | "unchanged" | "invalid" | "reserved" | "taken" | "rate_limited" | "not_found";
 
 /** How many times a workspace may move in a rolling twelve months. */
 export const RENAME_LIMIT_PER_YEAR = 3;

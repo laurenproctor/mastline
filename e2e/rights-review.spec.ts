@@ -221,7 +221,12 @@ test("a viewer can read a match but is offered no triage controls", async ({ con
   await expect(page.getByText("Perceptual hash + crop tolerance").first()).toBeVisible();
 
   await expect(page.getByText(/read-only for your role/i)).toBeVisible();
-  for (const label of ["Start review", "Hold for monitoring", "Ignore this match", "Mark licensed"]) {
+  for (const label of [
+    "Start review",
+    "Hold for monitoring",
+    "Ignore this match",
+    "Mark licensed",
+  ]) {
     await expect(page.getByRole("button", { name: label })).toHaveCount(0);
   }
 });

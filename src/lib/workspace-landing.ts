@@ -34,9 +34,7 @@ export function chooseLandingWorkspace<T extends LandingCandidate>(
 ): LandingChoice<T> {
   if (workspaces.length === 0) return { outcome: "none" };
 
-  const hinted = hintedId
-    ? workspaces.find((workspace) => workspace.id === hintedId)
-    : undefined;
+  const hinted = hintedId ? workspaces.find((workspace) => workspace.id === hintedId) : undefined;
   if (hinted) return { outcome: "resolved", workspace: hinted };
 
   // One membership needs no hint: there is nothing to be wrong about.

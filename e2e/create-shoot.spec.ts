@@ -79,14 +79,10 @@ test.describe("create shoot", () => {
       // Moving between sections is a scroll, so nothing typed is lost.
       await page.getByRole("link", { name: "Shoot details" }).click();
       await expect(page.getByLabel("Subject or event")).toHaveValue(title);
-      await expect(page.getByLabel("Credit line")).toHaveValue(
-        "Marcus Hale / Marcus Hale Studio",
-      );
+      await expect(page.getByLabel("Credit line")).toHaveValue("Marcus Hale / Marcus Hale Studio");
 
       await expect(create).toBeEnabled();
-      await expect(
-        page.getByText(/remain private until you choose to dispatch it/i),
-      ).toBeVisible();
+      await expect(page.getByText(/remain private until you choose to dispatch it/i)).toBeVisible();
 
       await create.click();
       await page.waitForURL(/\/shoots\/[0-9a-f-]{36}/, { timeout: 20_000 });

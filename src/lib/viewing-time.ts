@@ -43,9 +43,7 @@ export interface ViewingConditions {
  */
 export function isActivelyViewing(conditions: ViewingConditions): boolean {
   return (
-    conditions.documentVisible &&
-    conditions.windowFocused &&
-    conditions.msSinceActivity < IDLE_MS
+    conditions.documentVisible && conditions.windowFocused && conditions.msSinceActivity < IDLE_MS
   );
 }
 

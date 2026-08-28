@@ -212,10 +212,7 @@ export default async function RightsPage({
                               href={routes.rights({ query: { match: match.id } })}
                             >
                               Select
-                              <span className="visually-hidden">
-                                {" "}
-                                {match.publisherName} match
-                              </span>
+                              <span className="visually-hidden"> {match.publisherName} match</span>
                             </Link>
                           )}
                         </td>
@@ -301,9 +298,7 @@ export default async function RightsPage({
                   <div>
                     <dt>Evidence</dt>
                     <dd>
-                      {selected.hasEvidence
-                        ? "Captured and stored privately"
-                        : "None captured yet"}
+                      {selected.hasEvidence ? "Captured and stored privately" : "None captured yet"}
                     </dd>
                   </div>
                 </dl>
@@ -328,7 +323,9 @@ export default async function RightsPage({
                   <div>
                     <dt>Reviewed</dt>
                     <dd>
-                      {selected.reviewedAt ? formatDateTime(selected.reviewedAt) : "Not reviewed yet"}
+                      {selected.reviewedAt
+                        ? formatDateTime(selected.reviewedAt)
+                        : "Not reviewed yet"}
                     </dd>
                   </div>
                   <div>
