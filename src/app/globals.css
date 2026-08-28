@@ -3743,3 +3743,89 @@ img.avatar {
     padding-left: 8px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Public request intake
+   
+   Mobile-first: one column at any width, capped for reading on a desktop. A
+   picture desk fills this in on a phone at the side of a road as often as at a
+   desk, so controls are full-width and comfortably tappable rather than dense.
+   --------------------------------------------------------------------------- */
+.intake-page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+.intake-head {
+  margin-bottom: 24px;
+}
+
+.intake-form fieldset {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 0 0 16px;
+}
+
+.intake-form legend {
+  padding: 0 6px;
+  font-weight: 600;
+}
+
+.intake-form label {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.intake-form input[type="text"],
+.intake-form input[type="number"],
+.intake-form input[type="datetime-local"],
+.intake-form input:not([type]),
+.intake-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: 16px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  color: inherit;
+}
+
+.intake-form .intake-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* A tap target that a thumb can actually hit. */
+  min-height: 44px;
+}
+
+.intake-form .intake-check input {
+  width: auto;
+  margin: 0;
+}
+
+.intake-formats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 20px;
+}
+
+.intake-budget {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0 12px;
+}
+
+.intake-form .required-mark {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.intake-form button[type="submit"] {
+  width: 100%;
+  min-height: 48px;
+}
