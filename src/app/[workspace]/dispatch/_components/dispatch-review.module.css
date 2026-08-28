@@ -1,0 +1,792 @@
+/*
+ * The package review screen.
+ *
+ * Scoped to this route on purpose: the shared panel, table and button styles
+ * are used by every other screen, and an editorial gallery is not a reason to
+ * move them. Everything below composes Mastline's existing tokens rather than
+ * introducing colours, and keeps the 3px radius the rest of the product uses.
+ */
+
+.page {
+  display: grid;
+  gap: 24px;
+}
+
+/* --- Header and lifecycle ------------------------------------------------ */
+
+.head {
+  display: grid;
+  gap: 6px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+
+.title {
+  font-family: var(--display, Georgia, serif);
+  font-size: clamp(34px, 4.6vw, 52px);
+  line-height: 1.02;
+  margin: 0;
+}
+
+.subject {
+  color: var(--muted);
+  margin: 0;
+  font-size: 14px;
+}
+
+/*
+ * An ordered list, because the stages are ordered and a screen reader should
+ * say so. The connecting rule is drawn on the item rather than between them so
+ * it cannot end up announced as content.
+ */
+.stages {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.stage + .stage::before {
+  content: "";
+  display: block;
+  width: clamp(24px, 6vw, 84px);
+  height: 1px;
+  background: var(--line);
+  margin: 0 12px;
+}
+
+.stageCurrent {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.stageDone {
+  color: var(--ink);
+}
+
+.stageMark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: inline-grid;
+  place-items: center;
+  font-size: 11px;
+  line-height: 1;
+  flex: none;
+  background: var(--surface);
+}
+
+.stageDone .stageMark {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.stageCurrent .stageMark {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+/* --- Two-column composition ---------------------------------------------- */
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .body {
+    /* The gallery is the point of the screen; the sidebar is a fixed column of
+       decisions beside it. */
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 24px;
+  }
+}
+
+/* --- Gallery ------------------------------------------------------------- */
+
+.galleryHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.galleryHead h2 {
+  font-size: 19px;
+  margin: 0;
+}
+
+.viewToggles {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.toggle {
+  appearance: none;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  /* 44px of hit area without a 44px-looking control. */
+  padding: 12px 10px;
+  min-height: 44px;
+}
+
+.toggle:hover {
+  color: var(--ink);
+}
+
+.toggleOn {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 22px;
+}
+
+/* Above the fold the reference shows three. Below it, everything else. */
+.framesThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+  .framesThree {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 460px) {
+  .framesThree {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.frame {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.frameIndex {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shot {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*
+ * No preview. Deliberately words on a plain ground rather than a gradient
+ * standing in for a photograph: a reviewer must never mistake a placeholder
+ * for the frame they are approving.
+ */
+.noShot {
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  text-align: center;
+  height: 100%;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.kindTag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 3px;
+}
+
+/* --- Editorial metadata under each frame --------------------------------- */
+
+.meta {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.metaRow {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.metaRow dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metaRow dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.headlineValue {
+  font-weight: 600;
+}
+
+/*
+ * Clamped for the card, never for the record: the full text is always one
+ * disclosure away, and the button below is that disclosure. A tooltip would
+ * put it out of reach of a keyboard and a phone at once.
+ */
+.captionClamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.missing {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.awaiting {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--acid);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.moreLink {
+  appearance: none;
+  background: none;
+  border: 0;
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 0;
+  text-align: left;
+  justify-self: start;
+  min-height: 32px;
+}
+
+/* --- The +N control ------------------------------------------------------ */
+
+.expander {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  min-height: 44px;
+}
+
+.expanderCount {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 14px 12px;
+  font-size: 15px;
+  color: var(--ink);
+  background: var(--surface);
+  min-width: 52px;
+  text-align: center;
+}
+
+.expanderCopy {
+  display: grid;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.expanderCopy small {
+  color: var(--muted);
+}
+
+.rest {
+  margin-top: 26px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+
+/* --- Sidebar ------------------------------------------------------------- */
+
+.decision {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.readiness {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.readyMark {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  font-size: 13px;
+  color: #fff;
+  background: var(--green, #1a7f4b);
+}
+
+.readyMarkBlocked {
+  background: var(--red);
+}
+
+.readyText h2 {
+  font-size: 16px;
+  margin: 0;
+}
+
+.readyText p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  font-size: 13px;
+}
+
+.fact {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+  align-items: baseline;
+}
+
+.fact dt {
+  color: var(--muted);
+}
+
+.fact dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.factSub {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.disclosure summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0;
+  min-height: 44px;
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.checkList {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.checkItem {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  font-size: 13px;
+  align-items: start;
+}
+
+.checkItem h3 {
+  font-size: 13px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.checkItem p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.checkWord {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.checkMark {
+  line-height: 1.4;
+}
+
+.checkPass {
+  color: var(--green, #1a7f4b);
+}
+.checkBlocked {
+  color: var(--red);
+}
+.checkAdvisory {
+  color: var(--muted);
+}
+
+.note {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+}
+
+.noteStrong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* --- Frame details ------------------------------------------------------- */
+
+.detailsGrid {
+  display: grid;
+  gap: 18px;
+}
+
+.detailCard {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.detailHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.detailHead h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.detailPairs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 10px 20px;
+  margin: 0;
+  font-size: 12px;
+}
+
+.detailPairs dt {
+  color: var(--muted);
+}
+
+.detailPairs dd {
+  margin: 0 0 6px;
+  overflow-wrap: anywhere;
+}
+
+.gaps {
+  font-size: 12px;
+  margin: 0;
+}
+
+.gapsBlocking {
+  color: var(--red);
+}
+
+/* --- Package selector ----------------------------------------------------
+   A shoot can carry several packages. The selector has to be reachable and
+   must not look like the subject of the screen, so it is a row of quiet
+   chips rather than the panel-sized cards it used to be. */
+
+.packageTabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.packageTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 8px 12px;
+  min-height: 44px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+  background: var(--surface);
+}
+
+.packageTab:hover {
+  color: var(--ink);
+}
+
+.packageTab small {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.packageTabOn {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* --- What has to change --------------------------------------------------
+   A blocked package used to report a count and leave the operator to find the
+   frames. These name them and open the editor on the one that was named. */
+
+.blockers {
+  border: 1px solid var(--red);
+  border-left-width: 3px;
+  border-radius: 3px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+  background: var(--surface);
+}
+
+.blockers h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+
+.blockers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.blockers li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+
+.fixInline {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  padding: 8px 14px;
+  min-height: 36px;
+  flex: none;
+}
+
+.fixInline:hover {
+  border-color: var(--blue);
+}
+
+.frameBlocked {
+  margin-left: 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--red);
+}
+
+.frameMissing {
+  font-size: 12px;
+  color: var(--red);
+  margin: 0;
+}
+
+.fixButton {
+  appearance: none;
+  border: 1px solid var(--blue);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--blue);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  padding: 10px 14px;
+  min-height: 44px;
+  justify-self: start;
+}
+
+/* --- The inline editor --------------------------------------------------- */
+
+.fixForm {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 14px;
+  background: var(--paper);
+}
+
+.fixLead {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fixField {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fixField input,
+.fixField textarea {
+  font-size: 16px; /* no iOS zoom on focus */
+  font-family: inherit;
+  color: var(--ink);
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  width: 100%;
+}
+
+.fixActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fixNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fixOk {
+  margin: 0;
+  font-size: 12px;
+  color: var(--green, #1a7f4b);
+}
+
+/* --- Package-level blockers in the sidebar ------------------------------- */
+
+.sideBlockers {
+  border: 1px solid var(--red);
+  border-left-width: 3px;
+  border-radius: 3px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.sideBlockers h3 {
+  font-size: 13px;
+  margin: 0;
+}
+
+.sideBlockers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sideBlockers li strong {
+  display: block;
+}
+
+.sideBlockers li span {
+  color: var(--muted);
+}

@@ -530,7 +530,13 @@ export async function saveAssetMetadataAction(
   }
 
   const routes = workspaceRoutes(canonicalSlug);
-  if (shootId) revalidatePath(routes.shoot(shootId));
+  if (shootId) {
+    revalidatePath(routes.shoot(shootId));
+    // The package review screen fixes blocking metadata in place, so it has to
+    // see the save that unblocked it. Same action, same validation, same
+    // permission -- only the list of paths that go stale is longer.
+    revalidatePath(routes.dispatch({ shootId }));
+  }
   revalidatePath(routes.asset(assetId));
   return { ok: true, message: "Saved. The previous version is kept in the caption history." };
 }

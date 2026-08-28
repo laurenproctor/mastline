@@ -28,7 +28,10 @@ export function PackageDetails({
   packageNote?: string;
   editable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(updatePackageAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    updatePackageAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
 
   if (!editable) {
     return (
@@ -45,7 +48,19 @@ export function PackageDetails({
     <form action={formAction} className="panel-body">
       <input name="packageId" type="hidden" value={packageId} />
 
-      <BuyerSelect workspaceSlug={workspaceSlug} buyers={buyers} defaultValue={buyerId ?? ""} />
+      {/*
+        A label, passed through the component's own prop. Nothing about the
+        buyer is renamed: the column, the domain property, the action field and
+        BuyerSelect's internals are all untouched. "Potential" is the honest
+        word here, because choosing a buyer on this screen proposes a recipient
+        and contacts nobody.
+      */}
+      <BuyerSelect
+        workspaceSlug={workspaceSlug}
+        buyers={buyers}
+        defaultValue={buyerId ?? ""}
+        label="Potential Buyer"
+      />
       <div className="spacer" />
       <Field
         defaultValue={deliveryMethod ?? ""}
