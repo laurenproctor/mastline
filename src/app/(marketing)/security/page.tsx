@@ -40,9 +40,17 @@ export default function Page() {
 
             <h2>Full-resolution files are gated</h2>
             <p>
-              Buyers see watermarked previews. Full-resolution files are released only through a
-              time-limited link tied to an accepted license, and every download is logged with the
-              recipient, time, and IP address. The log sits on the deal.
+              Buyers see watermarked previews. Full-resolution files are released only after the
+              terms are accepted, through a time-limited link made for a single recipient, and every
+              download is logged against that link with the time and the address it came from. The
+              log sits on the deal.
+            </p>
+            <p>
+              What that log records is which link was used, not who was holding it. Links get
+              forwarded and desks share logins, so Mastline does not claim to know the person at the
+              other end. The one moment somebody identifies themselves is when they accept the
+              terms, and the name they give is kept with the acceptance, alongside the wording they
+              agreed to.
             </p>
 
             <h2>Access control</h2>

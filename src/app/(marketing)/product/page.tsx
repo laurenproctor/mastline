@@ -30,9 +30,9 @@ export default function Page() {
           <h1>Everything between the shutter and the bank, handled.</h1>
           <p className="lede">
             Stills and video, from the first tip to the last dollar. Know what’s worth shooting
-            tonight. Get the package to the right desk in minutes. See who opened it, what they
-            paid, and what they still owe. Catch pictures being used without a license. Sell from
-            the archive the moment a name is back in the news. One workspace, every picture
+            tonight. Get the package to the right desk in minutes. See which desk opened it, what
+            they paid, and what they still owe. Catch pictures being used without a license. Sell
+            from the archive the moment a name is back in the news. One workspace, every picture
             remembered, nothing typed twice.
           </p>
         </div>
