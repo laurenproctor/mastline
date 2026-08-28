@@ -179,7 +179,10 @@ export async function setMfaPolicyAction(
 ): Promise<ConfirmState> {
   const required = String(formData.get("required") ?? "") === "on";
 
-  const { organizationId, actorId, session, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { organizationId, actorId, session, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
 
   if (required && !session.hasVerifiedFactor) {
     return {

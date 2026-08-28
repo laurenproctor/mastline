@@ -22,7 +22,10 @@ export function AllocateForm({
   licenses: readonly { id: string; label: string }[];
   submissions: readonly { id: string; label: string }[];
 }) {
-  const [state, formAction, pending] = useActionState(allocatePaymentAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    allocatePaymentAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   if (!open) {

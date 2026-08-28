@@ -14,8 +14,17 @@ const INITIAL: MoneyActionState = {};
  * stay separately inspectable. Net is derived here and shown live, so the
  * operator sees what will actually land before committing.
  */
-export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string; buyers: readonly { id: string; name: string }[] }) {
-  const [state, formAction, pending] = useActionState(recordPaymentAction.bind(null, workspaceSlug), INITIAL);
+export function RecordPayment({
+  workspaceSlug,
+  buyers,
+}: {
+  workspaceSlug: string;
+  buyers: readonly { id: string; name: string }[];
+}) {
+  const [state, formAction, pending] = useActionState(
+    recordPaymentAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
   const [amounts, setAmounts] = useState({ gross: "", deductions: "", platformFee: "", tax: "" });
 
@@ -42,7 +51,11 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
     <form action={formAction} className="side-card">
       <h3>Record a payment</h3>
 
-      <BuyerSelect workspaceSlug={workspaceSlug} buyers={buyers} emptyLabel="Not linked to a buyer" />
+      <BuyerSelect
+        workspaceSlug={workspaceSlug}
+        buyers={buyers}
+        emptyLabel="Not linked to a buyer"
+      />
       <div className="spacer" />
       <Field label="Reference" name="reference" placeholder="BG-882341" />
       <div className="spacer" />

@@ -34,7 +34,12 @@ export function ShootWorkspace({
   return (
     <div className="shoot-layout">
       <div>
-        <ContactSheet workspaceSlug={workspaceSlug} assets={sheetAssets} onFocusAsset={setFocusedId} shootId={shootId} />
+        <ContactSheet
+          workspaceSlug={workspaceSlug}
+          assets={sheetAssets}
+          onFocusAsset={setFocusedId}
+          shootId={shootId}
+        />
       </div>
 
       <aside aria-label="Asset inspector" className="panel">

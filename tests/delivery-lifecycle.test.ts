@@ -522,11 +522,11 @@ describeIf("marking a link as shared", () => {
       { recipient_label: "Somebody else" },
       { contact_reference: "another-contact" },
     ]) {
-      const { error } = await service
-        .from("submission_deliveries")
-        .update(patch)
-        .eq("id", link.id);
-      expect(error, `changing ${Object.keys(patch)[0]} after sharing should be refused`).toBeTruthy();
+      const { error } = await service.from("submission_deliveries").update(patch).eq("id", link.id);
+      expect(
+        error,
+        `changing ${Object.keys(patch)[0]} after sharing should be refused`,
+      ).toBeTruthy();
     }
   });
 });
@@ -567,9 +567,7 @@ describeIf("a recipient opening the link", () => {
     const engagement = await listDeliveryEngagement(ORG_A, [link.id], dispatcher);
     expect(engagement.get(link.id)!.openCount).toBe(2);
     expect(engagement.get(link.id)!.firstOpenedAt).toBeTruthy();
-    expect(engagement.get(link.id)!.lastOpenedAt).not.toBe(
-      engagement.get(link.id)!.firstOpenedAt,
-    );
+    expect(engagement.get(link.id)!.lastOpenedAt).not.toBe(engagement.get(link.id)!.firstOpenedAt);
   });
 
   it("fills in missing send evidence when the operator never marked it shared", async () => {

@@ -123,7 +123,9 @@ function Decision({
             )}
           </label>
           <textarea
-            aria-describedby={[state.error ? errorId : undefined, hintId].filter(Boolean).join(" ") || undefined}
+            aria-describedby={
+              [state.error ? errorId : undefined, hintId].filter(Boolean).join(" ") || undefined
+            }
             aria-invalid={state.error ? true : undefined}
             id={noteId}
             maxLength={noteMax}
@@ -147,11 +149,7 @@ function Decision({
       )}
 
       <div className="actions">
-        <button
-          className={emphasis ? "button blue" : "button"}
-          disabled={pending}
-          type="submit"
-        >
+        <button className={emphasis ? "button blue" : "button"} disabled={pending} type="submit">
           {pending ? pendingLabel : (confirmLabel ?? startLabel)}
         </button>
         {twoStep && (

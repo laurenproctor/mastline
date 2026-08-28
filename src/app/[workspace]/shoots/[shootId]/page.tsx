@@ -161,7 +161,6 @@ export default async function ShootWorkspacePage({
           </Panel>
         )}
 
-
         <div className="metrics">
           <div className="metric">
             <span>Imported</span>
@@ -191,9 +190,7 @@ export default async function ShootWorkspacePage({
             <span>Captions to read</span>
             <strong>{awaitingCaptionReview}</strong>
             <small className={awaitingCaptionReview > 0 ? "warn" : "good"}>
-              {awaitingCaptionReview > 0
-                ? "Drafted at import, not yet yours"
-                : "No unread drafts"}
+              {awaitingCaptionReview > 0 ? "Drafted at import, not yet yours" : "No unread drafts"}
             </small>
           </div>
         </div>
@@ -224,7 +221,11 @@ export default async function ShootWorkspacePage({
             Keeping it mounted is also what lets a running batch finish when the
             first file lands and the page re-renders underneath it. */}
         {mayEdit ? (
-          <ImportDropzone workspaceSlug={workspaceSlug} compact={assets.length > 0} shootId={shootId} />
+          <ImportDropzone
+            workspaceSlug={workspaceSlug}
+            compact={assets.length > 0}
+            shootId={shootId}
+          />
         ) : (
           assets.length === 0 && (
             <Panel title="No files yet">

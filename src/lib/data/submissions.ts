@@ -368,7 +368,8 @@ export async function recordSubmissionOutcome(input: {
   if (!current) throw new Error("That submission could not be found in this workspace.");
 
   const now = new Date().toISOString();
-  const firstDelivery = status === "delivered" && !current.delivered_at ? { delivered_at: now } : {};
+  const firstDelivery =
+    status === "delivered" && !current.delivered_at ? { delivered_at: now } : {};
   const firstAcknowledgement =
     status === "acknowledged" && !current.acknowledged_at ? { acknowledged_at: now } : {};
 

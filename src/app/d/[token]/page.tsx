@@ -143,10 +143,10 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
         {analyticsAllowed ? (
           <p className="section-note">
             While this page is open and in front of you, Mastline also measures roughly how long it
-            is on screen and which photographs you look at, so the photographer can see which
-            frames drew attention. Time is not counted while the tab is hidden or idle. This is
-            first-party measurement only: there is no advertising, no third-party tracker, no
-            session recording, and nothing is collected about your browsing anywhere else.
+            is on screen and which photographs you look at, so the photographer can see which frames
+            drew attention. Time is not counted while the tab is hidden or idle. This is first-party
+            measurement only: there is no advertising, no third-party tracker, no session recording,
+            and nothing is collected about your browsing anywhere else.
           </p>
         ) : (
           <p className="section-note">

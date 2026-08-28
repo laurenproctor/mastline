@@ -36,7 +36,10 @@ export function BuildPackage({
   readyCount: number;
   blockedCount: number;
 }) {
-  const [state, formAction, pending] = useActionState(buildPackageAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    buildPackageAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
   const [buyerId, setBuyerId] = useState(suggestedBuyerId ?? buyers[0]?.id ?? "");
 
@@ -77,7 +80,13 @@ export function BuildPackage({
       <h3>Build a package</h3>
       <Field defaultValue={`${shootTitle} — Package`} label="Package name" name="name" required />
       <div className="spacer" />
-      <BuyerSelect workspaceSlug={workspaceSlug} buyers={buyers} onChange={setBuyerId} required value={buyerId} />
+      <BuyerSelect
+        workspaceSlug={workspaceSlug}
+        buyers={buyers}
+        onChange={setBuyerId}
+        required
+        value={buyerId}
+      />
       <div className="spacer" />
       <Field
         defaultValue={buyer?.deliveryProfile ?? ""}

@@ -153,9 +153,7 @@ describe("the address handed to a desk", () => {
       campaign: "awards-season",
       channel: "email",
     });
-    expect(url).toBe(
-      "https://mastline.co/d/TOKEN123?campaign=awards-season&channel=email",
-    );
+    expect(url).toBe("https://mastline.co/d/TOKEN123?campaign=awards-season&channel=email");
   });
 
   it("is stable, so copying twice does not look like two links", () => {

@@ -108,7 +108,10 @@ export async function landingWorkspace(session?: Session): Promise<LandingWorksp
   const { workspaces } = resolved;
 
   const cookieStore = await cookies();
-  const choice = chooseLandingWorkspace(workspaces, cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value);
+  const choice = chooseLandingWorkspace(
+    workspaces,
+    cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value,
+  );
 
   return choice.outcome === "resolved"
     ? { outcome: "resolved", slug: choice.workspace.slug, workspaces }

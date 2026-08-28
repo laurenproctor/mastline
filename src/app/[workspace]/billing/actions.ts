@@ -61,7 +61,10 @@ export async function startCheckoutAction(
     return { error: "Choose Solo, Pro, or Studio. Agency pricing is arranged directly." };
   }
 
-  const { session, organizationId } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
+  const { session, organizationId } = await requireWorkspaceContext(
+    workspaceSlug,
+    "workspace.settings",
+  );
   const workspace = session.activeWorkspace;
   const state = billingStateFrom(workspace);
 
@@ -116,8 +119,7 @@ export async function startCheckoutAction(
 }
 
 /** Send an existing customer to the provider's own billing screen. */
-export async function openBillingPortalAction(
-  workspaceSlug: string,): Promise<void> {
+export async function openBillingPortalAction(workspaceSlug: string): Promise<void> {
   const { session } = await requireWorkspaceContext(workspaceSlug, "workspace.settings");
   const provider = createStripeProvider();
   if (!provider.isConfigured()) return;

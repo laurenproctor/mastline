@@ -5,8 +5,19 @@ import { afterAll, describe, expect, it } from "vitest";
 import { registerImport, stagingKeyFor } from "../src/lib/data/imports";
 import { updateAssetMetadata } from "../src/lib/data/assets";
 import { createShoot, shootCreatedWithToken } from "../src/lib/data/shoots";
-import { parseShootAssetDefaults, parseShootBrief, parseStagedPhotographs } from "../src/lib/validation";
-import { ORG_A, ORG_B, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
+import {
+  parseShootAssetDefaults,
+  parseShootBrief,
+  parseStagedPhotographs,
+} from "../src/lib/validation";
+import {
+  ORG_A,
+  ORG_B,
+  clientFor,
+  hasLocalSupabase,
+  purgeShoot,
+  serviceClient,
+} from "./helpers/supabase";
 
 /**
  * Creating a shoot on one page, against the database.
@@ -180,7 +191,9 @@ describeIf("creating a shoot on one page", () => {
 
     const { data: assets } = await service
       .from("assets")
-      .select("id, status, caption, credit_line, copyright_notice, usage_restrictions, keywords, location_name")
+      .select(
+        "id, status, caption, credit_line, copyright_notice, usage_restrictions, keywords, location_name",
+      )
       .eq("shoot_id", result.shootId)
       .order("canonical_filename");
 
