@@ -3754,7 +3754,14 @@ img.avatar {
 .intake-page {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  /*
+   * The consent banner is pinned to the bottom of the viewport, and the submit
+   * control is the last thing on this page. Without consuming --consent-inset
+   * the banner sits on top of the one button the whole page exists for, and on
+   * a phone there is nowhere to scroll it out from under. Caught by the mobile
+   * suite, which could not click Send.
+   */
+  padding: 24px 16px calc(64px + var(--consent-inset, 0px) + env(safe-area-inset-bottom, 0px));
 }
 
 .intake-head {
