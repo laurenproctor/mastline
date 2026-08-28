@@ -47,3 +47,8 @@ yarn-error.log*
 .vercel
 .env*
 !.env.example
+
+# Claude Code local settings and session state. Never intentionally tracked;
+# a settings.json committed here becomes the permission default for every
+# clone, which is a decision to make on purpose rather than by `git add -A`.
+.claude/

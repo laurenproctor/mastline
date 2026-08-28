@@ -563,17 +563,98 @@ test.describe("the marketing site", () => {
     await expect(page.locator("#rw")).toHaveClass(/done/);
   });
 
-  test("the split calculator divides a sale the way the product does", async ({ page }) => {
-    await page.goto("/pricing");
-    const range = page.locator("#pr-range");
-    await range.evaluate((el: HTMLInputElement) => {
-      el.value = "1000";
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    });
+  /*
+   * The pricing calculator, which is doing real money arithmetic on a public
+   * page.
+   *
+   * This replaces a test that drove `#pr-range` and asserted $700/$300. That
+   * widget was deliberately removed -- the page already states the 70/30 four
+   * separate times, so a fifth restatement of "30% of a thousand dollars"
+   * earned its place on nobody's screen -- and the test outlived it, failing on
+   * every project for want of an element that no longer exists. A suite that is
+   * always red stops being a signal, which is the real cost.
+   *
+   * What replaced it answers the compound question: across a month, some sold
+   * directly and some by Mastline, AFTER the subscription, how does this
+   * compare to an agency? That is worth an end-to-end check, because it is
+   * arithmetic across three modules rendered into a public claim about money.
+   */
+  async function setSlider(page: import("@playwright/test").Page, label: string, value: number) {
+    /*
+     * React tracks the last value it wrote and skips onChange when a plain
+     * `el.value = x` matches it, so the assignment has to go through the
+     * prototype's setter for the framework to notice. The old test set `.value`
+     * directly, which is exactly the thing that silently does nothing here.
+     */
+    await page.getByLabel(label).evaluate((element, next) => {
+      const input = element as HTMLInputElement;
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(input, String(next));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  }
 
-    // 70/30, from the same module that splits a real licence.
-    await expect(page.locator("#pr-you")).toHaveText("$700");
-    await expect(page.locator("#pr-us")).toHaveText("$300");
+  test("the pricing calculator counts the subscription, not just the split", async ({ page }) => {
+    await page.goto("/pricing");
+    const calc = page.locator(".pcalc");
+    await expect(calc).toBeVisible();
+
+    // $10,000 a month, half of it sold by Mastline, on Pro.
+    await setSlider(page, "Licensing revenue a month", 10_000);
+    await setSlider(page, "Share of revenue sold by Mastline", 50);
+    await calc.getByRole("button", { name: "Pro" }).click();
+    await expect(calc.getByRole("button", { name: "Pro" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    /*
+     * Worked by hand from the same constants the modules hold: 30% of the
+     * $5,000 Mastline sold is $1,500, the other $5,000 stays whole, Pro is $99
+     * billed annually. 5,000 + 3,500 - 99 = 8,401.
+     */
+    await expect(calc.locator(".calc-row").filter({ hasText: "Licensing revenue" })).toContainText(
+      "$10,000",
+    );
+    await expect(calc.locator(".calc-row").filter({ hasText: /Mastline.s share/ })).toContainText(
+      "$1,500",
+    );
+    await expect(calc.locator(".calc-row").filter({ hasText: "billed annually" })).toContainText(
+      "$99",
+    );
+    await expect(calc.locator(".calc-row.big b")).toHaveText("$8,401");
+    // The subscription is in the year figure too, rather than quietly dropped.
+    await expect(calc.locator(".pcalc-year")).toHaveText("$100,812 across a year");
+
+    // The agency comparison stays the band the page prints, never a number.
+    await expect(calc.locator(".pcalc-vs .calc-row b")).toHaveText("$4,000–$6,000");
+    await expect(calc.locator(".pcalc-delta")).toContainText("$2,401");
+  });
+
+  test("the pricing calculator is allowed to say Mastline costs more", async ({ page }) => {
+    /*
+     * The component's own third rule, and the reason this is worth testing at
+     * all: a calculator that can only produce good news is an advertisement.
+     * At the floor volume, everything sold by Mastline, on the dearest plan,
+     * the subscription genuinely loses to an agency's cut and the page says so.
+     */
+    await page.goto("/pricing");
+    const calc = page.locator(".pcalc");
+
+    await setSlider(page, "Licensing revenue a month", 1_000);
+    await setSlider(page, "Share of revenue sold by Mastline", 100);
+    await calc.getByRole("button", { name: "Studio" }).click();
+
+    // 70% of $1,000 is $700, less $279 for Studio, is $421 -- against $600 at
+    // the agency's kindest.
+    await expect(calc.locator(".calc-row.big b")).toHaveText("$421");
+    await expect(calc.locator(".pcalc-delta")).toHaveClass(/behind/);
+    await expect(calc.locator(".pcalc-delta")).toContainText(
+      "the subscription costs more than an agency",
+    );
   });
 });
 
