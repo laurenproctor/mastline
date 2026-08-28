@@ -257,3 +257,50 @@ Item numbers below are permanent. Resolved items keep their number so older note
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.
+
+## Buyer requests — the status vocabulary
+
+Recorded 2026-08-28, when Phase 1 of Buyer Requests landed. The brief proposed a
+vocabulary; three points of it were changed, and one was kept against the
+obvious instinct. All four are settled and should not be re-litigated without a
+migration.
+
+**`cancelled`, not `canceled`.** The brief spelled it with one L. Two existing
+Postgres enums — `shoot_status` and `license_status` — already spell it with
+two, and their TypeScript unions with them. One schema carrying two spellings of
+one word is a bug waiting for whoever types the other one, and the cost of
+picking the majority spelling is a single word in a brief.
+
+**`won` exists in the enum and cannot be reached.** Winning a request means
+connecting it to a license, and Mastline has no link between the two records
+yet. The transition table in `src/lib/requests.ts` refuses it and the interface
+names the absence rather than leaving a gap. It is in the enum so that Phase 2
+adds a foreign key rather than a migration that rewrites an enum every row,
+policy and index depends on.
+
+**Nothing moves to `expired` on its own.** There is no scheduler in this system,
+and a status that becomes true while nobody is watching is one nobody can trust
+— the same reasoning that keeps `sent_at` and `delivered_at` write-once and
+evidenced. A deadline that has gone by is derived at read time and rendered as
+"Past deadline"; `expired` stays a transition somebody performs. If a scheduler
+is ever built, it may write the status, and it must write an activity event
+naming itself as the actor.
+
+**A closed request cannot move at all**, not merely "cannot return to an active
+state". Recording a request as lost and then rewriting it as cancelled changes
+what happened. Correcting a mistake goes through the same audited purge path as
+every other closed record in this system.
+
+**Cancelled and declined stay separate**, because they are opposite facts about
+the same ending: cancelled is the buyer withdrawing, declined is the
+photographer saying no. Collapsing them would make "how often do we turn work
+down" unanswerable, and that is one of the few numbers an independent operator
+can actually act on.
+
+### Deferred to Phase 2
+
+The connection between a request and the work that answers it: no shoot,
+package, submission or license links to a `buyer_request` yet. Also deferred:
+any inbound ingestion (the `source` enum holds `email`, `portal` and `api`, and
+only `manual` is written), automated archive matching, outbound messaging of any
+kind, and a public buyer portal.

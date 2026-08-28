@@ -97,7 +97,7 @@ export function LifecyclePanel({
   }
 
   return (
-    <form action={formAction} className="panel-body lifecycle-panel">
+    <form action={formAction} className="panel-body">
       <input name="requestId" type="hidden" value={request.id} />
       {/*
         The version this control was rendered from. The update is conditional on
@@ -177,18 +177,12 @@ export function LifecyclePanel({
       {closing && (
         <label className="checkbox">
           <input name="confirmed" type="checkbox" value="yes" />
-          <span>
-            I understand this closes the request permanently and it cannot be reopened.
-          </span>
+          <span>I understand this closes the request permanently and it cannot be reopened.</span>
         </label>
       )}
 
       <div className="actions">
-        <button
-          className="button primary"
-          disabled={pending || target === ""}
-          type="submit"
-        >
+        <button className="button primary" disabled={pending || target === ""} type="submit">
           {pending ? "Recording…" : "Record"}
         </button>
       </div>

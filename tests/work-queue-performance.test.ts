@@ -63,7 +63,10 @@ describeIf("work queue cost", () => {
 
     // Five more shoots must not mean twenty more queries.
     expect(withMoreShoots).toBe(baseline);
-    // Five collections plus the package members lookup.
+    // Six collections -- shoots, submissions, payments, packages, requests,
+    // selected assets -- plus the package members lookup. Requests cost one
+    // query rather than three because the buyer's name and the confidential-
+    // note flag are embedded in the same select. See src/lib/data/requests.ts.
     expect(baseline).toBeLessThanOrEqual(8);
 
     for (const shootId of created) await purgeShoot(shootId);

@@ -408,7 +408,10 @@ export function checkBudget(input: BudgetInput): { ok: true } | { ok: false; mes
   }
 
   if (!input.min && !input.max) {
-    return { ok: false, message: "Give the figure the buyer stated, or untick that they gave one." };
+    return {
+      ok: false,
+      message: "Give the figure the buyer stated, or untick that they gave one.",
+    };
   }
 
   if (input.min && input.max && input.min.minor > input.max.minor) {

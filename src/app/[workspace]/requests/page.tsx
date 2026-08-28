@@ -135,7 +135,7 @@ export default async function RequestsPage({
         />
 
         <Panel title="Filter">
-          <form action={routes.requests()} className="filter-bar panel-body" method="get">
+          <form action={routes.requests()} className="panel-body form-grid" method="get">
             <div className="field">
               <label htmlFor="filter-status">Status</label>
               <select defaultValue={statusParam} id="filter-status" name="status">

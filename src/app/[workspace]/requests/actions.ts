@@ -39,8 +39,6 @@ export interface RequestActionState {
   readonly errors?: FieldErrors<RequestIntakeInput>;
 }
 
-const EMPTY: RequestActionState = {};
-
 /** Turn any failure into something a form can render, or rethrow it. */
 function asActionState(error: unknown): RequestActionState {
   if (error instanceof RequestError) return { error: error.message, reason: error.reason };
@@ -206,12 +204,7 @@ function isRequestStatus(value: string): value is RequestStatus {
 }
 
 /** Closing decisions, which get a second look before they are recorded. */
-const NEEDS_CONFIRMATION: readonly RequestStatus[] = [
-  "lost",
-  "declined",
-  "cancelled",
-  "expired",
-];
+const NEEDS_CONFIRMATION: readonly RequestStatus[] = ["lost", "declined", "cancelled", "expired"];
 
 /**
  * Move a request along.
@@ -290,5 +283,3 @@ export async function transitionRequestAction(
   revalidatePath(routes.work());
   redirect(routes.request(requestId, { query: { moved: requestedStatus } }));
 }
-
-export { EMPTY as INITIAL_REQUEST_ACTION_STATE };
