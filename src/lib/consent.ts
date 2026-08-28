@@ -74,7 +74,7 @@ export const CONSENT_CATEGORIES: readonly ConsentCategory[] = [
     label: "Analytics",
     optional: true,
     description:
-      "Google Analytics, to understand how the site is used, and Microsoft Clarity, which records how pages are used — pointer movement, scrolling, and clicks — to show where the site is confusing. Where a choice is required, neither is loaded and no cookie of theirs is set until you turn this on; everywhere else they run unless you turn this off. Clarity is provided by Microsoft, which may set cookies of its own once it runs.",
+      "Google Analytics, to understand how the site is used, and Microsoft Clarity, which records how pages are used — pointer movement, scrolling, and clicks — to show where the site is confusing. On a delivery page this also covers Mastline's own measurement of roughly how long the page is on screen and which photographs you look at, kept first-party for the photographer's delivery record: no advertising tag, no third-party tracker, no session recording, and nothing about your browsing elsewhere. Where a choice is required, none of it runs and no cookie of theirs is set until you turn this on; everywhere else it runs unless you turn this off. Clarity is provided by Microsoft, which may set cookies of its own once it runs. Turning this off does not stop a photographer's record that their link was opened, that terms were accepted, or that a file was downloaded — those are commercial records of what happened to their work.",
   },
 ];
 
@@ -202,4 +202,41 @@ gtag('consent','default',${granted});
 gtag('consent','default',${denied});
 var m=document.cookie.match(/(?:^|;\\s*)${CONSENT_COOKIE}=(granted|denied)/);
 if(m){gtag('consent','update',{ad_storage:m[1],ad_user_data:m[1],ad_personalization:m[1],analytics_storage:m[1]})}`;
+}
+
+/**
+ * Whether optional analytics may run for this visitor.
+ *
+ * Used by the recipient delivery page, which has two kinds of collection sitting
+ * side by side and must not confuse them:
+ *
+ *   Essential. The link was opened, the terms were accepted, a file was
+ *   downloaded. These are commercial evidence -- the photographer's record of
+ *   what a buyer did with their work, and in the acceptance's case a record of
+ *   an agreement. They are recorded whatever this returns.
+ *
+ *   Optional. How long the page was actually on screen, and which frames. This
+ *   is engagement measurement. Useful, and not necessary to operate the
+ *   delivery, so it is behind the same choice as everything else optional.
+ *
+ * The rule mirrors Consent Mode advanced, which is what the marketing site
+ * already does: where a choice is required, nothing optional runs until the
+ * visitor makes one; everywhere else it runs unless they turn it off. An
+ * unknown country counts as requiring a choice, for the same reason
+ * `shouldAskForConsent` treats it that way -- failing towards asking costs a
+ * visitor one banner, and failing away from it collects something somebody
+ * never agreed to.
+ *
+ * This is a mechanism, not a legal conclusion. Which jurisdictions require what,
+ * and whether dwell time on a delivery page is caught by any of it, is a
+ * question for review rather than one this function answers.
+ */
+export function mayCollectOptionalAnalytics(input: {
+  choice: string | undefined;
+  country: string | undefined;
+}): boolean {
+  if (input.choice === "granted") return true;
+  if (input.choice === "denied") return false;
+  // No stored choice: allowed only where one is not required.
+  return !shouldAskForConsent(input.country);
 }

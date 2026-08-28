@@ -118,6 +118,18 @@ export async function purgeShoot(shootId: string): Promise<void> {
     if (error) throw new Error(`Could not purge asset ${asset.id}: ${error.message}`);
   }
 
+  /*
+   * A plain delete cascades into package_assets, and the contents of an
+   * approved package are frozen -- so the cascade is refused for exactly the
+   * packages a dispatch test creates. `purge_package_admin` is the audited way
+   * through, in the same shape as the other purge routines: service role only,
+   * and it raises the purge flag rather than working around the trigger.
+   */
+  for (const packageId of packageIds) {
+    const { error } = await service.rpc("purge_package_admin", { target_package: packageId });
+    if (error) throw new Error(`Could not clean up package ${packageId}: ${error.message}`);
+  }
+
   await service.from("packages").delete().eq("shoot_id", shootId);
   const { error } = await service.from("shoots").delete().eq("id", shootId);
   if (error) throw new Error(`Could not clean up shoot ${shootId}: ${error.message}`);

@@ -904,9 +904,11 @@ test.describe("sending a package to a picture desk", () => {
 
       // Back to the photographer: the record, which is the promise on /security.
       await page.reload();
-      await expect(page.getByRole("cell", { name: "Opened" }).first()).toBeVisible();
-      await expect(page.getByRole("cell", { name: /Accepted the terms/ })).toBeVisible();
-      await expect(page.getByRole("cell", { name: "Downloaded a frame" })).toBeVisible();
+      // The access record says what happened to a link, not what a named
+      // person did: "a link was opened" is the whole of what Mastline knows.
+      await expect(page.getByRole("cell", { name: "A link was opened" }).first()).toBeVisible();
+      await expect(page.getByRole("cell", { name: /Terms accepted/ })).toBeVisible();
+      await expect(page.getByRole("cell", { name: "A frame was downloaded" })).toBeVisible();
     } finally {
       await removeDeliveryFixture(fixtureKey);
     }

@@ -42,6 +42,22 @@ export async function refuseCookies(context: BrowserContext): Promise<void> {
   ]);
 }
 
+/**
+ * Accept optional analytics, for the one surface that has any.
+ *
+ * The recipient delivery page measures viewing time only where the visitor's
+ * consent allows it, and with no geo header -- which is every local run -- the
+ * gate treats the visitor as somebody who has to be asked. That is the right
+ * default and it means a test of the measurement has to say yes first, exactly
+ * as a recipient would.
+ */
+export async function acceptCookies(context: BrowserContext): Promise<void> {
+  await context.addCookies([
+    { name: "ml_consent", value: "granted", url: "http://127.0.0.1:4100" },
+    { name: "ml_country", value: "US", url: "http://127.0.0.1:4100" },
+  ]);
+}
+
 /** A path inside a workspace. `at("/work")` -> "/marcus-hale-studio/work". */
 export function at(path: string, workspace: string = SEEDED_WORKSPACE): string {
   return `/${workspace}${path}`;
@@ -486,18 +502,22 @@ export async function deletePackage(packageId: string): Promise<void> {
   if (!url || !key) throw new Error("No service role key: cannot clean up the package.");
   const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
 
-  // package_assets restricts the package row, so the members go first.
-  const members = await fetch(`${url}/rest/v1/package_assets?package_id=eq.${packageId}`, {
-    method: "DELETE",
-    headers,
+  /*
+   * The contents of an approved package are frozen, so deleting package_assets
+   * directly is refused for exactly the packages a dispatch test creates.
+   * `purge_package_admin` is the audited way through: service role only, and it
+   * raises the purge flag rather than working around the trigger.
+   */
+  const purged = await fetch(`${url}/rest/v1/rpc/purge_package_admin`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ target_package: packageId }),
   });
-  if (!members.ok) throw new Error(`Could not clear the package: ${await members.text()}`);
-
-  const removed = await fetch(`${url}/rest/v1/packages?id=eq.${packageId}`, {
-    method: "DELETE",
-    headers,
-  });
-  if (!removed.ok) throw new Error(`Could not delete the package: ${await removed.text()}`);
+  if (!purged.ok) {
+    throw new Error(
+      `Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`,
+    );
+  }
 }
 
 /**
@@ -576,4 +596,169 @@ export async function shootIdByTitle(title: string): Promise<string | null> {
   );
   const rows = (await response.json()) as { id: string }[];
   return rows[0]?.id ?? null;
+}
+
+/**
+ * A shoot with one complete, selected frame and a package ready to approve.
+ *
+ * The seeded workspace deliberately has no approvable package: package 01 is
+ * already approved and package 02 carries an uncaptioned frame so the dispatch
+ * gate has a genuine reason to block. Both of those are the right fixtures for
+ * what they test and neither can be approved through the interface, so a test
+ * that needs to press "Approve package" has to bring its own.
+ */
+export async function createApprovablePackage(label: string): Promise<{
+  shootId: string;
+  packageId: string;
+  assetIds: string[];
+}> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot build a package.");
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
+  const ORG = "aaaaaaaa-0000-0000-0000-000000000001";
+  const OWNER = "11111111-1111-1111-1111-111111111111";
+  const BUYER = "a0000000-0000-0000-0000-0000000000b1";
+
+  async function post<T>(table: string, body: unknown): Promise<T> {
+    const response = await fetch(`${url}/rest/v1/${table}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`Could not insert into ${table}: ${await response.text()}`);
+    }
+    return ((await response.json()) as T[])[0];
+  }
+
+  const shoot = await post<{ id: string }>("shoots", {
+    organization_id: ORG,
+    title: `${label} ${Date.now()}`,
+    status: "preparing",
+    starts_at: new Date(Date.now() - 1_800_000).toISOString(),
+    created_by: OWNER,
+  });
+
+  const assetIds: string[] = [];
+  const members: unknown[] = [];
+  for (let index = 0; index < 2; index += 1) {
+    const asset = await post<{ id: string }>("assets", {
+      organization_id: ORG,
+      shoot_id: shoot.id,
+      status: "active",
+      canonical_filename: `E2E_${label}_${index}`,
+      captured_at: new Date(Date.now() - 1_800_000).toISOString(),
+      headline: `${label} frame ${index}`,
+      caption: `A caption for ${label} frame ${index}, long enough to pass the dispatch gate.`,
+      credit_line: "Mastline test",
+      // Caption, credit, copyright, and capture time are the four the dispatch
+      // gate blocks on. A fixture missing one of them is a fixture that cannot
+      // be approved, which is a slow way to discover the rule.
+      copyright_notice: "© 2026 Marcus Hale",
+      selected: true,
+      created_by: OWNER,
+    });
+    assetIds.push(asset.id);
+
+    const version = await post<{ id: string }>("asset_versions", {
+      organization_id: ORG,
+      asset_id: asset.id,
+      version_kind: "original",
+      storage_bucket: "originals",
+      object_key: `${ORG}/${shoot.id}/${label}_${index}.arw`,
+      // Unique per frame per run: an original is written once and the hash is
+      // part of what makes it identifiable.
+      sha256: `${Date.now().toString(16)}${index}`.padEnd(64, "a").slice(0, 64),
+      bytes: 1000,
+      mime_type: "image/x-sony-arw",
+      created_by: OWNER,
+    });
+
+    members.push({
+      organization_id: ORG,
+      asset_id: asset.id,
+      asset_version_id: version.id,
+      position: index,
+    });
+  }
+
+  const pkg = await post<{ id: string }>("packages", {
+    organization_id: ORG,
+    shoot_id: shoot.id,
+    buyer_id: BUYER,
+    name: `${label} package`,
+    status: "ready",
+    delivery_method: "SFTP",
+    proposed_terms: "Non-exclusive agency distribution; photographer retains copyright.",
+    restrictions: "Editorial use only.",
+    created_by: OWNER,
+  });
+
+  const attach = await fetch(`${url}/rest/v1/package_assets`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(members.map((member) => ({ ...(member as object), package_id: pkg.id }))),
+  });
+  if (!attach.ok) throw new Error(`Could not fill the package: ${await attach.text()}`);
+
+  return { shootId: shoot.id, packageId: pkg.id, assetIds };
+}
+
+/**
+ * What the analytics rollups hold for a link, by the recipient it was made for.
+ *
+ * Read straight from the durable totals rather than scraped off the screen,
+ * because the assertion that matters most is that a number did NOT move while
+ * the tab was hidden, and "the page still says about 12 seconds" is a weaker
+ * form of that than the stored figure being unchanged.
+ */
+export async function engagementForRecipient(recipientLabel: string): Promise<{
+  deliveryId: string;
+  activeVisibleMs: number;
+  sessionCount: number;
+  visitorCount: number;
+  assetRows: number;
+} | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot read engagement.");
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+
+  const links = await fetch(
+    `${url}/rest/v1/submission_deliveries?recipient_label=eq.${encodeURIComponent(recipientLabel)}&select=id`,
+    { headers: auth },
+  );
+  const rows = (await links.json()) as { id: string }[];
+  const deliveryId = rows[0]?.id;
+  if (!deliveryId) return null;
+
+  const totals = await fetch(
+    `${url}/rest/v1/delivery_engagement_totals?delivery_id=eq.${deliveryId}&select=active_visible_ms,session_count,visitor_count`,
+    { headers: auth },
+  );
+  const total = ((await totals.json()) as {
+    active_visible_ms: number;
+    session_count: number;
+    visitor_count: number;
+  }[])[0];
+
+  const assets = await fetch(
+    `${url}/rest/v1/delivery_asset_engagement_totals?delivery_id=eq.${deliveryId}&select=asset_id`,
+    { headers: auth },
+  );
+  const assetRows = ((await assets.json()) as unknown[]).length;
+
+  return {
+    deliveryId,
+    activeVisibleMs: Number(total?.active_visible_ms ?? 0),
+    sessionCount: Number(total?.session_count ?? 0),
+    visitorCount: Number(total?.visitor_count ?? 0),
+    assetRows,
+  };
 }

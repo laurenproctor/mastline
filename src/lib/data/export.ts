@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Id } from "../domain";
 import { type ExportFile, buildExport } from "../export";
 import { listActivity } from "./activity";
+import { listDeliveryEngagement } from "./delivery-analytics";
+import { listAcceptances, listAllDeliveries } from "./delivery-links";
 import { listAssets, listCaptionHistory } from "./assets";
 import { listLicenses, listPayments } from "./money";
 import { listShoots } from "./shoots";
@@ -21,17 +23,38 @@ export async function collectExport(
   organizationName: string,
   client?: SupabaseClient,
 ): Promise<readonly ExportFile[]> {
-  const [assets, shoots, submissions, licenses, payments, buyers, activity] = await Promise.all([
-    listAssets(organizationId, {}, client),
-    listShoots(organizationId, client),
-    listSubmissions(organizationId, client),
-    listLicenses(organizationId, client),
-    listPayments(organizationId, client),
-    listWorkspaceBuyers(organizationId, client),
-    listActivity(organizationId, { limit: 5000 }, client),
-  ]);
+  const [assets, shoots, submissions, licenses, payments, buyers, activity, deliveries] =
+    await Promise.all([
+      listAssets(organizationId, {}, client),
+      listShoots(organizationId, client),
+      listSubmissions(organizationId, client),
+      listLicenses(organizationId, client),
+      listPayments(organizationId, client),
+      listWorkspaceBuyers(organizationId, client),
+      listActivity(organizationId, { limit: 5000 }, client),
+      listAllDeliveries(organizationId, client),
+    ]);
 
   const buyerNames = new Map(buyers.map((buyer) => [buyer.id, buyer.name]));
+  const submissionReferences = new Map(
+    submissions.map((submission) => [submission.id, submission.reference]),
+  );
+
+  // Engagement and acceptance, so the export carries what each recipient link
+  // actually did rather than only that it existed.
+  const engagement = await listDeliveryEngagement(
+    organizationId,
+    deliveries.map((delivery) => delivery.id),
+    client,
+  );
+  const acceptancesBySubmission = await Promise.all(
+    [...new Set(deliveries.map((delivery) => delivery.submissionId))].map((submissionId) =>
+      listAcceptances(organizationId, submissionId, client),
+    ),
+  );
+  const acceptanceByDelivery = new Map(
+    acceptancesBySubmission.flat().map((acceptance) => [acceptance.deliveryId, acceptance]),
+  );
 
   // Caption history is per asset, so it is fetched alongside rather than
   // assumed present on the list query.
@@ -104,6 +127,36 @@ export async function collectExport(
       outcomeNote: submission.outcomeNote,
       assetCount: submission.manifest.length,
     })),
+    deliveryLinks: deliveries.map((delivery) => {
+      const measured = engagement.get(delivery.id);
+      const acceptance = acceptanceByDelivery.get(delivery.id);
+      return {
+        id: delivery.id,
+        submissionId: delivery.submissionId,
+        submissionReference: submissionReferences.get(delivery.submissionId) ?? "",
+        recipientLabel: delivery.recipientLabel,
+        contactReference: delivery.contactReference,
+        parameters: Object.entries(delivery.customParameters)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([key, value]) => `${key}=${value}`)
+          .join("; "),
+        createdAt: delivery.createdAt,
+        sharedAt: delivery.sharedAt,
+        revokedAt: delivery.revokedAt,
+        expiresAt: delivery.expiresAt,
+        firstOpenedAt: measured?.firstOpenedAt,
+        lastOpenedAt: measured?.lastOpenedAt,
+        openCount: measured?.openCount ?? 0,
+        sessionCount: measured?.sessionCount ?? 0,
+        visitorCount: measured?.visitorCount ?? 0,
+        // Left undefined when nothing was measured, so the column is blank
+        // rather than reading as a confident zero.
+        activeVisibleMs: measured && measured.sessionCount > 0 ? measured.activeVisibleMs : undefined,
+        downloadCount: measured?.downloadCount ?? 0,
+        acceptedBy: acceptance?.acceptedBy,
+        acceptedAt: acceptance?.acceptedAt,
+      };
+    }),
     licenses: licenses.map((license) => ({
       id: license.id,
       submissionId: license.submissionId,

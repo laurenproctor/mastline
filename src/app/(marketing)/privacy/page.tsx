@@ -90,6 +90,36 @@ export default function Page() {
                 accepts a license, or downloads files. This is core to the product and is shown to
                 you.
               </li>
+              <li>
+                <strong>Delivery link activity:</strong> when a photographer shares a delivery link
+                with a picture desk, Mastline records for that photographer&rsquo;s delivery record
+                that the link was opened, when it was first and most recently opened, whether the
+                terms were accepted and by what name, and which files were downloaded — each with
+                the time and the address the request came from. Those are commercial records of
+                what happened to somebody&rsquo;s work and are kept whatever choice a visitor makes
+                about the optional measurement below.
+              </li>
+              <li>
+                <strong>Delivery viewing time (optional):</strong> on a delivery page, and only
+                where the choice described above allows it, Mastline also measures roughly how long
+                the page was on screen and which photographs were visible, so the photographer can
+                see which frames drew attention. This is first-party measurement: no advertising
+                tag, no third-party tracker, and no session recording. Time is counted only while
+                the page is visible, focused, and in use — a background tab counts for nothing. The
+                visitor is identified by a random value the browser generates for that one link,
+                scoped so the same browser opening two links cannot be recognised as the same
+                visitor; Mastline does not fingerprint the browser and does not use the IP address
+                as an identifier. Mouse movement, keystrokes, and browsing elsewhere are not
+                collected. Detailed session records are kept for a limited period and then removed,
+                leaving only aggregate totals against the link.
+              </li>
+              <li>
+                <strong>What a delivery link never carries:</strong> a recipient&rsquo;s name,
+                email address, phone number, or internal contact reference is stored in
+                Mastline&rsquo;s database and is deliberately kept out of the link address, because
+                a web address ends up in browser history, in referrer headers, and in server logs
+                along the way.
+              </li>
             </ul>
             <h3>Information from third parties</h3>
             <p>

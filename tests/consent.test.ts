@@ -5,6 +5,7 @@ import {
   consentDefaultsScript,
   consentUpdatePayload,
   isRegulatedCountry,
+  mayCollectOptionalAnalytics,
   shouldAskForConsent,
 } from "@/lib/consent";
 
@@ -112,6 +113,53 @@ describe("consent update payload", () => {
       const payload = consentUpdatePayload(choice);
       expect(Object.keys(payload).sort()).toEqual([...REQUIRED_V2_SIGNALS].sort());
       expect(Object.values(payload).every((value) => value === choice)).toBe(true);
+    }
+  });
+});
+
+/**
+ * The gate the recipient delivery page reads.
+ *
+ * Two kinds of collection sit on that page and confusing them is the failure
+ * worth pinning: opens, acceptances, and downloads are commercial evidence and
+ * happen regardless; dwell time is engagement measurement and does not.
+ */
+describe("optional analytics on a delivery page", () => {
+  it("runs when the visitor has said yes", () => {
+    expect(mayCollectOptionalAnalytics({ choice: "granted", country: "DE" })).toBe(true);
+    expect(mayCollectOptionalAnalytics({ choice: "granted", country: "US" })).toBe(true);
+  });
+
+  it("does not run when the visitor has said no, wherever they are", () => {
+    expect(mayCollectOptionalAnalytics({ choice: "denied", country: "US" })).toBe(false);
+    expect(mayCollectOptionalAnalytics({ choice: "denied", country: undefined })).toBe(false);
+  });
+
+  it("waits for an answer where one is required", () => {
+    for (const country of ["DE", "FR", "GB", "CH", "NO"]) {
+      expect(mayCollectOptionalAnalytics({ choice: undefined, country })).toBe(false);
+    }
+  });
+
+  it("runs unasked only where no choice is required", () => {
+    expect(mayCollectOptionalAnalytics({ choice: undefined, country: "US" })).toBe(true);
+    expect(mayCollectOptionalAnalytics({ choice: undefined, country: "AU" })).toBe(true);
+  });
+
+  it("treats an unknown country as one that has to be asked", () => {
+    // The geo header is missing in local development and, in production,
+    // missing exactly when the request could not be placed -- which is no
+    // reason to assume the visitor is somewhere that does not ask.
+    expect(mayCollectOptionalAnalytics({ choice: undefined, country: undefined })).toBe(false);
+    expect(mayCollectOptionalAnalytics({ choice: undefined, country: "" })).toBe(false);
+  });
+
+  it("agrees with the banner about where a choice is required", () => {
+    for (const country of [...REGULATED_REGIONS, undefined, "", "US", "AU"]) {
+      const asked = shouldAskForConsent(country);
+      const collects = mayCollectOptionalAnalytics({ choice: undefined, country });
+      // Nothing optional may run anywhere the banner would have to appear.
+      expect(collects).toBe(!asked);
     }
   });
 });

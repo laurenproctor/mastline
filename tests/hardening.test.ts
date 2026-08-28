@@ -2,13 +2,10 @@
  * @vitest-environment node
  */
 import { afterAll, describe, expect, it } from "vitest";
-import {
-  listDeliveryAttempts,
-  recordDeliveryAttempt,
-  retryDelivery,
-} from "../src/lib/data/delivery";
+import * as deliveryModule from "../src/lib/data/delivery";
+import { listDeliveryAttempts, recordDeliveryAttempt } from "../src/lib/data/delivery";
 import { createPackageFromSelection } from "../src/lib/data/packages";
-import { approveAndSend } from "../src/lib/data/submissions";
+import { approvePackageAndCreateSubmission } from "../src/lib/data/submissions";
 import {
   confirmStatementLine,
   importStatement,
@@ -100,14 +97,18 @@ async function dispatchedSubmission(label: string) {
     proposedTerms: "Non-exclusive agency distribution.",
   });
 
-  const sent = await approveAndSend({
+  const approved = await approvePackageAndCreateSubmission({
     client: dispatcher,
     organizationId: ORG_A,
     actorId: DISPATCHER,
     packageId,
   });
 
-  return { shootId, submissionId: sent.submissionId, reference: sent.reference };
+  return {
+    shootId,
+    submissionId: approved.submissionId,
+    reference: approved.reference,
+  };
 }
 
 afterAll(async () => {
@@ -117,7 +118,7 @@ afterAll(async () => {
   for (const shootId of shoots) await purgeShoot(shootId);
 });
 
-describeIf("a failed delivery is visible and retryable", () => {
+describeIf("a provider-reported delivery failure is visible", () => {
   it("records the failure, its reason, and moves the submission to failed", async () => {
     const dispatcher = await clientFor("dispatcher");
     const { submissionId } = await dispatchedSubmission("FAIL");
@@ -146,9 +147,25 @@ describeIf("a failed delivery is visible and retryable", () => {
     expect(attempts[0].errorDetail).toMatch(/Credentials/);
   });
 
-  it("retries without touching what was sent", async () => {
+  /*
+   * There used to be two tests here proving that "Retry delivery" worked. They
+   * passed, and what they proved was that a database insert happened -- no
+   * worker, sender, or client was ever going to act on it. The control and the
+   * function behind it are gone, so what is worth asserting now is their
+   * absence: nothing in the delivery module offers a way for an operator to
+   * manufacture an attempt.
+   */
+  it("offers no operator path that fakes a delivery attempt", () => {
+    expect("retryDelivery" in deliveryModule).toBe(false);
+    expect(Object.keys(deliveryModule).sort()).toEqual([
+      "listDeliveryAttempts",
+      "recordDeliveryAttempt",
+    ]);
+  });
+
+  it("leaves what was approved untouched when a provider reports a failure", async () => {
     const dispatcher = await clientFor("dispatcher");
-    const { submissionId } = await dispatchedSubmission("RETRY");
+    const { submissionId } = await dispatchedSubmission("PROVIDERFAIL");
     const service = serviceClient();
 
     const { data: before } = await service
@@ -166,14 +183,6 @@ describeIf("a failed delivery is visible and retryable", () => {
       errorCode: "TIMEOUT",
     });
 
-    const { attemptNumber } = await retryDelivery({
-      client: dispatcher,
-      organizationId: ORG_A,
-      actorId: DISPATCHER,
-      submissionId,
-    });
-    expect(attemptNumber).toBe(2);
-
     const { data: after } = await service
       .from("submissions")
       .select("delivery_manifest, terms_snapshot, status")
@@ -181,21 +190,7 @@ describeIf("a failed delivery is visible and retryable", () => {
       .single();
     expect(after!.delivery_manifest).toEqual(before!.delivery_manifest);
     expect(after!.terms_snapshot).toBe(before!.terms_snapshot);
-    expect(after!.status).toBe("sent");
-  });
-
-  it("refuses to retry something that has not failed", async () => {
-    const dispatcher = await clientFor("dispatcher");
-    const { submissionId } = await dispatchedSubmission("NOTFAILED");
-
-    await expect(
-      retryDelivery({
-        client: dispatcher,
-        organizationId: ORG_A,
-        actorId: DISPATCHER,
-        submissionId,
-      }),
-    ).rejects.toThrow(/Only a failed delivery can be retried/i);
+    expect(after!.status).toBe("failed");
   });
 
   it("numbers attempts in order and keeps every one", async () => {

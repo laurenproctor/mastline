@@ -4,13 +4,29 @@ import { createClient } from "../supabase/server";
 import { recordEventWith } from "./activity";
 
 /**
- * Delivery attempts.
+ * Delivery attempts, as reported by a provider.
  *
- * The submission says what was sent and stays frozen. Attempts are the separate
- * log of trying to get it there, so a retry adds a fact rather than editing
- * history. The attempt number is derived from what already exists, which also
- * makes a concurrent double-retry collide on the unique constraint instead of
- * silently recording two attempt ones.
+ * Read this narrowly. Mastline has no transmitter: no email sender, no SFTP
+ * client, no agency portal integration. The only thing that can legitimately
+ * write a row here is `POST /api/webhooks/delivery/<provider>`, where an
+ * external system that genuinely did move a file reports what happened.
+ *
+ * There used to be a `retryDelivery` beside this, wired to a "Retry delivery"
+ * button on the submission screen. It inserted a `sending` attempt and returned
+ * "Attempt 2 recorded and queued." Nothing was queued. No worker existed to
+ * drain it, and no code path anywhere would ever have moved that attempt off
+ * `sending`. It was a database insert wearing the costume of a transmission,
+ * and an operator watching a delivery "retry" and stay pending had no way to
+ * learn that nothing had been tried. It is gone.
+ *
+ * What remains is the read side and the webhook side: attempts a provider
+ * actually made stay visible as read-only evidence, and the submission status
+ * follows what the provider says. When a real delivery provider exists, the
+ * operator-facing control comes back with something behind it.
+ *
+ * The attempt number is derived from what already exists, which makes a
+ * concurrent double-report collide on the unique constraint instead of silently
+ * recording two attempt ones.
  */
 
 export interface DeliveryAttempt {
@@ -99,11 +115,26 @@ export async function recordDeliveryAttempt(input: {
   const submissionStatus: SubmissionStatus =
     status === "delivered" ? "delivered" : status === "failed" ? "failed" : "sent";
 
+  /*
+   * `delivered_at` is write-once in the database. A provider reporting a second
+   * successful attempt -- a redelivery, a duplicated webhook that got past the
+   * idempotency key -- must not move the first delivery time, so it is only
+   * filled in when it is empty.
+   */
+  const { data: current } = await supabase
+    .from("submissions")
+    .select("delivered_at")
+    .eq("organization_id", organizationId)
+    .eq("id", submissionId)
+    .maybeSingle();
+
   await supabase
     .from("submissions")
     .update({
       status: submissionStatus,
-      ...(status === "delivered" ? { delivered_at: new Date().toISOString() } : {}),
+      ...(status === "delivered" && !current?.delivered_at
+        ? { delivered_at: new Date().toISOString() }
+        : {}),
     })
     .eq("organization_id", organizationId)
     .eq("id", submissionId);
@@ -125,44 +156,4 @@ export async function recordDeliveryAttempt(input: {
   });
 
   return { attemptNumber };
-}
-
-/**
- * Retry a failed delivery.
- *
- * Refuses anything that is not currently failed, so a retry cannot resend
- * something that already arrived. The submission snapshot is untouched: what
- * goes out again is exactly what went out before.
- */
-export async function retryDelivery(input: {
-  organizationId: Id;
-  actorId: Id;
-  submissionId: Id;
-  client?: SupabaseClient;
-}): Promise<{ attemptNumber: number }> {
-  const { organizationId, actorId, submissionId } = input;
-  const supabase = input.client ?? (await createClient());
-
-  const { data: submission, error } = await supabase
-    .from("submissions")
-    .select("status")
-    .eq("organization_id", organizationId)
-    .eq("id", submissionId)
-    .maybeSingle();
-
-  if (error) throw new Error(`Could not read the submission: ${error.message}`);
-  if (!submission) throw new Error("That submission could not be found in this workspace.");
-  if (submission.status !== "failed") {
-    throw new Error(
-      `Only a failed delivery can be retried. This submission is ${String(submission.status).replace(/_/g, " ")}.`,
-    );
-  }
-
-  return recordDeliveryAttempt({
-    organizationId,
-    submissionId,
-    status: "sending",
-    actorId,
-    client: supabase,
-  });
 }

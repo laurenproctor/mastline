@@ -13,10 +13,54 @@ import { recordEventWith } from "./activity";
 export interface DeliveryLink {
   readonly id: Id;
   readonly token: string;
+  /** Who the link was made for. Stored here, never rendered into the URL. */
   readonly recipientLabel?: string;
+  /** An internal contact or buyer-contact id. Also never put in the URL. */
+  readonly contactReference?: string;
+  /** The attribution snapshot taken when the link was made. */
+  readonly customParameters: Readonly<Record<string, string>>;
   readonly expiresAt: string;
   readonly revokedAt?: string;
+  /** Set when the photographer recorded passing this link on. */
+  readonly sharedAt?: string;
+  readonly sharedBy?: string;
   readonly createdAt: string;
+}
+
+const DELIVERY_COLUMNS =
+  "id, token, recipient_label, contact_reference, custom_parameters, expires_at, revoked_at, shared_at, shared_by, created_at";
+
+/**
+ * A stored parameter snapshot, defended on the way out as well as in.
+ *
+ * The database already refuses a dangerous key, but this is the boundary
+ * between a JSON column and a JavaScript object, and a value arriving from
+ * anywhere other than the constraint-checked column should not be able to reach
+ * `Object.prototype` on the strength of having been in a database once.
+ */
+function toParameters(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const safe = Object.create(null) as Record<string, string>;
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
+    if (typeof entry === "string") safe[key] = entry;
+  }
+  return { ...safe };
+}
+
+function toDeliveryLink(row: Record<string, unknown>): DeliveryLink {
+  return {
+    id: row.id as string,
+    token: row.token as string,
+    recipientLabel: (row.recipient_label as string | null) ?? undefined,
+    contactReference: (row.contact_reference as string | null) ?? undefined,
+    customParameters: toParameters(row.custom_parameters),
+    expiresAt: row.expires_at as string,
+    revokedAt: (row.revoked_at as string | null) ?? undefined,
+    sharedAt: (row.shared_at as string | null) ?? undefined,
+    sharedBy: (row.shared_by as string | null) ?? undefined,
+    createdAt: row.created_at as string,
+  };
 }
 
 export interface AccessEvent {
@@ -36,20 +80,13 @@ export async function listDeliveries(
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("submission_deliveries")
-    .select("id, token, recipient_label, expires_at, revoked_at, created_at")
+    .select(DELIVERY_COLUMNS)
     .eq("organization_id", organizationId)
     .eq("submission_id", submissionId)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(`Could not load delivery links: ${error.message}`);
-  return (data ?? []).map((row) => ({
-    id: row.id as string,
-    token: row.token as string,
-    recipientLabel: (row.recipient_label as string | null) ?? undefined,
-    expiresAt: row.expires_at as string,
-    revokedAt: (row.revoked_at as string | null) ?? undefined,
-    createdAt: row.created_at as string,
-  }));
+  return (data ?? []).map((row) => toDeliveryLink(row as Record<string, unknown>));
 }
 
 /** What the recipient did, newest first. Evidence, so it is never trimmed. */
@@ -79,11 +116,22 @@ export async function listAccessEvents(
 }
 
 /**
- * Create a link for a submission.
+ * Create a link for one recipient.
  *
  * The token never leaves this function in any form but the row: it is not
  * derived from the submission, so knowing one link tells you nothing about
- * another.
+ * another. A submission can carry as many of these as the photographer needs --
+ * one per desk, agency, or channel -- and each accumulates its own opens,
+ * sessions, views, acceptances, and downloads, which is the entire point of
+ * making them separate rather than reusing one.
+ *
+ * Creating a link sends nothing and claims nothing. The submission stays
+ * `queued`, `sent_at` stays null, the package stays `approved`, and the shoot
+ * is untouched. All of that changes only when a person says they passed it on,
+ * or when somebody opens it.
+ *
+ * The package has to be approved first. A link into a package that can still be
+ * edited would be a link whose contents could change under the recipient.
  */
 export async function createDelivery(input: {
   client?: SupabaseClient;
@@ -91,12 +139,45 @@ export async function createDelivery(input: {
   actorId: Id;
   submissionId: Id;
   recipientLabel?: string;
+  contactReference?: string;
+  customParameters?: Readonly<Record<string, string>>;
   windowDays: DeliveryWindowDays;
   now?: Date;
 }): Promise<DeliveryLink> {
   const supabase = input.client ?? (await createClient());
   const now = input.now ?? new Date();
   const token = newDeliveryToken();
+
+  /*
+   * Read the submission through the caller's own client, so row level security
+   * decides whether they may see it at all. This is what makes a forged
+   * submission id from another workspace come back as "not found" rather than
+   * as a link. The composite foreign key in the database is the second line:
+   * even a caller that bypasses RLS cannot attach a link to a submission in a
+   * different organization.
+   */
+  const { data: submission, error: submissionError } = await supabase
+    .from("submissions")
+    /*
+     * The relationship is named explicitly because there are now two foreign
+     * keys from submissions to packages -- the original single-column one and
+     * the composite `(organization_id, package_id)` that enforces they share an
+     * organization -- and PostgREST refuses to guess between them.
+     */
+    .select("id, package_id, packages!submissions_package_id_fkey(status)")
+    .eq("organization_id", input.organizationId)
+    .eq("id", input.submissionId)
+    .maybeSingle();
+
+  if (submissionError) {
+    throw new Error(`Could not read the submission: ${submissionError.message}`);
+  }
+  if (!submission) throw new Error("That submission could not be found in this workspace.");
+
+  const packageStatus = (submission.packages as unknown as { status: string } | null)?.status;
+  if (!packageStatus || !["approved", "sending", "delivered"].includes(packageStatus)) {
+    throw new Error("Approve the package before creating a delivery link for it.");
+  }
 
   const { data, error } = await supabase
     .from("submission_deliveries")
@@ -105,10 +186,12 @@ export async function createDelivery(input: {
       submission_id: input.submissionId,
       token,
       recipient_label: input.recipientLabel ?? null,
+      contact_reference: input.contactReference ?? null,
+      custom_parameters: input.customParameters ?? {},
       expires_at: expiryFrom(input.windowDays, now).toISOString(),
       created_by: input.actorId,
     })
-    .select("id, token, recipient_label, expires_at, revoked_at, created_at")
+    .select(DELIVERY_COLUMNS)
     .single();
 
   if (error || !data) throw new Error(`Could not create the link: ${error?.message}`);
@@ -120,33 +203,85 @@ export async function createDelivery(input: {
     entityId: input.submissionId,
     action: "delivery.link_created",
     data: {
-      summary: `Delivery link created for ${input.recipientLabel ?? "a recipient"}, open ${input.windowDays} days`,
+      summary: `Delivery link created for ${input.recipientLabel ?? "a recipient"}, open ${input.windowDays} days. Nothing sent.`,
       window_days: input.windowDays,
+      delivery_id: data.id as string,
     },
   });
 
-  return {
-    id: data.id as string,
-    token: data.token as string,
-    recipientLabel: (data.recipient_label as string | null) ?? undefined,
-    expiresAt: data.expires_at as string,
-    revokedAt: undefined,
-    createdAt: data.created_at as string,
-  };
+  return toDeliveryLink(data as Record<string, unknown>);
+}
+
+/**
+ * The photographer recording that they passed a specific link on.
+ *
+ * This is the only thing in Mastline that will say a package was sent, and it
+ * says so because a person pressed a button meaning "I have shared this",
+ * not because a row was inserted. Copying the link does not reach here.
+ *
+ * The whole lifecycle move happens inside one security-definer function so it
+ * cannot half-succeed: the link is stamped, the submission becomes `sent`, the
+ * package moves to `sending` -- not `delivered`, because nothing has been
+ * delivered until somebody opens it -- and the shoot becomes `dispatched`.
+ *
+ * Idempotent by construction. Pressing it twice is one share, and the second
+ * press returns the first timestamp rather than moving it.
+ */
+export async function markDeliveryShared(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  submissionId: Id;
+  deliveryId: Id;
+}): Promise<{ sharedAt: string; alreadyShared: boolean }> {
+  const supabase = input.client ?? (await createClient());
+
+  /*
+   * Re-resolve the link against the workspace before doing anything with it.
+   * The function below checks the caller's role in the link's own organization
+   * too, but a delivery id from another workspace should come back as "not
+   * found" here rather than as a permission error there -- the two answers tell
+   * a caller different things, and only one of them is any of their business.
+   */
+  const { data: link, error: linkError } = await supabase
+    .from("submission_deliveries")
+    .select("id, submission_id")
+    .eq("organization_id", input.organizationId)
+    .eq("submission_id", input.submissionId)
+    .eq("id", input.deliveryId)
+    .maybeSingle();
+
+  if (linkError) throw new Error(`Could not read the delivery link: ${linkError.message}`);
+  if (!link) throw new Error("That delivery link could not be found on this submission.");
+
+  const { data, error } = await supabase.rpc("mark_delivery_shared", {
+    target_delivery: input.deliveryId,
+  });
+
+  if (error) throw new Error(`Could not record the share: ${error.message}`);
+  const row = (data ?? [])[0] as { shared_at: string; already_shared: boolean } | undefined;
+  if (!row) throw new Error("Could not record the share.");
+
+  return { sharedAt: row.shared_at, alreadyShared: row.already_shared };
 }
 
 /** Withdraw a link. The row stays, because the offer having existed is history. */
 export async function revokeDelivery(input: {
+  /** The caller's client, so row level security applies. Every other function
+   *  in this module takes one; this was the only one that always built its own,
+   *  which made it the only one that could not be exercised as a real user. */
+  client?: SupabaseClient;
   organizationId: Id;
   actorId: Id;
   submissionId: Id;
   deliveryId: Id;
 }): Promise<void> {
-  const supabase = await createClient();
+  const supabase = input.client ?? (await createClient());
   const { error } = await supabase
     .from("submission_deliveries")
     .update({ revoked_at: new Date().toISOString(), revoked_by: input.actorId })
     .eq("organization_id", input.organizationId)
+    .eq("submission_id", input.submissionId)
     .eq("id", input.deliveryId);
 
   if (error) throw new Error(`Could not withdraw the link: ${error.message}`);
@@ -259,6 +394,8 @@ export async function acceptDelivery(
 }
 
 export interface AcceptanceRecord {
+  /** Which recipient's link this yes came through. */
+  readonly deliveryId: string;
   readonly acceptedBy: string;
   readonly acceptedAt: string;
   readonly ipAddress?: string;
@@ -274,16 +411,112 @@ export async function listAcceptances(
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("delivery_acceptances")
-    .select("accepted_by, accepted_at, ip_address, terms_snapshot")
+    .select("delivery_id, accepted_by, accepted_at, ip_address, terms_snapshot")
     .eq("organization_id", organizationId)
     .eq("submission_id", submissionId)
     .order("accepted_at", { ascending: false });
 
   if (error) throw new Error(`Could not load the acceptance: ${error.message}`);
   return (data ?? []).map((row) => ({
+    deliveryId: row.delivery_id as string,
     acceptedBy: row.accepted_by as string,
     acceptedAt: row.accepted_at as string,
     ipAddress: (row.ip_address as string | null) ?? undefined,
     termsSnapshot: (row.terms_snapshot as string | null) ?? undefined,
   }));
+}
+
+/**
+ * Every delivery link in a workspace, for the export.
+ *
+ * A photographer's record of who they sent work to, and what came back, is
+ * theirs. The constitution says they must be able to take their assets,
+ * metadata, financial records, and history with them, and once a delivery link
+ * carries the recipient, the attribution, and the engagement, it is part of
+ * that history rather than an implementation detail of a screen.
+ */
+export async function listAllDeliveries(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<readonly (DeliveryLink & { submissionId: string })[]> {
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("submission_deliveries")
+    .select(`submission_id, ${DELIVERY_COLUMNS}`)
+    .eq("organization_id", organizationId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Could not load delivery links: ${error.message}`);
+  return (data ?? []).map((row) => ({
+    ...toDeliveryLink(row as Record<string, unknown>),
+    submissionId: (row as Record<string, unknown>).submission_id as string,
+  }));
+}
+
+/**
+ * Change the recipient or the attribution on a link that has not gone out yet.
+ *
+ * The window is narrow on purpose. Before the photographer records sharing it,
+ * a link is a draft and a typo in a campaign name is worth fixing. After, the
+ * attribution is part of the evidence -- it is what the desk was told -- and
+ * rewriting it would let a link be re-labelled to match whatever outcome turned
+ * up. The database refuses the second case whatever this function does; the
+ * check here exists so an operator gets a sentence rather than a constraint
+ * violation.
+ *
+ * A withdrawn link is not editable either. It may have been opened before it
+ * was withdrawn, and its record has to keep saying what it said then.
+ */
+export async function updateDeliveryAttribution(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  submissionId: Id;
+  deliveryId: Id;
+  recipientLabel?: string;
+  contactReference?: string;
+  customParameters: Readonly<Record<string, string>>;
+}): Promise<void> {
+  const supabase = input.client ?? (await createClient());
+
+  const { data: link, error: readError } = await supabase
+    .from("submission_deliveries")
+    .select("id, shared_at, revoked_at")
+    .eq("organization_id", input.organizationId)
+    .eq("submission_id", input.submissionId)
+    .eq("id", input.deliveryId)
+    .maybeSingle();
+
+  if (readError) throw new Error(`Could not read the delivery link: ${readError.message}`);
+  if (!link) throw new Error("That delivery link could not be found on this submission.");
+  if (link.shared_at) {
+    throw new Error(
+      "This link has been marked as shared, so its recipient and attribution are part of the record. Withdraw it and create a new one instead.",
+    );
+  }
+  if (link.revoked_at) throw new Error("That link has been withdrawn.");
+
+  const { error } = await supabase
+    .from("submission_deliveries")
+    .update({
+      recipient_label: input.recipientLabel ?? null,
+      contact_reference: input.contactReference ?? null,
+      custom_parameters: input.customParameters,
+    })
+    .eq("organization_id", input.organizationId)
+    .eq("id", input.deliveryId);
+
+  if (error) throw new Error(`Could not update the link: ${error.message}`);
+
+  await recordEventWith(supabase, {
+    organizationId: input.organizationId,
+    actorId: input.actorId,
+    entityType: "submission",
+    entityId: input.submissionId,
+    action: "delivery.link_updated",
+    data: {
+      summary: "Delivery link attribution changed before it was shared",
+      delivery_id: input.deliveryId,
+    },
+  });
 }

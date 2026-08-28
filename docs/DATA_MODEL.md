@@ -26,7 +26,14 @@ The asset is the canonical center, but it is not isolated:
 | assets | Canonical image/clip commercial record |
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
 | packages | Selected asset versions and a buyer/delivery profile |
-| submissions | Immutable factual record of outbound delivery |
+| submissions | Immutable-from-creation record of what was approved, and what became of it |
+| submission_deliveries | One recipient-specific link: token, protected recipient fields, attribution snapshot, share and withdrawal |
+| delivery_access_events | Append-only evidence: opened, accepted, downloaded, refused |
+| delivery_acceptances | A recipient agreeing to the terms as they were shown |
+| delivery_view_sessions | One viewing session on a link. Optional analytics, pseudonymous, prunable |
+| delivery_asset_views | One photograph within one session: time visible and view count |
+| delivery_engagement_totals | Durable per-link rollup that survives retention pruning |
+| delivery_asset_engagement_totals | Durable per-photograph rollup |
 | licenses | Rights/territory/media/term/fee context |
 | payments | Expected/reported/received money record |
 | payment_allocations | Many-to-many allocation of payments to licenses/submissions/assets |
@@ -87,3 +94,40 @@ The first path segment is `organization_id`; storage RLS must verify an active m
 - Run Security and Performance Advisors after applying schema/storage changes.
 
 Relevant official references: `https://supabase.com/docs/guides/database/postgres/row-level-security`, `https://supabase.com/docs/guides/api/securing-your-api`, and `https://supabase.com/docs/guides/storage/security/access-control`.
+
+
+## The delivery lifecycle, and what each state actually means
+
+Seven facts, each written by the thing that evidences it. They are separate
+rows and separate timestamps on purpose: collapsing any two of them makes
+Mastline assert something it cannot support. See `docs/DELIVERY_LINKS.md`.
+
+| State | Package | Submission | Written by |
+| --- | --- | --- | --- |
+| Approved | `approved` | `queued`, `sent_at` null | An operator confirming approval |
+| Link created | `approved` | `queued` | Creating a recipient link. Nothing moves |
+| Shared | `sending` | `sent`, `sent_at` set | **Mark as shared** — a deliberate act |
+| Opened | `delivered` | `delivered`, `delivered_at` set | The first valid open of a live link |
+| Accepted | `delivered` | `acknowledged` | The visitor typing their own name |
+
+`sent_at` and `delivered_at` are write-once. A second open, a repeated outcome,
+or a provider re-reporting a delivery cannot move either.
+
+### How legacy rows read
+
+Nothing is backfilled and no history is invented.
+
+* A delivery link created before this schema has `shared_at` null. That reads,
+  correctly, as *created but never recorded as shared* — not as unshared. The
+  interface offers **Mark as shared** on any live link that has no share
+  timestamp, so an operator can record the truth if they know it.
+* `custom_parameters` defaults to `{}` and `contact_reference` to null on
+  existing rows: no attribution was captured, so none is claimed.
+* Submissions approved under the old flow already carry `sent_at` and often
+  `delivered_at` from the moment of approval. Those timestamps are left exactly
+  as they are — rewriting them would be fabricating a history nobody recorded —
+  and the write-once rule means nothing will move them now.
+* No viewing sessions exist for any link created before the analytics tables, so
+  every one of them reports **"the link was opened, but detailed viewing time
+  was unavailable"** rather than zero engagement. That is the honest reading: no
+  measurement was taken, which is not the same as nobody looking.

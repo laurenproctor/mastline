@@ -165,6 +165,7 @@ export function Field({
   full = false,
   hint,
   error,
+  idSuffix,
   children,
   ...rest
 }: {
@@ -173,6 +174,16 @@ export function Field({
   control?: FieldControl;
   full?: boolean;
   hint?: string;
+  /**
+   * Distinguishes two fields with the same `name` on one page.
+   *
+   * The id is derived from the name, which is right until a screen renders the
+   * same form more than once -- a submission with four delivery links offers
+   * four "Recipient" fields. Without this they share a DOM id, every label
+   * points at the first one, and clicking the fourth label focuses the wrong
+   * input. Pass something stable and unique, usually the row's id.
+   */
+  idSuffix?: string;
   /** A validation message. Bound to the control and announced when it appears. */
   error?: string;
   children?: React.ReactNode;
@@ -181,7 +192,7 @@ export function Field({
   // effect is a DOM write, not a state update, and keeps the field the
   // operator's to type in.
 } & Omit<React.ComponentPropsWithRef<"input">, "children" | "name">) {
-  const id = `field-${name}`;
+  const id = idSuffix ? `field-${name}-${idSuffix}` : `field-${name}`;
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;

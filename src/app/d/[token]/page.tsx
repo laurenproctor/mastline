@@ -1,9 +1,11 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { CONSENT_COOKIE, COUNTRY_COOKIE, mayCollectOptionalAnalytics } from "@/lib/consent";
 import { isDeliveryToken } from "@/lib/delivery";
 import { openDelivery } from "@/lib/data/delivery-links";
 import { formatDateTime } from "@/lib/format";
 import { AcceptTerms } from "./_components/accept-terms";
+import { ViewingTracker } from "./_components/viewing-tracker";
 
 export const metadata = { title: "A package from Mastline" };
 export const dynamic = "force-dynamic";
@@ -29,6 +31,27 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
   if (!isDeliveryToken(token)) notFound();
 
   const delivery = await openDelivery(token, await headers());
+
+  /*
+   * Two kinds of collection sit on this page and they are not the same thing.
+   *
+   * The open above, the acceptance below, and any download are commercial
+   * evidence -- the photographer's record of what a buyer did with their work.
+   * They happen regardless of what follows.
+   *
+   * How long the page was actually looked at, and which frames, is engagement
+   * measurement. It is useful and it is not necessary to operate the delivery,
+   * so it sits behind the same choice as everything else optional, and where a
+   * choice is required and has not been made, the tracker is simply not
+   * rendered. The photographer's screen shows that as "viewing time
+   * unavailable", never as zero engagement.
+   */
+  const jar = await cookies();
+  const analyticsAllowed = mayCollectOptionalAnalytics({
+    choice: jar.get(CONSENT_COOKIE)?.value,
+    country: jar.get(COUNTRY_COOKIE)?.value,
+  });
+
   if (!delivery) {
     return (
       <main className="auth-page">
@@ -77,7 +100,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
 
       <section className="delivery-frames">
         {delivery.assets.map((asset) => (
-          <article className="delivery-frame" key={asset.assetId}>
+          <article className="delivery-frame" data-asset-id={asset.assetId} key={asset.assetId}>
             {asset.previewKey ? (
               /* Served through the route so the only version a recipient can
                  reach carries their name. A signed URL here would hand over the
@@ -113,10 +136,26 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
 
       <footer className="delivery-foot">
         <p className="section-note">
-          Opens, downloads, and the acceptance itself are recorded, with the time and the address
-          they came from, and shown to the photographer.
+          Opening this link, accepting the terms, and downloading a file are recorded with the time
+          and the address they came from, and shown to the photographer as the delivery record for
+          this package.
         </p>
+        {analyticsAllowed ? (
+          <p className="section-note">
+            While this page is open and in front of you, Mastline also measures roughly how long it
+            is on screen and which photographs you look at, so the photographer can see which
+            frames drew attention. Time is not counted while the tab is hidden or idle. This is
+            first-party measurement only: there is no advertising, no third-party tracker, no
+            session recording, and nothing is collected about your browsing anywhere else.
+          </p>
+        ) : (
+          <p className="section-note">
+            Viewing-time measurement is off for this visit, so only the delivery record above is
+            kept.
+          </p>
+        )}
       </footer>
+      {analyticsAllowed && <ViewingTracker token={token} />}
     </main>
   );
 }

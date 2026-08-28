@@ -14,7 +14,18 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
 import { ApprovePanel } from "../_components/approve-panel";
 import { PackageDetails } from "../_components/package-details";
 
-const SETTLED = new Set(["delivered", "recalled"]);
+/**
+ * Packages this screen has no more work for.
+ *
+ * `approved` and `sending` join `delivered` here because approval is now the
+ * freeze point: once a package is approved its frames, versions, buyer, and
+ * terms are fixed by the database, so offering an editor for them would be
+ * offering something the next save would refuse.
+ */
+const SETTLED = new Set(["approved", "sending", "delivered", "recalled"]);
+
+/** Approved, and therefore frozen. Not the same as sent, which happens later. */
+const APPROVED = new Set(["approved", "sending", "delivered"]);
 
 export default async function DispatchPage({
   params,
@@ -44,7 +55,7 @@ export default async function DispatchPage({
   if (packages.length === 0) notFound();
 
   // A shoot can carry several packages for different buyers. Default to one
-  // that still needs work rather than one already dispatched.
+  // that still needs work rather than one already approved.
   const pkg =
     packages.find((candidate) => candidate.id === requestedPackage) ??
     packages.find((candidate) => !SETTLED.has(candidate.status)) ??
@@ -58,7 +69,7 @@ export default async function DispatchPage({
   const byId = new Map(assets.map((asset) => [asset.id, asset]));
 
   const review = reviewDispatch({ pkg, assets, buyer });
-  const dispatched = SETTLED.has(pkg.status);
+  const approved = APPROVED.has(pkg.status);
   const maySend = can(role, "submission.send");
 
   return (
@@ -197,7 +208,7 @@ export default async function DispatchPage({
                   deliveryProfile: candidate.deliveryProfile,
                 }))}
                 deliveryMethod={pkg.deliveryMethod}
-                editable={!dispatched && can(role, "package.write")}
+                editable={!approved && can(role, "package.write")}
                 packageId={pkg.id}
                 packageNote={pkg.packageNote}
                 proposedTerms={pkg.proposedTerms}
@@ -205,18 +216,41 @@ export default async function DispatchPage({
               />
             </Panel>
 
-            <Panel title="Dispatch">
-              {dispatched ? (
+            <Panel title="Approval">
+              {approved ? (
+                /*
+                 * This said "This package has been sent", which it had not
+                 * been. Approval freezes a package; it does not transmit one.
+                 * The three states below are the three things that are
+                 * actually true at this point, and the operator's next step --
+                 * a link for a recipient -- lives on the submission, so that
+                 * is where this points.
+                 */
                 <div className="side-card">
-                  <Badge tone="good">Dispatched</Badge>
-                  <h3>This package has been sent</h3>
+                  <Badge tone="good">
+                    {pkg.status === "delivered"
+                      ? "Opened"
+                      : pkg.status === "sending"
+                        ? "Link shared"
+                        : "Approved"}
+                  </Badge>
+                  <h3>
+                    {pkg.status === "delivered"
+                      ? "A delivery link for this package has been opened"
+                      : pkg.status === "sending"
+                        ? "A delivery link for this package has been shared"
+                        : "This package is approved and frozen"}
+                  </h3>
                   <p>
                     Approved by an operator
-                    {pkg.approvedAt ? ` on ${formatDateTime(pkg.approvedAt)}` : ""}. The submission
-                    record holds exactly what went out.
+                    {pkg.approvedAt ? ` on ${formatDateTime(pkg.approvedAt)}` : ""}. The frames,
+                    versions, buyer, and terms can no longer change.
+                    {pkg.status === "approved"
+                      ? " Nothing has been sent: the next step is a delivery link for a recipient."
+                      : ""}
                   </p>
                   <Link className="button small" href={routes.submissions()}>
-                    Open submissions
+                    Open the submission
                   </Link>
                 </div>
               ) : maySend ? (
@@ -234,10 +268,10 @@ export default async function DispatchPage({
               ) : (
                 <div className="side-card">
                   <Badge tone="neutral">Another role</Badge>
-                  <h3>Dispatch needs a dispatcher</h3>
+                  <h3>Approval needs a dispatcher</h3>
                   <p>
-                    This role can prepare a package but not send it. An owner or dispatcher approves
-                    the dispatch.
+                    This role can prepare a package but not approve it. An owner or dispatcher
+                    approves the package and creates the delivery link.
                   </p>
                 </div>
               )}

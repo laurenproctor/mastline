@@ -128,8 +128,13 @@ insert into public.asset_caption_revisions (organization_id, asset_id, headline,
   ('aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'Avery Hart departs Hotel Chelsea', 'Avery Hart is seen leaving Hotel Chelsea in New York City on August 19, 2026.', '11111111-1111-1111-1111-111111111111', '2026-08-20T14:22:00Z');
 
 -- One package already delivered, one still needing review.
+--
+-- Package 01 is inserted unapproved and stamped further down, because the
+-- contents of an approved package are frozen: seeding it as `delivered` and
+-- then adding frames to it would be refused, and rightly so. This is the order
+-- the product itself works in -- select the frames, then approve.
 insert into public.packages (id, organization_id, shoot_id, buyer_id, name, status, delivery_method, proposed_terms, restrictions, package_note, approved_by, approved_at, created_by) values
-  ('a0000000-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-0000000000b1', 'Hotel Chelsea departure - Package 01', 'delivered', 'SFTP', 'Standard agency distribution; non-exclusive; photographer retains copyright.', 'Editorial use only. No commercial use.', 'First frames, sent while the story was breaking.', '11111111-1111-1111-1111-111111111111', '2026-08-19T18:50:00Z', '11111111-1111-1111-1111-111111111111'),
+  ('a0000000-0000-0000-0000-0000000000f1', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-0000000000b1', 'Hotel Chelsea departure - Package 01', 'ready', 'SFTP', 'Standard agency distribution; non-exclusive; photographer retains copyright.', 'Editorial use only. No commercial use.', 'First frames, sent while the story was breaking.', null, null, '11111111-1111-1111-1111-111111111111'),
   ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000c1', 'a0000000-0000-0000-0000-0000000000b2', 'Hotel Chelsea departure - Package 02', 'needs_review', 'SFTP', 'Standard agency distribution; non-exclusive; photographer retains copyright.', 'Editorial use only. No commercial use.', 'Second buyer package; captions incomplete.', null, null, '11111111-1111-1111-1111-111111111111');
 
 insert into public.package_assets (package_id, organization_id, asset_id, asset_version_id, position) values
@@ -138,6 +143,13 @@ insert into public.package_assets (package_id, organization_id, asset_id, asset_
   -- genuine reason to block in the seeded workspace.
   ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d1', 'a0000000-0000-0000-0000-0000000000e2', 0),
   ('a0000000-0000-0000-0000-0000000000f2', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000d2', 'a0000000-0000-0000-0000-0000000000e5', 1);
+
+-- Now that the frames are in, package 01 is approved and has been opened.
+update public.packages
+   set status = 'delivered',
+       approved_by = '11111111-1111-1111-1111-111111111111',
+       approved_at = '2026-08-19T18:50:00Z'
+ where id = 'a0000000-0000-0000-0000-0000000000f1';
 
 insert into public.submissions (id, organization_id, package_id, buyer_id, status, recipient_snapshot, terms_snapshot, restrictions_snapshot, delivery_manifest, delivery_method, external_reference, sent_at, delivered_at, follow_up_at, created_by) values
   ('a0000000-0000-0000-0000-00000000a001', 'aaaaaaaa-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-0000000000f1', 'a0000000-0000-0000-0000-0000000000b1', 'delivered',

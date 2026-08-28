@@ -3455,6 +3455,130 @@ img.avatar {
 }
 
 /* ---------------------------------------------------------------------------
+   Recipient links, and what each one did.
+
+   A submission can carry several links -- one per desk, agency, or channel --
+   and the whole reason they exist separately is so activity attributes to the
+   right one. So each is a bordered block rather than a row: it has a state, a
+   recipient, an address, its own controls, and its own engagement, and running
+   them together as a list would undo the distinction the schema went to some
+   trouble to make.
+   --------------------------------------------------------------------------- */
+.delivery-link {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--paper-2);
+}
+.delivery-link-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+/* The address is long and unbreakable, so it gets to scroll rather than
+   stretching the panel it sits in. */
+.delivery-link-url {
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.delivery-link-url code {
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+
+/* The order of the real work, stated once at the top of the panel. */
+.delivery-next-steps {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+.delivery-next-steps li {
+  margin-bottom: 3px;
+}
+
+/* Attribution, shown as chips so several read as a set rather than a sentence. */
+.parameter-chip {
+  display: inline-block;
+  margin: 0 6px 6px 0;
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: var(--fs-small);
+}
+
+.parameter-editor {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.parameter-editor legend {
+  padding: 0 6px;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.parameter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.parameter-row input {
+  min-width: 0;
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: var(--fs-small);
+  background: var(--paper);
+}
+/* On a phone the key, the equals sign, the value, and a Remove button will not
+   share a line legibly, so they stack and the separator goes away. */
+@media (max-width: 640px) {
+  .parameter-row {
+    flex-wrap: wrap;
+  }
+  .parameter-row > span[aria-hidden="true"] {
+    display: none;
+  }
+  .parameter-row input {
+    flex-basis: 100%;
+  }
+}
+
+/* Editing a link that has not gone out yet. Collapsed, because it is the
+   exception rather than the ordinary path. */
+.delivery-link-edit {
+  margin-top: 10px;
+}
+.delivery-link-edit summary {
+  cursor: pointer;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.delivery-link-edit form {
+  margin-top: 10px;
+}
+
+.recipient-analytics {
+  margin: 0 0 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.recipient-analytics:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* ---------------------------------------------------------------------------
    Create shoot: one page, several sections.
 
    The brief, the photographs, their metadata, the rights facts, and the final
