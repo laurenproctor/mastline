@@ -13,6 +13,7 @@ import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 
 const KIND_TONE = {
+  Request: "blue",
   Shoot: "warn",
   Dispatch: "blue",
   Submission: "blue",

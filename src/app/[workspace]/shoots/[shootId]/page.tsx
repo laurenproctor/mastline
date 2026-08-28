@@ -224,7 +224,12 @@ export default async function ShootWorkspacePage({
             Keeping it mounted is also what lets a running batch finish when the
             first file lands and the page re-renders underneath it. */}
         {mayEdit ? (
-          <ImportDropzone workspaceSlug={workspaceSlug} compact={assets.length > 0} shootId={shootId} />
+          <ImportDropzone
+            workspaceSlug={workspaceSlug}
+            organizationId={organizationId}
+            compact={assets.length > 0}
+            shootId={shootId}
+          />
         ) : (
           assets.length === 0 && (
             <Panel title="No files yet">

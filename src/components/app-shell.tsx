@@ -23,6 +23,9 @@ import { type WorkspaceRoutes, workspaceRoutes } from "@/lib/workspace-routes";
 const NAV = [
   { to: (r: WorkspaceRoutes) => r.work(), icon: "work", label: "Work" },
   { to: (r: WorkspaceRoutes) => r.news(), icon: "news", label: "News radar" },
+  // Between the radar and the shoots because that is where it sits in the day:
+  // a signal arrives, or a desk asks, and either one becomes a shoot.
+  { to: (r: WorkspaceRoutes) => r.requests(), icon: "requests", label: "Requests" },
   { to: (r: WorkspaceRoutes) => r.shoots(), icon: "shoots", label: "Shoots" },
   { to: (r: WorkspaceRoutes) => r.submissions(), icon: "submissions", label: "Submissions" },
   { to: (r: WorkspaceRoutes) => r.commercial(), icon: "commercial", label: "Commercial" },

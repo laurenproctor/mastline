@@ -2,264 +2,150 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  finishImportAction,
-  registerImportAction,
-  registerPreviewAction,
-} from "@/app/[workspace]/shoots/actions";
-import { stageOriginal, stagePreview } from "@/components/upload-staging";
-import { formatBytes, hasBrowserPreview } from "@/lib/upload";
-
-type FileState = "queued" | "hashing" | "uploading" | "recording" | "done" | "failed";
-
-interface FileProgress {
-  readonly id: string;
-  readonly name: string;
-  readonly bytes: number;
-  readonly state: FileState;
-  readonly detail?: string;
-  readonly duplicate?: boolean;
-}
-
-interface QueuedFile {
-  readonly id: string;
-  readonly file: File;
-}
-
-const STATE_LABELS: Record<FileState, string> = {
-  queued: "Waiting",
-  hashing: "Hashing",
-  uploading: "Uploading",
-  recording: "Recording",
-  done: "Imported",
-  failed: "Failed",
-};
+import { finishImportAction } from "@/app/[workspace]/shoots/actions";
+import { ImportQueuePanel } from "@/components/import-queue-panel";
+import { importSession } from "@/lib/import-queue/session";
+import type { QueueItemView } from "@/lib/import-queue/types";
+import { formatBytes } from "@/lib/upload";
 
 /**
- * How many files are in flight at once.
+ * Choosing files, and handing them to a queue that outlives this component.
  *
- * One at a time made a card dump take as long as the sum of its parts, and
- * every file waited on the round trip of the one before it. More than a handful
- * saturates an uplink at a kerbside and makes every bar move at once, which is
- * worse than useless. Three is fast without lying about progress.
- */
-const CONCURRENCY = 3;
-
-/**
- * Import files into a shoot.
+ * The old version of this file held the batch in React state, which meant the
+ * batch existed only for as long as the page did: a reload, a navigation, or a
+ * phone locking itself lost every file that had not finished, and nothing
+ * anywhere recorded that they had been chosen. What replaced it is
+ * src/lib/import-queue -- records in IndexedDB, bytes in the origin private
+ * file system, a server row per file, and a runner that resumes.
  *
- * Each file is hashed in the browser, staged, registered as an immutable
- * original, and only then promoted to its canonical key.
- *
- * Selections accumulate. A second drop, or a second trip to the file picker
- * while the first batch is still running, is appended to the queue rather than
- * discarded -- the earlier version returned early whenever it was busy, so the
- * files were silently dropped and the operator was told nothing.
+ * So this component does three things and no more: it takes a selection, it
+ * warns honestly about what this browser can and cannot promise, and it renders
+ * the queue. It owns none of the state and stops none of the work when it
+ * unmounts.
  */
 export function ImportDropzone({
   workspaceSlug,
+  organizationId,
   shootId,
   /** True once the shoot has files: the same control, taking less of the page. */
   compact = false,
 }: {
   workspaceSlug: string;
+  organizationId: string;
   shootId: string;
   compact?: boolean;
 }) {
-  const [files, setFiles] = useState<readonly FileProgress[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<readonly string[]>([]);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const replacementRef = useRef<HTMLInputElement>(null);
+  const replacing = useRef<QueueItemView | null>(null);
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // The queue and the drain flag live in refs: a drain loop started in one
-  // render must see files appended during a later one, and must not be
-  // restarted by a re-render partway through.
-  const queueRef = useRef<QueuedFile[]>([]);
-  const drainingRef = useRef(false);
-  const nextIdRef = useRef(0);
-  const mountedRef = useRef(true);
+  const session = importSession({ workspaceSlug, organizationId });
+
+  // The queue is reconciled with the server once per tab, the moment an import
+  // control is on screen. A card dump abandoned last night is back on the page
+  // before anybody asks for it.
+  useEffect(() => {
+    void session.ready();
+  }, [session]);
+
+  /*
+   * Advancing the shoot and refreshing the sheet, once per run of completions.
+   *
+   * The queue finishes files one at a time and the contact sheet is server
+   * rendered, so a refresh per file would re-render the page under an operator's
+   * hands two hundred times. A short debounce collapses a burst into one.
+   */
+  const completed = useRef(0);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const advanced = useRef(false);
 
   useEffect(() => {
-    mountedRef.current = true;
+    const unsubscribe = session.subscribe((snapshot) => {
+      const done = snapshot.items.filter((item) => item.status === "complete").length;
+      if (done <= completed.current) {
+        completed.current = done;
+        return;
+      }
+      completed.current = done;
+
+      if (!advanced.current) {
+        advanced.current = true;
+        // The shoot only moves because something actually landed, and only once
+        // for the whole batch rather than once per file.
+        void finishImportAction(workspaceSlug, shootId).catch(() => {
+          // The files are imported either way; the status is cosmetic here.
+        });
+      }
+
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      refreshTimer.current = setTimeout(() => {
+        startTransition(() => router.refresh());
+      }, 1_200);
+    });
+
     return () => {
-      mountedRef.current = false;
+      unsubscribe();
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
     };
-  }, []);
-
-  const update = useCallback((id: string, patch: Partial<FileProgress>) => {
-    if (!mountedRef.current) return;
-    setFiles((current) => current.map((file) => (file.id === id ? { ...file, ...patch } : file)));
-  }, []);
-
-  /** Everything that happens to one file, start to finish. */
-  const importOne = useCallback(
-    async (entry: QueuedFile): Promise<"imported" | "duplicate" | "failed"> => {
-      const { id, file } = entry;
-
-      try {
-        // Hashing and the upload are one call now, shared with the creation
-        // page, which reports each phase back rather than swallowing it.
-        const staged = await stageOriginal(workspaceSlug, file, (phase) =>
-          update(id, { state: phase }),
-        );
-
-        update(id, { state: "recording" });
-        const result = await registerImportAction(workspaceSlug, {
-          shootId,
-          filename: staged.filename,
-          sha256: staged.sha256,
-          bytes: staged.bytes,
-          mimeType: staged.mimeType,
-          capturedAt: staged.capturedAt,
-          width: staged.width,
-          height: staged.height,
-          stagingKey: staged.stagingKey,
-        });
-
-        if (!result.ok || !result.assetId) throw new Error(result.error ?? "Import failed.");
-
-        // A preview makes the contact sheet usable, and for a clip it is the
-        // poster frame. Its absence never fails the import: the original is
-        // already safely recorded.
-        const preview = await stagePreview(file, staged.stagingKey);
-        if (preview) {
-          await registerPreviewAction(workspaceSlug, {
-            assetId: result.assetId,
-            sha256: preview.sha256,
-            bytes: preview.bytes,
-            width: preview.width,
-            height: preview.height,
-            stagingKey: preview.stagingKey,
-          });
-        }
-
-        update(id, {
-          state: "done",
-          duplicate: Boolean(result.duplicateOf),
-          detail: result.duplicateOf
-            ? "Same bytes already in this workspace"
-            : hasBrowserPreview(file.type)
-              ? undefined
-              : "Original preserved; no browser preview for this format",
-        });
-
-        return result.duplicateOf ? "duplicate" : "imported";
-      } catch (error) {
-        update(id, {
-          state: "failed",
-          detail: error instanceof Error ? error.message : "Unknown error",
-        });
-        return "failed";
-      }
-    },
-    /*
-     * workspaceSlug is read three times in here -- prepare, register, and the
-     * preview -- so leaving it out of the dependencies let one captured value
-     * outlive a workspace change and address every upload in a batch to the
-     * workspace that was open when the component first rendered.
-     */
-    [shootId, update, workspaceSlug],
-  );
-
-  /**
-   * Work the queue until it is empty, a few files at a time.
-   *
-   * The workers re-read the shared queue on every iteration, so files added
-   * while this is running are picked up by whichever worker frees up first.
-   */
-  const drain = useCallback(async () => {
-    if (drainingRef.current) return;
-    drainingRef.current = true;
-    setBusy(true);
-    setSummary(null);
-
-    let imported = 0;
-    let duplicates = 0;
-    let failed = 0;
-
-    const worker = async () => {
-      for (;;) {
-        const entry = queueRef.current.shift();
-        if (!entry) return;
-        const outcome = await importOne(entry);
-        if (outcome === "failed") failed += 1;
-        else {
-          imported += 1;
-          if (outcome === "duplicate") duplicates += 1;
-        }
-      }
-    };
-
-    await Promise.all(
-      Array.from({ length: Math.min(CONCURRENCY, queueRef.current.length) }, worker),
-    );
-
-    drainingRef.current = false;
-
-    // The shoot only advances if something actually landed, and only once for
-    // the whole batch rather than once per file.
-    if (imported > 0) {
-      try {
-        await finishImportAction(workspaceSlug, shootId);
-      } catch {
-        // The files are imported either way; the status is cosmetic here.
-      }
-    }
-
-    if (!mountedRef.current) return;
-
-    const parts = [`${imported} imported`];
-    if (duplicates > 0) parts.push(`${duplicates} already in the archive`);
-    if (failed > 0) parts.push(`${failed} failed`);
-    setSummary(parts.join(" · "));
-    setBusy(false);
-    startTransition(() => router.refresh());
-  }, [importOne, router, shootId, workspaceSlug]);
+  }, [router, session, shootId, startTransition, workspaceSlug]);
 
   const enqueue = useCallback(
-    (selected: readonly File[]) => {
+    async (selected: readonly File[]) => {
       // A directory drop reports zero files in some browsers; say so rather
       // than appearing to do nothing.
       if (selected.length === 0) {
-        setSummary("Nothing to import. Drop files rather than a folder.");
+        setNotice("Nothing to import. Drop files rather than a folder.");
         return;
       }
 
-      const entries: QueuedFile[] = selected.map((file) => ({
-        id: `import-${(nextIdRef.current += 1)}`,
-        file,
-      }));
+      setNotice(null);
+      const bytes = selected.reduce((total, file) => total + file.size, 0);
 
-      queueRef.current.push(...entries);
-      setFiles((current) => [
-        ...current,
-        ...entries.map((entry) => ({
-          id: entry.id,
-          name: entry.file.name,
-          bytes: entry.file.size,
-          state: "queued" as const,
-        })),
-      ]);
-
-      void drain();
+      try {
+        const result = await session.queue.enqueue({ shootId, files: selected });
+        setBatchId(result.batchId);
+        setWarnings(result.warnings);
+        setNotice(
+          `${selected.length} ${selected.length === 1 ? "file" : "files"} queued · ${formatBytes(bytes)}`,
+        );
+        void session.runner.pump();
+      } catch (error) {
+        setNotice(
+          error instanceof Error ? error.message : "Those files could not be queued.",
+        );
+      }
     },
-    [drain],
+    [session, shootId],
   );
 
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-      setDragging(false);
-      enqueue([...event.dataTransfer.files]);
-    },
-    [enqueue],
-  );
+  /** The operator handing back a file whose local copy is gone. */
+  const onFileNeeded = useCallback((item: QueueItemView) => {
+    replacing.current = item;
+    replacementRef.current?.click();
+  }, []);
 
-  const done = files.filter((file) => file.state === "done").length;
-  const failedCount = files.filter((file) => file.state === "failed").length;
+  const onReplacement = useCallback(
+    async (file: File | undefined) => {
+      const item = replacing.current;
+      replacing.current = null;
+      if (!item || !file) return;
+
+      try {
+        await session.queue.provideFile(item.clientFileId, file);
+        await session.runner.resumeItem(item.clientFileId);
+        setNotice(`${item.originalFilename} is back in the queue.`);
+      } catch (error) {
+        setNotice(error instanceof Error ? error.message : "That file could not be added.");
+      }
+    },
+    [session],
+  );
 
   return (
     <section aria-label="Import files" id="import">
@@ -270,7 +156,11 @@ export function ImportDropzone({
           event.preventDefault();
           setDragging(true);
         }}
-        onDrop={onDrop}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragging(false);
+          void enqueue([...event.dataTransfer.files]);
+        }}
       >
         <div>
           <div aria-hidden="true" className="dropzone-mark">
@@ -278,9 +168,9 @@ export function ImportDropzone({
           </div>
           <h2>{compact ? "Import more" : "Bring in the shoot"}</h2>
           <p>
-            Drop a folder, card export, JPEGs, RAW files, or video clips. Select as many as you like
-            — every file is hashed before it leaves this machine, and the original is stored
-            untouched.
+            Drop a folder, card export, JPEGs, RAW files, or video clips. Every file is hashed and
+            copied to this device before it is uploaded, so an interrupted import picks up where it
+            stopped instead of starting again.
           </p>
 
           <input
@@ -293,9 +183,23 @@ export function ImportDropzone({
               // input is cleared so choosing the same file twice still fires.
               const chosen = [...(event.target.files ?? [])];
               event.target.value = "";
-              enqueue(chosen);
+              void enqueue(chosen);
             }}
             ref={inputRef}
+            type="file"
+          />
+
+          {/* Used only when a queued file has lost its local copy. */}
+          <input
+            className="visually-hidden"
+            id="import-replacement"
+            onChange={(event) => {
+              const [file] = [...(event.target.files ?? [])];
+              event.target.value = "";
+              void onReplacement(file);
+            }}
+            ref={replacementRef}
+            tabIndex={-1}
             type="file"
           />
 
@@ -305,42 +209,32 @@ export function ImportDropzone({
               onClick={() => inputRef.current?.click()}
               type="button"
             >
-              {busy ? "Add more files" : "Choose files"}
+              Choose files
             </button>
           </div>
 
+          {notice && <p className="section-note">{notice}</p>}
+
           <p className="section-note">
-            {busy
-              ? "More files can be added while these upload; they join the queue."
-              : "Originals are never overwritten and never deleted. Delivery derivatives are created as separate files."}
+            Originals are never overwritten and never deleted. Uploads continue while Mastline is
+            open in this browser, and pick up where they left off next time you open it.
           </p>
         </div>
       </div>
 
-      {files.length > 0 && (
-        <div className="import-progress">
-          <div className="split-heading">
-            <h3>
-              Import · {done} of {files.length}
-              {failedCount > 0 ? ` · ${failedCount} failed` : ""}
-            </h3>
-            {summary && <span className="muted">{summary}</span>}
-          </div>
-          <ul aria-live="polite" className="import-list">
-            {files.map((file) => (
-              <li className={`import-row ${file.state}`} key={file.id}>
-                <span className="import-name">{file.name}</span>
-                <span className="import-size">{formatBytes(file.bytes)}</span>
-                <span className="import-state">
-                  {STATE_LABELS[file.state]}
-                  {file.duplicate ? " · duplicate" : ""}
-                </span>
-                {file.detail && <span className="import-detail">{file.detail}</span>}
-              </li>
-            ))}
-          </ul>
+      {warnings.length > 0 && (
+        <div className="import-warnings" role="status">
+          {warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
         </div>
       )}
+
+      <ImportQueuePanel
+        batchId={batchId ?? undefined}
+        onFileNeeded={onFileNeeded}
+        session={session}
+      />
     </section>
   );
 }
