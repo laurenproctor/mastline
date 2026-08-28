@@ -3,6 +3,7 @@ import {
   MAX_STAGED_PHOTOGRAPHS,
   isRecordId,
   parseOnboarding,
+  parseRequestIntake,
   parseShootAssetDefaults,
   parseStagedPhotographs,
   slugifyWorkspace,
@@ -283,5 +284,133 @@ describe("parseShootAssetDefaults", () => {
       usageRestrictions: undefined,
       keywords: [],
     });
+  });
+});
+
+describe("parseRequestIntake", () => {
+  function form(values: Record<string, string>): FormData {
+    const data = new FormData();
+    for (const [key, value] of Object.entries(values)) data.set(key, value);
+    return data;
+  }
+
+  it("needs a title and nothing else", () => {
+    const result = parseRequestIntake(form({ title: "Chelsea departure, anything?" }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.title).toBe("Chelsea departure, anything?");
+    // Every commercial term a desk did not mention stays undefined. None of
+    // these may pick up a default here: "Not provided" is what the screens
+    // render, and that only works if the parser refuses to guess.
+    expect(result.value.territory).toBeUndefined();
+    expect(result.value.usageDuration).toBeUndefined();
+    expect(result.value.exclusivity).toBeUndefined();
+    expect(result.value.usageMedia).toBeUndefined();
+    expect(result.value.responseDeadline).toBeUndefined();
+    expect(result.value.approximateQuantity).toBeUndefined();
+    expect(result.value.orientation).toBeUndefined();
+    expect(result.value.receivedVia).toBeUndefined();
+    expect(result.value.budgetDisclosed).toBe(false);
+    expect(result.value.budgetMinMinor).toBeUndefined();
+  });
+
+  it("refuses a request with no title", () => {
+    const result = parseRequestIntake(form({ brief: "They rang about something" }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.title).toBeTruthy();
+  });
+
+  describe("the budget", () => {
+    it("keeps silence and zero apart", () => {
+      const silent = parseRequestIntake(form({ title: "x" }));
+      const zero = parseRequestIntake(
+        form({ title: "x", budgetDisclosed: "on", budgetMin: "0" }),
+      );
+
+      expect(silent.ok && silent.value.budgetMinMinor).toBeUndefined();
+      // Zero is a figure a desk stated, not an absence, so it survives as 0.
+      expect(zero.ok && zero.value.budgetMinMinor).toBe(0);
+      expect(zero.ok && zero.value.budgetDisclosed).toBe(true);
+    });
+
+    it("discards figures typed and then unticked", () => {
+      // Somebody types 500, thinks better of it, unticks the box. Storing the
+      // 500 anyway would record a budget nobody stated.
+      const result = parseRequestIntake(form({ title: "x", budgetMin: "500" }));
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.budgetDisclosed).toBe(false);
+        expect(result.value.budgetMinMinor).toBeUndefined();
+      }
+    });
+
+    it("refuses a disclosure with no figure in it", () => {
+      const result = parseRequestIntake(form({ title: "x", budgetDisclosed: "on" }));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors.budgetMinMinor).toBeTruthy();
+    });
+
+    it("refuses a maximum below the minimum", () => {
+      const result = parseRequestIntake(
+        form({ title: "x", budgetDisclosed: "on", budgetMin: "900", budgetMax: "100" }),
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors.budgetMaxMinor).toBeTruthy();
+    });
+
+    it("reads a figure somebody typed with a currency symbol and a comma", () => {
+      const result = parseRequestIntake(
+        form({ title: "x", budgetDisclosed: "on", budgetMin: "$1,250.50" }),
+      );
+      expect(result.ok && result.value.budgetMinMinor).toBe(125050);
+    });
+
+    it("says so when a figure cannot be read at all", () => {
+      const result = parseRequestIntake(
+        form({ title: "x", budgetDisclosed: "on", budgetMin: "a few hundred" }),
+      );
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors.budgetMinMinor).toBeTruthy();
+    });
+  });
+
+  it("refuses a quantity that is not a whole number of frames", () => {
+    for (const value of ["0", "-3", "2.5", "nine"]) {
+      const result = parseRequestIntake(form({ title: "x", approximateQuantity: value }));
+      expect(result.ok, value).toBe(false);
+    }
+  });
+
+  it("refuses a vocabulary value it does not recognise", () => {
+    expect(parseRequestIntake(form({ title: "x", requestType: "telepathy" })).ok).toBe(false);
+    expect(parseRequestIntake(form({ title: "x", receivedVia: "carrier pigeon" })).ok).toBe(false);
+    expect(parseRequestIntake(form({ title: "x", orientation: "diagonal" })).ok).toBe(false);
+  });
+
+  it("reports an unreadable date rather than dropping it", () => {
+    const result = parseRequestIntake(form({ title: "x", responseDeadline: "tomorrow-ish" }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.errors.responseDeadline).toBeTruthy();
+  });
+
+  it("splits the comma-separated lists and drops the repeats", () => {
+    const result = parseRequestIntake(
+      form({ title: "x", subjectNames: "Mara Vale, Julian Cross, Mara Vale", requestedFormats: "JPEG, RAW" }),
+    );
+    expect(result.ok && result.value.subjectNames).toEqual(["Mara Vale", "Julian Cross"]);
+    expect(result.ok && result.value.requestedFormats).toEqual(["JPEG", "RAW"]);
+  });
+
+  it("keeps confidential fields apart from the request", () => {
+    const result = parseRequestIntake(
+      form({ title: "x", sourceNote: "The doorman rang", brief: "Nothing sensitive" }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The parser returns them; the data layer is what puts them in a different
+    // table. What matters here is that they never end up in the brief.
+    expect(result.value.sourceNote).toBe("The doorman rang");
+    expect(result.value.brief).toBe("Nothing sensitive");
   });
 });

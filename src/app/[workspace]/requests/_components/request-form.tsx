@@ -5,11 +5,7 @@ import { BuyerSelect } from "@/components/buyer-select";
 import { Field } from "@/components/primitives";
 import type { BuyerRequest, RequestSensitiveNote } from "@/lib/domain";
 import { toDatetimeLocalValue } from "@/lib/geo";
-import {
-  type RequestActionState,
-  createRequestAction,
-  updateRequestAction,
-} from "../actions";
+import { type RequestActionState, createRequestAction, updateRequestAction } from "../actions";
 
 const INITIAL: RequestActionState = {};
 
@@ -192,10 +188,7 @@ export function RequestForm({
       if (control instanceof HTMLInputElement) {
         if (control.type === "checkbox") control.checked = value === "on";
         else if (control.type !== "hidden") control.value = value;
-      } else if (
-        control instanceof HTMLTextAreaElement ||
-        control instanceof HTMLSelectElement
-      ) {
+      } else if (control instanceof HTMLTextAreaElement || control instanceof HTMLSelectElement) {
         control.value = value;
       }
     }
@@ -218,7 +211,6 @@ export function RequestForm({
   return (
     <form
       action={formAction}
-      className="request-form"
       onInput={() => {
         const form = formRef.current;
         if (form && !editing) writeDraft(workspaceSlug, form);
@@ -250,7 +242,7 @@ export function RequestForm({
       <section aria-labelledby="request-what">
         <h2 id="request-what">What they asked for</h2>
 
-        <div className="field-grid">
+        <div className="form-grid">
           <Field
             autoFocus={!editing}
             defaultValue={request?.title}
@@ -341,9 +333,11 @@ export function RequestForm({
       <section aria-labelledby="request-when">
         <h2 id="request-when">When and where</h2>
 
-        <div className="field-grid">
+        <div className="form-grid">
           <Field
-            defaultValue={request?.responseDeadline && toDatetimeLocalValue(new Date(request.responseDeadline))}
+            defaultValue={
+              request?.responseDeadline && toDatetimeLocalValue(new Date(request.responseDeadline))
+            }
             error={errors.responseDeadline}
             hint="When they need an answer. Nothing happens automatically when it passes — the inbox marks it Past deadline and leaves the decision to you."
             label="Response deadline"
@@ -380,7 +374,7 @@ export function RequestForm({
       <section aria-labelledby="request-deliverables">
         <h2 id="request-deliverables">Deliverables</h2>
 
-        <div className="field-grid">
+        <div className="form-grid">
           <Field
             control="textarea"
             defaultValue={request?.deliverables}
@@ -432,7 +426,7 @@ export function RequestForm({
           &ldquo;Not provided&rdquo;, never as worldwide, perpetual, or unrestricted.
         </p>
 
-        <div className="field-grid">
+        <div className="form-grid">
           <Field
             defaultValue={request?.usageMedia}
             hint="Print, online, social, broadcast…"
@@ -464,8 +458,8 @@ export function RequestForm({
         <fieldset className="field full">
           <legend>Budget</legend>
           <p className="section-note">
-            Tick this only if money came up. An unticked budget records that they did not say,
-            which is a different fact from a budget of nothing.
+            Tick this only if money came up. An unticked budget records that they did not say, which
+            is a different fact from a budget of nothing.
           </p>
 
           <label className="checkbox">
@@ -477,7 +471,7 @@ export function RequestForm({
             <span>They stated a budget</span>
           </label>
 
-          <div className="field-grid">
+          <div className="form-grid">
             <Field
               defaultValue={
                 request?.budgetMin ? (request.budgetMin.minor / 100).toString() : undefined
@@ -516,9 +510,11 @@ export function RequestForm({
       <section aria-labelledby="request-delivery">
         <h2 id="request-delivery">Delivery and restrictions</h2>
 
-        <div className="field-grid">
+        <div className="form-grid">
           <Field
-            defaultValue={request?.embargoUntil && toDatetimeLocalValue(new Date(request.embargoUntil))}
+            defaultValue={
+              request?.embargoUntil && toDatetimeLocalValue(new Date(request.embargoUntil))
+            }
             error={errors.embargoUntil}
             label="Embargo until"
             name="embargoUntil"
@@ -546,11 +542,11 @@ export function RequestForm({
         <section aria-labelledby="request-confidential">
           <h2 id="request-confidential">Confidential</h2>
           <p className="section-note">
-            Held in a separate record that only owners and editors can read. It is never copied
-            into the request, the activity log, or a workspace export run by another role.
+            Held in a separate record that only owners and editors can read. It is never copied into
+            the request, the activity log, or a workspace export run by another role.
           </p>
 
-          <div className="field-grid">
+          <div className="form-grid">
             <Field
               control="textarea"
               defaultValue={sensitiveNote?.sourceNote}
@@ -574,14 +570,20 @@ export function RequestForm({
         </section>
       )}
 
-      <div className="form-foot">
+      <div className="field full">
         <p className="section-note">
           Saving records this in your workspace and nothing else. No message, file, or notification
           reaches the buyer, and nothing here creates a dispatch.
         </p>
 
         <div className="actions">
-          <button className="button primary" disabled={pending} name="intent" type="submit" value="post">
+          <button
+            className="button primary"
+            disabled={pending}
+            name="intent"
+            type="submit"
+            value="post"
+          >
             {pending ? "Saving…" : editing ? "Save changes" : "Record request"}
           </button>
 
