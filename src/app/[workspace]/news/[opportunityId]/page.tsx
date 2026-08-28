@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge, PageHeader, Panel } from "@/components/primitives";
@@ -6,28 +7,30 @@ import {
   DISMISSAL_REASON_MAX,
   allowedOpportunityDecisions,
   getOpportunity,
+  getSiblingPath,
 } from "@/lib/data/opportunities";
 import { listWorkspaceMembers } from "@/lib/data/workspace";
 import { formatConfidence, formatDateTime, humanizeStatus } from "@/lib/format";
-import {
-  KIND_LABELS,
-  MODE_FOR_KIND,
-  SIGNAL_TONES,
-  STATUS_TONES,
-  usefulWindow,
-} from "@/lib/news-radar";
+import { MODE_FOR_KIND, SIGNAL_TONES, STATUS_TONES, usefulWindow } from "@/lib/news-radar";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DecisionNotice, OpportunityDecisions } from "../_components/story-actions";
 
+const PATH_LABELS = {
+  archive_match: "Archive match path",
+  shoot_opportunity: "Shoot opportunity path",
+} as const;
+
 /**
- * One opportunity, in full.
+ * One evaluation path of one story, in full.
  *
- * Three registers, kept visibly apart: the story's source facts, which
- * somebody typed; the suggestion -- signal, confidence, basis -- which is a
- * claim with a stated reason; and the workspace's own decisions, which are the
- * only thing this screen can change. The regions each mode will grow into
+ * Three registers, kept visibly apart: the story's canonical facts, shared
+ * with the other path and owned by the news signal; this path's suggestion --
+ * signal, confidence, basis -- which is a claim with a stated reason; and
+ * this path's own lifecycle, which is the only thing the screen can change.
+ * The header says WHICH path is being reviewed, and the other evaluation of
+ * the same story is one link away. The regions each mode will grow into
  * later (matched photographs, a shoot brief) are drawn honestly as not yet
  * built, with no invented records inside them.
  */
@@ -36,7 +39,7 @@ export default async function OpportunityPage({
   searchParams,
 }: {
   params: Promise<{ workspace: string; opportunityId: string }>;
-  searchParams: Promise<{ done?: string; created?: string }>;
+  searchParams: Promise<{ done?: string; created?: string; already?: string }>;
 }) {
   const { workspace: requestedWorkspace, opportunityId } = await params;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
@@ -50,12 +53,13 @@ export default async function OpportunityPage({
    */
   const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
-  const { done: doneParam, created } = await searchParams;
+  const { done: doneParam, created, already } = await searchParams;
 
   // A malformed id, an id from another workspace, and an id that never existed
   // all answer the same way: not found.
   const opportunity = await getOpportunity(organizationId, opportunityId);
   if (!opportunity) notFound();
+  const story = opportunity.story;
 
   const mode = MODE_FOR_KIND[opportunity.kind];
   const mayReview = can(role, "opportunity.review");
@@ -63,13 +67,20 @@ export default async function OpportunityPage({
   const now = new Date();
   const window = usefulWindow(opportunity.windowClosesAt, now);
 
-  const [activity, members] = await Promise.all([
+  const [sibling, pathActivity, signalActivity, members] = await Promise.all([
+    getSiblingPath(organizationId, opportunity.newsSignalId, opportunity.id),
     listActivity(organizationId, { entityType: "opportunity", entityId: opportunity.id }),
+    listActivity(organizationId, { entityType: "news_signal", entityId: opportunity.newsSignalId }),
     listWorkspaceMembers(organizationId),
   ]);
-  const enteredBy = opportunity.createdBy
-    ? (members.find((member) => member.userId === opportunity.createdBy)?.displayName ??
-      opportunity.createdBy.slice(0, 8))
+  // One history: the canonical entry, then the decisions made on this path.
+  // The other path's decisions live on its own screen.
+  const activity = [...pathActivity, ...signalActivity].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+  const enteredBy = story.createdBy
+    ? (members.find((member) => member.userId === story.createdBy)?.displayName ??
+      story.createdBy.slice(0, 8))
     : undefined;
 
   return (
@@ -77,43 +88,50 @@ export default async function OpportunityPage({
       <div className="page">
         <PageHeader
           action="Back to News Radar"
-          description={`${KIND_LABELS[opportunity.kind]} · entered by hand`}
+          description={`${PATH_LABELS[opportunity.kind]} · one of two evaluations of this story`}
           eyebrow={`News Radar · ${mode === "archive" ? "Archive Matches" : "Shoot Opportunities"}`}
           href={routes.news({ query: { mode } })}
-          title={opportunity.title}
+          title={story.title}
         />
 
         {created === "1" && (
           <p className="inspector-saved" role="status">
-            Story added to the radar. It is a private record — nobody was contacted and nothing was
-            created or sent.
+            Story added to the radar — once. It now has an archive evaluation and a shoot
+            evaluation, each decided on its own. Nobody was contacted and nothing was created or
+            sent.
+          </p>
+        )}
+        {already === "1" && (
+          <p className="inspector-saved" role="status">
+            This story was already on the radar, so nothing new was created. You are looking at the
+            record as it stands.
           </p>
         )}
         {doneParam && <DecisionNotice done={doneParam} />}
 
         <div className="panel-grid">
-          <Panel title="The story">
+          <Panel title="The story — shared by both paths">
             <div className="side-card">
               <dl className="confirm-list">
                 <div>
                   <dt>Headline</dt>
-                  <dd>{opportunity.title}</dd>
+                  <dd>{story.title}</dd>
                 </div>
                 <div>
                   <dt>Source</dt>
-                  <dd>{opportunity.sourceName ?? "Not recorded"}</dd>
+                  <dd>{story.sourceName ?? "Not recorded"}</dd>
                 </div>
                 <div>
                   <dt>Source link</dt>
                   <dd>
-                    {opportunity.sourceUrl ? (
+                    {story.sourceUrl ? (
                       <a
                         className="text-link"
-                        href={opportunity.sourceUrl}
+                        href={story.sourceUrl}
                         rel="noreferrer nofollow"
                         target="_blank"
                       >
-                        {opportunity.sourceUrl}
+                        {story.sourceUrl}
                       </a>
                     ) : (
                       "Not recorded"
@@ -123,23 +141,27 @@ export default async function OpportunityPage({
                 <div>
                   <dt>Published</dt>
                   <dd>
-                    {opportunity.sourcePublishedAt
-                      ? formatDateTime(opportunity.sourcePublishedAt)
+                    {story.sourcePublishedAt
+                      ? formatDateTime(story.sourcePublishedAt)
                       : "Not recorded"}
                   </dd>
                 </div>
                 <div>
                   <dt>Entered by</dt>
                   <dd>
-                    {enteredBy ?? "Not recorded"} · {formatDateTime(opportunity.createdAt)}
+                    {enteredBy ?? "Not recorded"} · {formatDateTime(story.createdAt)}
                   </dd>
                 </div>
               </dl>
-              {opportunity.summary && <p>{opportunity.summary}</p>}
+              {story.summary && <p>{story.summary}</p>}
+              <p className="section-note">
+                These facts exist once. Both evaluations read them from the same record, so they
+                cannot disagree between the Archive and Shoot views.
+              </p>
             </div>
 
             <div className="side-card">
-              <h3>Why it matters — a suggestion, not a fact</h3>
+              <h3>Why it matters here — a suggestion, not a fact</h3>
               <dl className="confirm-list">
                 <div>
                   <dt>Signal</dt>
@@ -163,9 +185,10 @@ export default async function OpportunityPage({
                 </div>
               </dl>
               <p className="section-note">
-                In this release the signal, confidence, and basis were typed by the person who
-                entered the story. When live matching exists its suggestions will appear the same
-                way: labelled, with a stated basis, and editable by a person.
+                This suggestion belongs to the {PATH_LABELS[opportunity.kind].toLowerCase()}. In
+                this release it was typed by the person who entered the story; when live matching
+                exists its suggestions will appear the same way: labelled, with a stated basis, and
+                editable by a person.
               </p>
             </div>
 
@@ -205,7 +228,7 @@ export default async function OpportunityPage({
             )}
           </Panel>
 
-          <Panel title="Where this stands">
+          <Panel title={`Where the ${mode === "archive" ? "archive" : "shoot"} path stands`}>
             <div className="side-card">
               <Badge tone={STATUS_TONES[opportunity.status]}>
                 {humanizeStatus(opportunity.status)}
@@ -239,6 +262,33 @@ export default async function OpportunityPage({
               </dl>
             </div>
 
+            <div className="side-card">
+              <h3>The same story, on the other path</h3>
+              {sibling ? (
+                <>
+                  <p>
+                    {PATH_LABELS[sibling.kind]} · {humanizeStatus(sibling.status)}
+                  </p>
+                  <div className="actions">
+                    <Link className="button small" href={routes.newsOpportunity(sibling.id)}>
+                      {sibling.kind === "archive_match"
+                        ? "View the archive evaluation"
+                        : "View the shoot evaluation"}
+                    </Link>
+                  </div>
+                  <p className="section-note">
+                    Decided separately: what happens here does not move it, and what happens there
+                    does not move this.
+                  </p>
+                </>
+              ) : (
+                <p className="section-note">
+                  This story predates two-path evaluation and carries only this one. An evaluation
+                  nobody made was not invented for it.
+                </p>
+              )}
+            </div>
+
             {decisions.length > 0 ? (
               <OpportunityDecisions
                 canDismiss={decisions.includes("dismissed")}
@@ -253,8 +303,8 @@ export default async function OpportunityPage({
               <div className="side-card">
                 <h3>This decision is recorded</h3>
                 <p className="section-note">
-                  An opportunity that was acted on, dismissed, or expired is not reopened in place.
-                  Revisiting the story is a fresh entry, made deliberately.
+                  A path that was acted on, dismissed, or expired is not reopened in place. The
+                  story’s other path, if open, is still decided on its own screen.
                 </p>
               </div>
             ) : (
@@ -281,6 +331,9 @@ export default async function OpportunityPage({
                   ))}
                 </ul>
               )}
+              <p className="section-note">
+                The story’s entry and this path’s decisions. The other path keeps its own history.
+              </p>
             </div>
 
             <div className="side-card">

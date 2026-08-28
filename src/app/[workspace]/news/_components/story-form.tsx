@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { Field } from "@/components/primitives";
-import { MODE_DESCRIPTIONS, MODE_FOR_KIND } from "@/lib/news-radar";
-import type { OpportunityKind } from "@/lib/domain";
+import type { NewsMode } from "@/lib/news-radar";
 import { type StoryEntryState, createStoryAction } from "../actions";
 
 const INITIAL: StoryEntryState = {};
@@ -11,60 +10,36 @@ const INITIAL: StoryEntryState = {};
 /**
  * Manual story entry.
  *
- * Only the headline and the opportunity type are required: this writes a
- * private workspace record, and a photographer typing between jobs should not
- * be blocked on facts they do not have yet. The same story may be entered once
- * as each type -- connecting it to owned work and covering it fresh are
- * different jobs.
+ * The story is entered ONCE. There is no archive-or-shoot choice here,
+ * because one submission creates the canonical signal and both evaluation
+ * paths together -- whether the story can sell owned work and whether it
+ * justifies a new shoot are the radar's two standing questions, asked of
+ * every story. Only the headline is required: this writes a private record,
+ * and a photographer typing between jobs should not be blocked on facts they
+ * do not have yet.
  *
- * The signal, window, basis, and confidence fields exist so the operator's own
- * judgement is recorded the same way a machine's will be later: as a labelled
- * suggestion with a stated basis, never as a fact about the story.
+ * The signal, window, basis, and confidence fields seed both paths the same
+ * way a machine's suggestion will later arrive: as a labelled claim with a
+ * stated basis, never as a fact -- and each path is decided independently
+ * afterwards.
  */
 export function StoryForm({
   workspaceSlug,
-  initialKind,
+  mode,
 }: {
   readonly workspaceSlug: string;
-  readonly initialKind: OpportunityKind;
+  /** Where the form was opened from; only chooses which path opens after. */
+  readonly mode: NewsMode;
 }) {
   const [state, formAction, pending] = useActionState(
     createStoryAction.bind(null, workspaceSlug),
     INITIAL,
   );
-  const [kind, setKind] = useState<OpportunityKind>(initialKind);
   const errors = state.errors ?? {};
 
   return (
     <form action={formAction} className="story-form">
-      <fieldset className="kind-choice">
-        <legend>What kind of opportunity is this?</legend>
-        {(
-          [
-            ["archive_match", "Archive match"],
-            ["shoot_opportunity", "Shoot opportunity"],
-          ] as const
-        ).map(([value, label]) => (
-          <label className={kind === value ? "kind-option selected" : "kind-option"} key={value}>
-            <input
-              checked={kind === value}
-              name="kind"
-              onChange={() => setKind(value)}
-              type="radio"
-              value={value}
-            />
-            <span>
-              <strong>{label}</strong>
-              <small>{MODE_DESCRIPTIONS[MODE_FOR_KIND[value]]}</small>
-            </span>
-          </label>
-        ))}
-        {errors.kind && (
-          <small className="field-error" role="alert">
-            {errors.kind}
-          </small>
-        )}
-      </fieldset>
+      <input name="mode" type="hidden" value={mode} />
 
       <div className="form-grid">
         <Field
@@ -134,7 +109,7 @@ export function StoryForm({
           control="textarea"
           error={errors.suggestionBasis}
           full
-          hint="Shown beside the signal and confidence as their stated basis."
+          hint="Shown beside the signal and confidence on both paths as their stated basis."
           label="Why this matters"
           name="suggestionBasis"
           placeholder="Why does this story matter to this workspace?"
@@ -153,8 +128,11 @@ export function StoryForm({
         </button>
       </div>
       <p className="section-note">
-        This creates a private record on your radar. It contacts nobody, creates no shoot, builds no
-        package, and sends nothing.
+        One entry, two evaluations: the story is recorded once and appears in{" "}
+        <strong>Archive Matches</strong> (can it sell photographs you already own?) and{" "}
+        <strong>Shoot Opportunities</strong> (does it justify a new shoot?), each decided on its
+        own. This creates a private record on your radar. It contacts nobody, creates no shoot,
+        builds no package, and sends nothing.
       </p>
     </form>
   );

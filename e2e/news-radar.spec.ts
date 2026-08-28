@@ -5,14 +5,15 @@ import { at, hasHorizontalOverflow, refuseCookies, signIn } from "./helpers";
 /**
  * News Radar, driven through the real interface.
  *
- * The lifecycle and permission matrices live in tests/news-radar.test.ts,
- * where they can be asserted precisely. What is here is the part only a
- * browser can answer: that the two modes are addressable and switchable, that
- * a story can be entered by hand and lands as a private record, that watching
- * is one motion and dismissing is two, that a read-only colleague is offered
- * none of it, and that the screen holds together at every size ACCEPTANCE
- * names -- this file runs unchanged in the desktop, tablet, and mobile
- * projects.
+ * The lifecycle, atomicity, and permission matrices live in
+ * tests/news-radar.test.ts, where they can be asserted precisely. What is
+ * here is the part only a browser can answer: that the two modes are
+ * addressable and switchable, that ONE manual entry surfaces the story in
+ * both modes, that each path names itself and links to its sibling, that
+ * watching is one motion and dismissing is two, that a read-only colleague is
+ * offered none of it, and that the screen holds together at every size
+ * ACCEPTANCE names -- this file runs unchanged in the desktop, tablet, and
+ * mobile projects.
  */
 
 const EDITOR = "jordan@mastline.test";
@@ -38,62 +39,118 @@ function service(): { url: string; key: string } {
   return { url, key };
 }
 
+function serviceHeaders(): Record<string, string> {
+  const { key } = service();
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
+}
+
+interface StoryFixture {
+  readonly signalId: string;
+  readonly archiveId: string;
+  readonly shootId: string;
+}
+
 /**
- * A story on the radar, arranged directly.
- *
- * Written with the service role the way a future ingestion pass would write
- * one; every decision in the tests below is made by clicking. The source URL
- * is unique per run because the table is unique on (organization, kind, URL).
+ * One canonical story with both evaluation paths, arranged directly the way a
+ * future ingestion pass would write them; every decision in the tests below
+ * is made by clicking. The source URL is unique per run because the signal is
+ * unique on (organization, URL).
  */
 async function createStory(
   title: string,
-  kind: "archive_match" | "shoot_opportunity",
-  overrides: Record<string, unknown> = {},
-): Promise<string> {
-  const { url, key } = service();
+  overrides: { signal?: Record<string, unknown>; paths?: Record<string, unknown> } = {},
+): Promise<StoryFixture> {
+  const { url } = service();
+  const headers = serviceHeaders();
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
-  const response = await fetch(`${url}/rest/v1/opportunities`, {
+
+  const signalResponse = await fetch(`${url}/rest/v1/news_signals`, {
     method: "POST",
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-    },
+    headers,
     body: JSON.stringify({
       organization_id: ORG_A,
-      opportunity_kind: kind,
       title,
       source_name: "Radar E2E Wire",
       source_url: `https://radar-e2e.example/${stamp}`,
       source_published_at: new Date().toISOString(),
-      signal: "rising",
-      suggestion_basis: { summary: "Arranged by the browser suite." },
-      confidence: 0.66,
-      ...overrides,
+      ...overrides.signal,
     }),
   });
-  if (!response.ok) throw new Error(`Could not arrange a story: ${await response.text()}`);
-  const [row] = (await response.json()) as { id: string }[];
-  return row.id;
+  if (!signalResponse.ok) {
+    throw new Error(`Could not arrange a signal: ${await signalResponse.text()}`);
+  }
+  const [signal] = (await signalResponse.json()) as { id: string }[];
+
+  const pathResponse = await fetch(`${url}/rest/v1/opportunities`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(
+      ["archive_match", "shoot_opportunity"].map((kind) => ({
+        organization_id: ORG_A,
+        news_signal_id: signal.id,
+        opportunity_kind: kind,
+        signal: "rising",
+        suggestion_basis: { summary: "Arranged by the browser suite." },
+        confidence: 0.66,
+        ...overrides.paths,
+      })),
+    ),
+  });
+  if (!pathResponse.ok) {
+    throw new Error(`Could not arrange the paths: ${await pathResponse.text()}`);
+  }
+  const paths = (await pathResponse.json()) as { id: string; opportunity_kind: string }[];
+
+  return {
+    signalId: signal.id,
+    archiveId: paths.find((path) => path.opportunity_kind === "archive_match")!.id,
+    shootId: paths.find((path) => path.opportunity_kind === "shoot_opportunity")!.id,
+  };
 }
 
-async function deleteStory(id: string): Promise<void> {
-  const { url, key } = service();
-  const headers = { apikey: key, Authorization: `Bearer ${key}` };
-  await fetch(`${url}/rest/v1/activity_events?entity_id=eq.${id}`, { method: "DELETE", headers });
-  await fetch(`${url}/rest/v1/opportunities?id=eq.${id}`, { method: "DELETE", headers });
+/** Deleting the signal cascades its paths; events are removed for both. */
+async function deleteStory(fixture: StoryFixture): Promise<void> {
+  const { url } = service();
+  const headers = serviceHeaders();
+  for (const id of [fixture.signalId, fixture.archiveId, fixture.shootId]) {
+    await fetch(`${url}/rest/v1/activity_events?entity_id=eq.${id}`, { method: "DELETE", headers });
+  }
+  await fetch(`${url}/rest/v1/news_signals?id=eq.${fixture.signalId}`, {
+    method: "DELETE",
+    headers,
+  });
 }
 
 /** Stories this run created through the form, found and removed by title. */
 async function deleteStoriesTitled(prefix: string): Promise<void> {
-  const { url, key } = service();
-  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const { url } = service();
+  const headers = serviceHeaders();
   const found = await fetch(
-    `${url}/rest/v1/opportunities?title=like.${encodeURIComponent(`${prefix}%`)}&select=id`,
+    `${url}/rest/v1/news_signals?title=like.${encodeURIComponent(`${prefix}%`)}&select=id`,
     { headers },
   );
-  for (const row of (await found.json()) as { id: string }[]) await deleteStory(row.id);
+  for (const row of (await found.json()) as { id: string }[]) {
+    const paths = await fetch(
+      `${url}/rest/v1/opportunities?news_signal_id=eq.${row.id}&select=id`,
+      { headers },
+    );
+    for (const path of (await paths.json()) as { id: string }[]) {
+      await fetch(`${url}/rest/v1/activity_events?entity_id=eq.${path.id}`, {
+        method: "DELETE",
+        headers,
+      });
+    }
+    await fetch(`${url}/rest/v1/activity_events?entity_id=eq.${row.id}`, {
+      method: "DELETE",
+      headers,
+    });
+    await fetch(`${url}/rest/v1/news_signals?id=eq.${row.id}`, { method: "DELETE", headers });
+  }
 }
 
 test.beforeEach(async ({ context }) => {
@@ -126,25 +183,34 @@ test("the two modes are prominent, addressable, and switchable", async ({ page }
   );
 });
 
-test("a story entered by hand becomes a private record on the right mode", async ({ page }) => {
+test("one manual entry puts the story in both modes", async ({ page }) => {
   const title = `Radar E2E entry ${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
   try {
     await signIn(page, EDITOR);
-    await page.goto(at("/news"));
+    await page.goto(at("/news?mode=shoot"));
     await page.getByRole("link", { name: "Add story" }).click();
     await page.waitForURL("**/news/new**");
 
-    await page.getByRole("radio", { name: /Shoot opportunity/ }).check();
+    // There is no archive-or-shoot choice: the form says one entry feeds both.
+    await expect(page.getByRole("radio")).toHaveCount(0);
+    await expect(page.getByText("One entry, two evaluations", { exact: false })).toBeVisible();
+
     await page.getByLabel(/Story headline/).fill(title);
     await page.getByLabel(/Source name/).fill("Radar E2E Wire");
     await page.getByRole("button", { name: "Add story" }).click();
 
-    // Entry lands on the new record, saying exactly what did and did not happen.
-    await expect(page.getByText("Story added to the radar")).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(/nobody was contacted/)).toBeVisible();
+    // Opened from the shoot mode, entry lands on the shoot path of the new
+    // record, saying exactly what did and did not happen.
+    await expect(page.getByText("Story added to the radar — once", { exact: false })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/Nobody was contacted/)).toBeVisible();
+    await expect(page.getByText("Shoot opportunity path", { exact: false }).first()).toBeVisible();
 
-    // And the record is on the shoot mode of the queue.
+    // The same story is on both modes of the queue.
     await page.goto(at("/news?mode=shoot"));
+    await expect(page.getByRole("link", { name: title })).toBeVisible();
+    await page.goto(at("/news?mode=archive"));
     await expect(page.getByRole("link", { name: title })).toBeVisible();
   } finally {
     await deleteStoriesTitled("Radar E2E entry ");
@@ -167,7 +233,7 @@ test("the headline is required before anything is written", async ({ page }) => 
 });
 
 test("watching is one motion from the queue", async ({ page }) => {
-  const id = await createStory(`Radar E2E watch ${Date.now()}`, "archive_match");
+  const fixture = await createStory(`Radar E2E watch ${Date.now()}`);
   try {
     await signIn(page);
     await page.goto(at("/news"));
@@ -179,15 +245,17 @@ test("watching is one motion from the queue", async ({ page }) => {
     });
     await expect(row.getByText("Watching")).toBeVisible();
   } finally {
-    await deleteStory(id);
+    await deleteStory(fixture);
   }
 });
 
-test("dismissing takes two motions and keeps the reason on the record", async ({ page }) => {
-  const id = await createStory(`Radar E2E dismiss ${Date.now()}`, "shoot_opportunity");
+test("dismissing one path takes two motions and leaves the other path standing", async ({
+  page,
+}) => {
+  const fixture = await createStory(`Radar E2E dismiss ${Date.now()}`);
   try {
     await signIn(page);
-    await page.goto(at(`/news/${id}`));
+    await page.goto(at(`/news/${fixture.shootId}`));
 
     await page.getByRole("button", { name: "Dismiss" }).click();
     // The first motion arms the decision; nothing is recorded yet.
@@ -199,22 +267,48 @@ test("dismissing takes two motions and keeps the reason on the record", async ({
 
     await expect(page.getByText("Set aside.", { exact: false })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Covered by the agency pool already.")).toBeVisible();
-    // A dismissed opportunity is not offered another decision.
+    // This path is closed...
     await expect(page.getByRole("button", { name: "Watch" })).toHaveCount(0);
+
+    // ...and the same story's archive path is exactly where it stood.
+    await page.getByRole("link", { name: "View the archive evaluation" }).click();
+    await page.waitForURL(`**/news/${fixture.archiveId}`);
+    await expect(page.getByText("Archive match path", { exact: false }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Watch" })).toBeVisible();
   } finally {
-    await deleteStory(id);
+    await deleteStory(fixture);
+  }
+});
+
+test("each path names itself and links to the other evaluation of the same story", async ({
+  page,
+}) => {
+  const fixture = await createStory(`Radar E2E sibling ${Date.now()}`);
+  try {
+    await signIn(page);
+    await page.goto(at(`/news/${fixture.archiveId}`));
+    await expect(page.getByText("Archive match path", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText("shared by both paths", { exact: false })).toBeVisible();
+
+    await page.getByRole("link", { name: "View the shoot evaluation" }).click();
+    await page.waitForURL(`**/news/${fixture.shootId}`);
+    await expect(page.getByText("Shoot opportunity path", { exact: false }).first()).toBeVisible();
+    // The canonical facts travelled with it: same headline, same source.
+    await expect(page.getByText("Radar E2E sibling", { exact: false }).first()).toBeVisible();
+  } finally {
+    await deleteStory(fixture);
   }
 });
 
 test("the detail screen states its suggestion, its window, and what is not built", async ({
   page,
 }) => {
-  const id = await createStory(`Radar E2E detail ${Date.now()}`, "archive_match", {
-    window_closes_at: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString(),
+  const fixture = await createStory(`Radar E2E detail ${Date.now()}`, {
+    paths: { window_closes_at: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString() },
   });
   try {
     await signIn(page);
-    await page.goto(at(`/news/${id}`));
+    await page.goto(at(`/news/${fixture.archiveId}`));
 
     await expect(page.getByText("66% · suggested")).toBeVisible();
     await expect(page.getByText("Arranged by the browser suite.")).toBeVisible();
@@ -225,12 +319,12 @@ test("the detail screen states its suggestion, its window, and what is not built
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "Build package" })).toBeDisabled();
   } finally {
-    await deleteStory(id);
+    await deleteStory(fixture);
   }
 });
 
 test("a read-only role reads everything and is offered nothing", async ({ page }) => {
-  const id = await createStory(`Radar E2E viewer ${Date.now()}`, "archive_match");
+  const fixture = await createStory(`Radar E2E viewer ${Date.now()}`);
   try {
     await signIn(page, VIEWER);
     await page.goto(at("/news"));
@@ -241,27 +335,27 @@ test("a read-only role reads everything and is offered nothing", async ({ page }
     await expect(page.getByRole("button", { name: "Watch" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Dismiss" })).toHaveCount(0);
 
-    await page.goto(at(`/news/${id}`));
+    await page.goto(at(`/news/${fixture.archiveId}`));
     await expect(page.getByText("Read-only for your role")).toBeVisible();
 
     // The entry route itself says why, rather than showing a doomed form.
     await page.goto(at("/news/new"));
     await expect(page.getByText(/can read the radar but not add stories/)).toBeVisible();
   } finally {
-    await deleteStory(id);
+    await deleteStory(fixture);
   }
 });
 
 test("the radar holds at this project's viewport without sideways scroll", async ({ page }) => {
-  const id = await createStory(`Radar E2E layout ${Date.now()}`, "archive_match");
+  const fixture = await createStory(`Radar E2E layout ${Date.now()}`);
   try {
     await signIn(page);
-    for (const path of ["/news", "/news?mode=shoot", `/news/${id}`, "/news/new"]) {
+    for (const path of ["/news", "/news?mode=shoot", `/news/${fixture.archiveId}`, "/news/new"]) {
       await page.goto(at(path));
       await page.waitForLoadState("networkidle");
       expect(await hasHorizontalOverflow(page), `${path} scrolls sideways`).toBe(false);
     }
   } finally {
-    await deleteStory(id);
+    await deleteStory(fixture);
   }
 });

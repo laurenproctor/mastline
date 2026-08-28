@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader, Panel } from "@/components/primitives";
-import { KIND_FOR_MODE, parseNewsMode } from "@/lib/news-radar";
+import { parseNewsMode } from "@/lib/news-radar";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
@@ -12,8 +12,9 @@ import { StoryForm } from "../_components/story-form";
  *
  * The first release of News Radar runs on stories entered by hand, so the
  * lifecycle can be proven with a live operator before any feed is connected.
- * Entering one creates a private workspace record and an activity event, and
- * nothing else: no contact, no shoot, no package, no send.
+ * One entry creates one canonical signal and both evaluation paths -- archive
+ * value and new-shoot potential -- plus one activity event, and nothing else:
+ * no contact, no shoot, no package, no send.
  */
 export default async function NewStoryPage({
   params,
@@ -35,8 +36,8 @@ export default async function NewStoryPage({
   const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
 
-  // Arriving from a mode preselects the matching kind. The operator can still
-  // switch; the query is a convenience, not a decision.
+  // The mode the form was opened from decides only which of the two freshly
+  // created paths opens afterwards. Both always exist.
   const mode = parseNewsMode((await searchParams).mode);
 
   // A role that cannot add stories is told so, rather than being shown a form
@@ -71,14 +72,14 @@ export default async function NewStoryPage({
     <AppShell active="News radar" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
-          description="Record a story you are following, and whether it can sell work you already own or justifies a new shoot."
+          description="Enter a story once. It is evaluated for both archive value — photographs you already own — and new-shoot potential, each decided independently."
           eyebrow="Manual entry · live feeds not yet connected"
           title="Add story"
         />
 
         <Panel title="The story">
           <div className="panel-body">
-            <StoryForm initialKind={KIND_FOR_MODE[mode]} workspaceSlug={workspaceSlug} />
+            <StoryForm mode={mode} workspaceSlug={workspaceSlug} />
           </div>
         </Panel>
 

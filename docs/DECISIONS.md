@@ -224,28 +224,62 @@ Item numbers below are permanent. Resolved items keep their number so older note
 
 ## News Radar foundation
 
-- **Two first-class kinds on one table, not two tables or two screens.**
-  `archive_match` and `shoot_opportunity` are two modes of one radar: one
-  lifecycle, one permission model, one queue component, and a story may exist
-  once as each because connecting it to owned work and covering it fresh are
-  different jobs. The mode is URL state (`?mode=archive`, `?mode=shoot`), so a
-  view can be linked and bookmarked and two tabs cannot disagree about it.
-- **Manual entry first.** The first release runs on stories typed by an
-  operator, so the lifecycle is proven with a live operator before any feed is
-  connected. Only the headline and the kind are required — the record is
-  private, and a photographer between jobs should not be blocked on facts they
-  do not have.
+- **One canonical signal, two evaluation paths.** The radar receives one news
+  signal and evaluates it through two independent commercial paths:
+  `one news signal → archive opportunity path + shoot opportunity path`.
+  `news_signals` owns the source facts once; `opportunities` is one path per
+  kind, unique on (signal, kind). The first cut put the kind and the facts on
+  one row, which meant entering the same article twice to receive both
+  evaluations and keeping two editable copies of its facts — corrected before
+  the model became permanent. The Archive and Shoot tabs remain first-class
+  modes, URL-addressed (`?mode=archive`, `?mode=shoot`), but they are two
+  evaluations of the same story, not two entered copies.
+- **The superseded migration was replaced, not forwarded.** Its file existed
+  only on the unmerged PR branch and was verified unapplied on every shared
+  database, so rewriting was safe; the replacement takes a version AFTER the
+  in-flight import-queue chain so no database can receive it out of order. The
+  legacy source columns on `opportunities` were dropped rather than
+  deprecated: the table had never been written by application code, and a
+  column that still accepts writes is how two copies drift apart.
+- **Organization consistency is a composite foreign key**, (news_signal_id,
+  organization_id) referencing the signal's (id, organization_id), so a path
+  in workspace A can never reference a signal in workspace B whatever the
+  application does. Proven by a test that tries as an authenticated member.
+- **Creation is one SECURITY INVOKER function.** `create_news_story` inserts
+  the signal, both paths, and the entry's activity event in one transaction —
+  a failure leaves nothing behind — with RLS fully in force: authorship is
+  `auth.uid()` pinned by the insert policy, execute is revoked from PUBLIC and
+  anon and granted to authenticated only, and the search path is empty.
+  A repeated organization/source-URL (including the loser of a race, caught as
+  unique_violation) is answered with the existing records as a classified
+  "duplicate", never a second copy.
+- **Grants are stated exhaustively because platform defaults flip.** The local
+  image granted full CRUD to authenticated on the new table, which silently
+  made a column-scoped update grant decorative — grants are additive. The
+  migration revokes everything from authenticated and anon first, then grants
+  select, insert, and update on exactly the source-fact columns, so
+  `created_by`, `organization_id`, and the timestamps cannot be rewritten by
+  any client and a signal cannot be client-deleted at all.
+- **Manual entry first, entered once.** The first release runs on stories
+  typed by an operator, so the lifecycle is proven with a live operator before
+  any feed is connected. Only the headline is required, and there is no
+  archive-or-shoot choice on the form: both evaluations always come into
+  existence together, and the mode the form was opened from only picks which
+  path the redirect lands on.
 - **The operator's judgement is recorded the way a machine's will be.** Signal,
   confidence, and basis are one vocabulary whether a person or a matching pass
   wrote them, and a check constraint refuses a confidence without a stated
   basis. When live matching arrives, its output lands in the same labelled
   fields instead of a parallel set of "real" ones.
-- **Dismissed and expired are terminal.** A dismissed or expired opportunity
-  never slides back to looking new; revisiting a story is a fresh, deliberate
-  entry. Dismissing therefore takes a second motion, with the optional reason
-  kept on the record; watching is one motion because everything after it is
-  still open. Repeating a decision is answered with the record as it stands —
-  no error, no duplicate event.
+- **The paths are decided independently, and dismissed and expired are
+  terminal per path.** Dismissing the archive path leaves the shoot path
+  exactly where it stood, and vice versa; a dismissed or expired path never
+  slides back to looking new. Dismissing therefore takes a second motion, with
+  the optional reason kept on the record; watching is one motion because
+  everything after it is still open. Repeating a decision is answered with the
+  record as it stands — no error, no duplicate event. The activity history
+  distinguishes the story's entry (a `news_signal` event) from each path's
+  decisions (`opportunity` events naming their path).
 - **`acted` is unreachable from a browser in this stage.** The Server Actions
   accept only watch and dismiss; `markOpportunityActed` exists in the data
   layer for the shoot/package handoffs of the next stage, where there will be
@@ -254,9 +288,10 @@ Item numbers below are permanent. Resolved items keep their number so older note
   the detail screen draws that region as explicitly not built, with Build
   Package disabled. Asset ids are deliberately kept out of `suggestion_basis`;
   matching will add a relational opportunity-assets table.
-- **Deduplication is per kind on the source URL** — the only stable identity a
-  hand-entered story has. A story without a URL cannot be deduplicated and is
-  not refused for it.
+- **Deduplication belongs to the canonical signal**, unique per organization
+  on the source URL — the only stable identity a hand-entered story has. A
+  story without a URL cannot be deduplicated and is not refused for it, and
+  different workspaces may of course hold the same story.
 - **Capabilities split read / write / review** (`opportunity.*`), all mapped to
   the existing owner-and-editor `opportunities_write` policy. The split exists
   so the interface can say which thing a role cannot do; the database policy

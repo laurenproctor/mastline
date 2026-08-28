@@ -8,12 +8,7 @@
  * them.
  */
 
-import {
-  OPPORTUNITY_KINDS,
-  OPPORTUNITY_SIGNALS,
-  type OpportunityKind,
-  type OpportunitySignal,
-} from "./domain";
+import { OPPORTUNITY_SIGNALS, type OpportunitySignal } from "./domain";
 import {
   type OnboardingGoal,
   type Specialty,
@@ -396,7 +391,6 @@ export function parseStagedPhotographs(form: FormData): StagedPhotographsResult 
 
 export interface ManualStoryInput {
   title: string;
-  kind: OpportunityKind;
   sourceName?: string;
   sourceUrl?: string;
   sourcePublishedAt?: string;
@@ -433,10 +427,6 @@ function parseSourceUrl(value: string | undefined): string | undefined | null {
   return url.href;
 }
 
-export function isOpportunityKind(value: string): value is OpportunityKind {
-  return (OPPORTUNITY_KINDS as readonly string[]).includes(value);
-}
-
 export function isOpportunitySignal(value: string): value is OpportunitySignal {
   return (OPPORTUNITY_SIGNALS as readonly string[]).includes(value);
 }
@@ -444,10 +434,12 @@ export function isOpportunitySignal(value: string): value is OpportunitySignal {
 /**
  * A manually entered News Radar story.
  *
- * Only the headline and the opportunity kind are required: this creates a
- * private workspace record, and a photographer typing between jobs should not
- * be blocked on facts they do not have yet. Everything else is optional and
- * checked only for shape.
+ * There is no kind to choose: one entry creates the canonical signal and BOTH
+ * evaluation paths, because deciding whether a story serves the archive and
+ * whether it justifies a shoot are the radar's job, not a form field's. Only
+ * the headline is required -- this creates a private workspace record, and a
+ * photographer typing between jobs should not be blocked on facts they do not
+ * have yet. Everything else is optional and checked only for shape.
  *
  * One rule crosses fields, and the database repeats it as a check constraint:
  * a confidence may not arrive without a stated basis. A bare percentage is a
@@ -459,10 +451,6 @@ export function parseManualStory(form: FormData): ParseResult<ManualStoryInput> 
   const title = text(form, "title");
   if (!title) errors.title = "Give the story a headline.";
   else if (title.length > MAX_TITLE) errors.title = `Keep this under ${MAX_TITLE} characters.`;
-
-  const kindRaw = text(form, "kind");
-  const kind = isOpportunityKind(kindRaw) ? kindRaw : null;
-  if (!kind) errors.kind = "Choose whether this is an archive match or a shoot opportunity.";
 
   const signalRaw = text(form, "signal") || "watch";
   const signal = isOpportunitySignal(signalRaw) ? signalRaw : null;
@@ -520,7 +508,6 @@ export function parseManualStory(form: FormData): ParseResult<ManualStoryInput> 
     ok: true,
     value: {
       title,
-      kind: kind as OpportunityKind,
       sourceName,
       sourceUrl: sourceUrl ?? undefined,
       sourcePublishedAt: sourcePublishedAt ?? undefined,

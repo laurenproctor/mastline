@@ -125,8 +125,8 @@ fails the build if an unscoped one appears.
 | --- | --- |
 | `/<workspace>/work` | Daily action queue and business pulse |
 | `/<workspace>/news` | News Radar: Archive Matches and Shoot Opportunities, chosen by `?mode=` |
-| `/<workspace>/news/new` | Manual story entry |
-| `/<workspace>/news/<opportunityId>` | One opportunity: story facts, suggestion, lifecycle |
+| `/<workspace>/news/new` | Manual story entry: one submission, both evaluation paths |
+| `/<workspace>/news/<opportunityId>` | One evaluation path: shared story facts, this path's suggestion and lifecycle, link to the other path |
 | `/<workspace>/shoots/new` | Fast shoot intake |
 | `/<workspace>/shoots` | All shoots and their progress |
 | `/<workspace>/shoots/<shootId>` | Shoot workspace |
@@ -301,18 +301,23 @@ a checkout that cannot work.
   viewed. It used to fetch every asset and filter in JavaScript.
 
 **News Radar foundation** — the mock layer is gone; the radar reads real
-records. One opportunity table carries two first-class kinds — `archive_match`
-(current stories that may reactivate owned work) and `shoot_opportunity`
-(current stories or scheduled events that may justify a new shoot) — as two
-modes of one screen, addressed by `?mode=archive` / `?mode=shoot`. Stories are
-entered by hand: live monitoring is not connected yet, archive matching is not
-implemented yet (an archive match holds no asset list, and Build Package stays
-unavailable), and the story-to-shoot handoff is not connected yet. Watching and
-dismissing are recorded operator decisions with the reason on the record;
-dismissed and expired are terminal. Every signal and confidence is a labelled
-suggestion with a stated basis — the database refuses a confidence without one
-— and no outbound action is automatic: entering, watching, or dismissing a
-story contacts nobody, creates nothing, and sends nothing.
+records shaped as `one news signal → archive path + shoot path`. The
+canonical story lives once in `news_signals` (deduplicated per workspace on
+the source URL); `opportunities` holds one evaluation path of each kind —
+`archive_match` (can it reactivate owned work?) and `shoot_opportunity` (does
+it justify a new shoot?) — shown as two modes of one screen, addressed by
+`?mode=archive` / `?mode=shoot`. A story is entered ONCE, with no
+archive-or-shoot choice: one atomic submission (a SECURITY INVOKER function,
+with RLS fully in force) creates the signal and both paths, and a repeated
+URL is answered with the existing records. The paths are decided
+independently — dismissing one never touches the other — with the reason on
+the record; dismissed and expired are terminal. Live monitoring is not
+connected yet, archive matching is not implemented yet (an archive path holds
+no asset list, and Build Package stays unavailable), and the story-to-shoot
+handoff is not connected yet. Every signal and confidence is a labelled
+suggestion with a stated basis — the database refuses a confidence without
+one — and no outbound action is automatic: entering, watching, or dismissing
+contacts nobody, creates nothing, and sends nothing.
 
 Not yet built: outbound delivery to a buyer's systems (Mastline records a
 dispatch, it does not transmit), and rights triage actions. See

@@ -382,33 +382,45 @@ export interface RightsMatch {
 }
 
 /**
- * One story on the News Radar, mirroring public.opportunities.
+ * The canonical news signal, mirroring public.news_signals.
  *
- * The fields fall into three groups, and the grouping is the contract:
+ * One story, owned once. These are source facts -- observed or typed, never
+ * invented by the system -- and both evaluation paths read them from here, so
+ * they cannot diverge between the Archive and Shoot views.
+ */
+export interface NewsSignal {
+  readonly id: Id;
+  readonly organizationId: Id;
+  readonly title: string;
+  readonly sourceName?: string;
+  readonly sourceUrl?: string;
+  readonly sourcePublishedAt?: IsoTimestamp;
+  readonly summary?: string;
+  /** Who typed the story. Absent on machine-ingested and historical rows. */
+  readonly createdBy?: Id;
+  readonly createdAt: IsoTimestamp;
+  readonly updatedAt: IsoTimestamp;
+}
+
+/**
+ * One evaluation path of a news signal, mirroring public.opportunities.
  *
- *   1. Source facts -- title, source, publication time, summary. Observed or
- *      typed, never invented by the system.
- *   2. Inference -- signal, confidence, suggestionBasis. Claims about why the
- *      story matters, always rendered as labelled suggestions with their
- *      basis, never as facts.
- *   3. Lifecycle -- status, window, dismissal reason, acted time, authorship.
- *      Operator decisions and record-keeping.
+ * A signal supports one path of each kind -- archive_match and
+ * shoot_opportunity -- and the paths are decided independently: dismissing
+ * one leaves the other exactly where it stood. Everything here is either
+ * labelled inference (signal, confidence, basis -- claims with a stated
+ * reason, never facts) or an operator's lifecycle decision. The story's
+ * facts live on the NewsSignal.
  *
- * Matched assets are deliberately absent: an archive match carries no asset
+ * Matched assets are deliberately absent: an archive path carries no asset
  * list until the relational opportunity-assets model exists. Nothing here may
  * pretend that matching has run.
  */
 export interface Opportunity {
   readonly id: Id;
   readonly organizationId: Id;
+  readonly newsSignalId: Id;
   readonly kind: OpportunityKind;
-
-  // Source facts.
-  readonly title: string;
-  readonly sourceName?: string;
-  readonly sourceUrl?: string;
-  readonly sourcePublishedAt?: IsoTimestamp;
-  readonly summary?: string;
 
   // Inference. A confidence never appears without its stated basis.
   readonly signal: OpportunitySignal;
@@ -422,8 +434,6 @@ export interface Opportunity {
   readonly windowClosesAt?: IsoTimestamp;
   readonly dismissalReason?: string;
   readonly actedAt?: IsoTimestamp;
-  /** Who entered the story. Absent on rows no person typed. */
-  readonly createdBy?: Id;
   readonly createdAt: IsoTimestamp;
   readonly updatedAt: IsoTimestamp;
 }

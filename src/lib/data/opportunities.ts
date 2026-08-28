@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   Id,
+  NewsSignal,
   Opportunity,
   OpportunityKind,
   OpportunitySignal,
@@ -13,37 +14,50 @@ import { isRecordId } from "../validation";
 import { recordEventWith } from "./activity";
 
 /**
- * The News Radar record: stories, and what a workspace decided to do about
- * them.
+ * The News Radar record: one canonical news signal, evaluated through two
+ * independent commercial paths.
  *
  * Three things stay separate here, on the same principle as rights triage:
  *
- *   1. Source facts -- headline, source, publication time, summary. Typed by
- *      an operator in this release; written by an ingestion pass later. Never
- *      edited by a lifecycle decision.
- *   2. Inference -- signal, confidence, and the stated basis. Suggestions with
- *      a reason attached, or absent. Never silently derived.
- *   3. The operator's decision -- status, dismissal reason, acted time. That
- *      is all the lifecycle functions below write.
+ *   1. Source facts -- the news signal. Typed once by an operator in this
+ *      release; written by an ingestion pass later. Never edited by a
+ *      lifecycle decision, and never copied onto a path.
+ *   2. Inference -- each path's signal strength, confidence, and stated
+ *      basis. Suggestions with a reason attached, or absent.
+ *   3. The operator's decisions -- each path's status, dismissal reason, and
+ *      acted time, decided independently of the other path.
  *
  * Nothing in this module contacts a buyer, creates a shoot, builds a package,
- * or sends anything anywhere. Acting on an opportunity is a deliberate,
- * separate operator action, and in this stage even `markOpportunityActed`
- * only records that a person said they acted.
+ * or sends anything anywhere. Even `markOpportunityActed` only records that a
+ * person said they acted; the real handoffs arrive in a later stage.
  */
 
-const OPPORTUNITY_COLUMNS =
-  "id, organization_id, opportunity_kind, title, source_name, source_url, source_published_at, summary, signal, confidence, suggestion_basis, status, window_closes_at, dismissal_reason, acted_at, created_by, created_at, updated_at";
+const SIGNAL_COLUMNS =
+  "id, organization_id, title, source_name, source_url, source_published_at, summary, created_by, created_at, updated_at";
 
-interface OpportunityRow {
+const PATH_COLUMNS =
+  "id, organization_id, news_signal_id, opportunity_kind, signal, confidence, suggestion_basis, status, window_closes_at, dismissal_reason, acted_at, created_at, updated_at";
+
+const PATH_WITH_SIGNAL = `${PATH_COLUMNS}, news_signals!inner(${SIGNAL_COLUMNS})`;
+
+interface SignalRow {
   id: string;
   organization_id: string;
-  opportunity_kind: string;
   title: string;
   source_name: string | null;
   source_url: string | null;
   source_published_at: string | null;
   summary: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PathRow {
+  id: string;
+  organization_id: string;
+  news_signal_id: string;
+  opportunity_kind: string;
   signal: string;
   confidence: number | string | null;
   suggestion_basis: Record<string, unknown> | null;
@@ -51,21 +65,32 @@ interface OpportunityRow {
   window_closes_at: string | null;
   dismissal_reason: string | null;
   acted_at: string | null;
-  created_by: string | null;
   created_at: string;
   updated_at: string;
+  news_signals?: SignalRow;
 }
 
-function toOpportunity(row: OpportunityRow): Opportunity {
+function toSignal(row: SignalRow): NewsSignal {
   return {
     id: row.id,
     organizationId: row.organization_id,
-    kind: row.opportunity_kind as OpportunityKind,
     title: row.title,
     sourceName: row.source_name ?? undefined,
     sourceUrl: row.source_url ?? undefined,
     sourcePublishedAt: row.source_published_at ?? undefined,
     summary: row.summary ?? undefined,
+    createdBy: row.created_by ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toPath(row: PathRow): Opportunity {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    newsSignalId: row.news_signal_id,
+    kind: row.opportunity_kind as OpportunityKind,
     signal: row.signal as OpportunitySignal,
     confidence: row.confidence === null ? undefined : Number(row.confidence),
     suggestionBasis:
@@ -76,10 +101,19 @@ function toOpportunity(row: OpportunityRow): Opportunity {
     windowClosesAt: row.window_closes_at ?? undefined,
     dismissalReason: row.dismissal_reason ?? undefined,
     actedAt: row.acted_at ?? undefined,
-    createdBy: row.created_by ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/** One evaluation path, carrying the story it evaluates. */
+export interface RadarOpportunity extends Opportunity {
+  readonly story: NewsSignal;
+}
+
+function toRadarOpportunity(row: PathRow): RadarOpportunity {
+  if (!row.news_signals) throw new Error("An opportunity path arrived without its news signal.");
+  return { ...toPath(row), story: toSignal(row.news_signals) };
 }
 
 /** Whether the useful window has already closed. Derived, never stored. */
@@ -93,25 +127,32 @@ export async function listOpportunities(
   organizationId: Id,
   filter: { kind?: OpportunityKind } = {},
   client?: SupabaseClient,
-): Promise<readonly Opportunity[]> {
+): Promise<readonly RadarOpportunity[]> {
   const supabase = client ?? (await createClient());
   let query = supabase
     .from("opportunities")
-    .select(OPPORTUNITY_COLUMNS)
-    .eq("organization_id", organizationId)
-    .order("source_published_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .select(PATH_WITH_SIGNAL)
+    .eq("organization_id", organizationId);
 
   if (filter.kind) query = query.eq("opportunity_kind", filter.kind);
 
   const { data, error } = await query;
   if (error) throw new Error(`Could not load the news radar: ${error.message}`);
 
-  return (data ?? []).map((row) => toOpportunity(row as unknown as OpportunityRow));
+  // Newest story first. Sorted here rather than in SQL because the ordering
+  // key lives on the joined signal, and at manual-entry volumes a workspace's
+  // radar is small.
+  return (data ?? [])
+    .map((row) => toRadarOpportunity(row as unknown as PathRow))
+    .sort((a, b) => {
+      const aWhen = a.story.sourcePublishedAt ?? a.story.createdAt;
+      const bWhen = b.story.sourcePublishedAt ?? b.story.createdAt;
+      return bWhen.localeCompare(aWhen) || b.createdAt.localeCompare(a.createdAt);
+    });
 }
 
 /**
- * One opportunity, scoped to the workspace that asked.
+ * One evaluation path, scoped to the workspace that asked.
  *
  * The organization filter is applied in SQL as well as by row level security,
  * and a malformed id is answered as "no such record" rather than a database
@@ -122,19 +163,42 @@ export async function getOpportunity(
   organizationId: Id,
   opportunityId: Id,
   client?: SupabaseClient,
-): Promise<Opportunity | null> {
+): Promise<RadarOpportunity | null> {
   if (!isRecordId(opportunityId)) return null;
 
   const supabase = client ?? (await createClient());
   const { data, error } = await supabase
     .from("opportunities")
-    .select(OPPORTUNITY_COLUMNS)
+    .select(PATH_WITH_SIGNAL)
     .eq("organization_id", organizationId)
     .eq("id", opportunityId)
     .maybeSingle();
 
   if (error) throw new Error(`Could not load the opportunity: ${error.message}`);
-  return data ? toOpportunity(data as unknown as OpportunityRow) : null;
+  return data ? toRadarOpportunity(data as unknown as PathRow) : null;
+}
+
+/**
+ * The same story's other evaluation, for the "view the other path" link.
+ * Null when no counterpart exists -- historical signals may carry one path.
+ */
+export async function getSiblingPath(
+  organizationId: Id,
+  newsSignalId: Id,
+  excludingOpportunityId: Id,
+  client?: SupabaseClient,
+): Promise<Opportunity | null> {
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("opportunities")
+    .select(PATH_COLUMNS)
+    .eq("organization_id", organizationId)
+    .eq("news_signal_id", newsSignalId)
+    .neq("id", excludingOpportunityId)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load the story's other path: ${error.message}`);
+  return data ? toPath(data as unknown as PathRow) : null;
 }
 
 export type OpportunityFailure =
@@ -155,15 +219,14 @@ export class OpportunityError extends Error {
   }
 }
 
-export interface CreateManualOpportunityInput {
+export interface CreateManualStoryInput {
   readonly organizationId: Id;
-  readonly actorId: Id;
-  readonly kind: OpportunityKind;
   readonly title: string;
   readonly sourceName?: string;
   readonly sourceUrl?: string;
   readonly sourcePublishedAt?: string;
   readonly summary?: string;
+  /** Seeds BOTH paths; each is refined and decided independently afterwards. */
   readonly signal: OpportunitySignal;
   readonly windowClosesAt?: string;
   readonly suggestionBasis?: string;
@@ -173,78 +236,70 @@ export interface CreateManualOpportunityInput {
   readonly client?: SupabaseClient;
 }
 
-const KIND_LABELS: Record<OpportunityKind, string> = {
-  archive_match: "an archive match",
-  shoot_opportunity: "a shoot opportunity",
-};
+export interface CreateManualStoryResult {
+  /** "created", or "duplicate" when the workspace already holds this story. */
+  readonly outcome: "created" | "duplicate";
+  readonly signalId: Id;
+  readonly archiveOpportunityId?: Id;
+  readonly shootOpportunityId?: Id;
+}
 
 /**
  * Enter one story by hand.
  *
- * This creates a private workspace record and writes one activity event.
- * It contacts nobody, creates no shoot, builds no package, and sends nothing.
+ * One submission, one canonical signal, both evaluation paths -- atomically,
+ * through the SECURITY INVOKER `create_news_story` function, so a failure
+ * anywhere leaves nothing behind and row level security applies to every
+ * insert exactly as it would to a direct write. Authorship comes from
+ * `auth.uid()` inside the database, not from anything a browser sent.
  *
- * The same story may be entered once per kind -- the two modes are different
- * jobs -- and a second entry of the same kind with the same source URL is
- * refused as a duplicate rather than quietly doubled.
+ * Entering the same source URL again is answered with the records as they
+ * stand -- outcome "duplicate", carrying the existing ids -- rather than with
+ * a second copy of the story.
+ *
+ * This contacts nobody, creates no shoot, builds no package, and sends
+ * nothing.
  */
-export async function createManualOpportunity(
-  input: CreateManualOpportunityInput,
-): Promise<Opportunity> {
+export async function createManualStory(
+  input: CreateManualStoryInput,
+): Promise<CreateManualStoryResult> {
   const supabase = input.client ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("opportunities")
-    .insert({
-      organization_id: input.organizationId,
-      opportunity_kind: input.kind,
-      title: input.title,
-      source_name: input.sourceName ?? null,
-      source_url: input.sourceUrl ?? null,
-      source_published_at: input.sourcePublishedAt ?? null,
-      summary: input.summary ?? null,
-      signal: input.signal,
-      confidence: input.confidence ?? null,
-      suggestion_basis: input.suggestionBasis ? { summary: input.suggestionBasis } : {},
-      status: "new",
-      window_closes_at: input.windowClosesAt ?? null,
-      created_by: input.actorId,
-    })
-    .select(OPPORTUNITY_COLUMNS);
+  const { data, error } = await supabase.rpc("create_news_story", {
+    target_organization: input.organizationId,
+    story_title: input.title,
+    story_source_name: input.sourceName ?? null,
+    story_source_url: input.sourceUrl ?? null,
+    story_published_at: input.sourcePublishedAt ?? null,
+    story_summary: input.summary ?? null,
+    path_signal: input.signal,
+    path_confidence: input.confidence ?? null,
+    path_basis: input.suggestionBasis ?? null,
+    path_window_closes_at: input.windowClosesAt ?? null,
+  });
 
   if (error) {
-    // Unique violation on (organization, kind, source URL).
-    if (error.code === "23505") {
-      throw new OpportunityError(
-        "duplicate",
-        `That story is already on the radar as ${KIND_LABELS[input.kind]}. Open it from the queue instead of entering it twice.`,
-      );
-    }
-    throw new OpportunityError("denied", "That story could not be recorded.");
-  }
-
-  const created = (data ?? [])[0] as unknown as OpportunityRow | undefined;
-  if (!created) {
-    // Row level security answers a forbidden insert with no rows.
+    // Never the driver's text: it names columns, constraints, and policies.
     throw new OpportunityError("denied", "Your role may not add stories to the radar.");
   }
 
-  const saved = toOpportunity(created);
+  const result = data as {
+    outcome?: string;
+    signal_id?: string;
+    archive_opportunity_id?: string | null;
+    shoot_opportunity_id?: string | null;
+  } | null;
 
-  await recordEventWith(supabase, {
-    organizationId: input.organizationId,
-    actorId: input.actorId,
-    entityType: "opportunity",
-    entityId: saved.id,
-    action: "opportunity.created",
-    data: {
-      summary: `Story entered by hand as ${KIND_LABELS[input.kind]}`,
-      kind: input.kind,
-      sourceRecorded: Boolean(input.sourceUrl),
-    },
-  });
+  if (!result?.signal_id || (result.outcome !== "created" && result.outcome !== "duplicate")) {
+    throw new OpportunityError("denied", "That story could not be recorded.");
+  }
 
-  return saved;
+  return {
+    outcome: result.outcome,
+    signalId: result.signal_id,
+    archiveOpportunityId: result.archive_opportunity_id ?? undefined,
+    shootOpportunityId: result.shoot_opportunity_id ?? undefined,
+  };
 }
 
 /**
@@ -266,9 +321,10 @@ export function isOpportunityDecision(value: string): value is OpportunityDecisi
  * Which decisions may follow which state.
  *
  * `acted`, `dismissed`, and `expired` are terminal: a record of what happened
- * to a story is not quietly rewritten, and in particular a dismissed or
- * expired opportunity can never slide back to looking new. Revisiting one is
- * a fresh entry of the story, made deliberately.
+ * to an evaluation is not quietly rewritten, and in particular a dismissed or
+ * expired path can never slide back to looking new. The OTHER path of the
+ * same story is untouched by any of this -- the two are decided
+ * independently.
  */
 const ALLOWED_TRANSITIONS: Record<OpportunityStatus, readonly OpportunityDecision[]> = {
   new: ["watching", "dismissed", "acted"],
@@ -303,21 +359,24 @@ const DECISION_SUMMARIES: Record<OpportunityDecision, string> = {
   acted: "Recorded as acted on",
 };
 
+const KIND_EVENT_LABELS: Record<OpportunityKind, string> = {
+  archive_match: "archive path",
+  shoot_opportunity: "shoot path",
+};
+
 /**
- * Record one lifecycle decision.
+ * Record one lifecycle decision on one path.
  *
- * Repeating a decision is safe: asking to watch an opportunity that is already
+ * Repeating a decision is safe: asking to watch a path that is already
  * watching (or dismiss a dismissed one, or act on an acted one) returns the
- * record as it stands, writes nothing, and logs nothing -- the decision is
- * already on the record and a second identical row would be noise. Every other
- * disallowed move is refused out loud.
- *
- * The update is conditional on the `updated_at` that was just read, so two
- * operators working the same radar cannot silently overwrite one another.
+ * record as it stands, writes nothing, and logs nothing. Every other
+ * disallowed move is refused out loud. The update is conditional on the
+ * `updated_at` that was just read, so two operators working the same radar
+ * cannot silently overwrite one another.
  */
 export async function updateOpportunityStatus(
   input: OpportunityDecisionInput & { readonly decision: OpportunityDecision },
-): Promise<Opportunity> {
+): Promise<RadarOpportunity> {
   const { organizationId, actorId, opportunityId, decision } = input;
   const supabase = input.client ?? (await createClient());
 
@@ -355,13 +414,13 @@ export async function updateOpportunityStatus(
     .eq("organization_id", organizationId)
     .eq("id", opportunityId)
     .eq("updated_at", current.updatedAt)
-    .select(OPPORTUNITY_COLUMNS);
+    .select(PATH_WITH_SIGNAL);
 
   if (error) {
     throw new OpportunityError("denied", "That decision could not be recorded.");
   }
 
-  const updated = (data ?? [])[0] as unknown as OpportunityRow | undefined;
+  const updated = (data ?? [])[0] as unknown as PathRow | undefined;
   if (!updated) {
     /*
      * Zero rows is a permission refusal or a race, and the operator deserves
@@ -382,8 +441,10 @@ export async function updateOpportunityStatus(
     );
   }
 
-  const saved = toOpportunity(updated);
+  const saved = toRadarOpportunity(updated);
 
+  // The event belongs to the PATH, so the history can say which evaluation
+  // was decided; the signal's own history holds only its entry and edits.
   await recordEventWith(supabase, {
     organizationId,
     actorId,
@@ -391,7 +452,9 @@ export async function updateOpportunityStatus(
     entityId: opportunityId,
     action: `opportunity.${decision}`,
     data: {
-      summary: DECISION_SUMMARIES[decision],
+      summary: `${DECISION_SUMMARIES[decision]} (${KIND_EVENT_LABELS[saved.kind]})`,
+      newsSignalId: saved.newsSignalId,
+      kind: saved.kind,
       previousStatus: current.status,
       status: decision,
       reasonRecorded: reason !== null,
@@ -401,23 +464,28 @@ export async function updateOpportunityStatus(
   return saved;
 }
 
-/** Hold an opportunity on watch. Nothing is scheduled and nothing re-checks it. */
-export async function watchOpportunity(input: OpportunityDecisionInput): Promise<Opportunity> {
+/** Hold a path on watch. Nothing is scheduled and nothing re-checks it. */
+export async function watchOpportunity(input: OpportunityDecisionInput): Promise<RadarOpportunity> {
   return updateOpportunityStatus({ ...input, decision: "watching" });
 }
 
-/** Set an opportunity aside, with an optional reason on the record. */
-export async function dismissOpportunity(input: OpportunityDecisionInput): Promise<Opportunity> {
+/** Set a path aside, with an optional reason on the record. */
+export async function dismissOpportunity(
+  input: OpportunityDecisionInput,
+): Promise<RadarOpportunity> {
   return updateOpportunityStatus({ ...input, decision: "dismissed" });
 }
 
 /**
- * Record that the operator acted on this opportunity.
+ * Record that the operator acted on this path.
  *
  * In this release the record is the whole act: nothing is created, sent, or
- * contacted from here. The shoot and package handoffs arrive in a later stage
- * and will call this after their own deliberate confirmation.
+ * contacted from here, and no browser control reaches this. The shoot and
+ * package handoffs arrive in a later stage and will call this after their own
+ * deliberate confirmation succeeds.
  */
-export async function markOpportunityActed(input: OpportunityDecisionInput): Promise<Opportunity> {
+export async function markOpportunityActed(
+  input: OpportunityDecisionInput,
+): Promise<RadarOpportunity> {
   return updateOpportunityStatus({ ...input, decision: "acted" });
 }

@@ -8,19 +8,17 @@ function form(entries: Record<string, string>): FormData {
 }
 
 /**
- * Manual story entry. Only the headline and the kind are required -- the
- * record is private -- and the one cross-field rule is that a confidence may
+ * Manual story entry. One entry, no kind to choose -- both evaluation paths
+ * come into existence together -- and only the headline is required, because
+ * the record is private. The one cross-field rule is that a confidence may
  * not arrive without a stated basis.
  */
 describe("parseManualStory", () => {
-  it("accepts the minimum: a headline and a kind", () => {
-    const parsed = parseManualStory(
-      form({ title: "Premiere moved to Friday", kind: "archive_match" }),
-    );
+  it("accepts the minimum: a headline", () => {
+    const parsed = parseManualStory(form({ title: "Premiere moved to Friday" }));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.value.title).toBe("Premiere moved to Friday");
-    expect(parsed.value.kind).toBe("archive_match");
     // Absent signal defaults to the quietest one rather than failing.
     expect(parsed.value.signal).toBe("watch");
     expect(parsed.value.sourceUrl).toBeUndefined();
@@ -28,26 +26,23 @@ describe("parseManualStory", () => {
   });
 
   it("requires the headline", () => {
-    const parsed = parseManualStory(form({ kind: "shoot_opportunity" }));
+    const parsed = parseManualStory(form({ summary: "A story with no headline" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.errors.title).toBeTruthy();
   });
 
-  it("requires a kind it recognises", () => {
-    for (const kind of ["", "both", "ARCHIVE_MATCH", "archive"]) {
-      const parsed = parseManualStory(form({ title: "A story", kind }));
-      expect(parsed.ok).toBe(false);
-      if (parsed.ok) return;
-      expect(parsed.errors.kind).toBeTruthy();
-    }
+  it("carries no archive-or-shoot choice: a stray kind field changes nothing", () => {
+    const parsed = parseManualStory(form({ title: "A story", kind: "archive_match" }));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect("kind" in parsed.value).toBe(false);
   });
 
   it("accepts a full record and converts the confidence to a fraction", () => {
     const parsed = parseManualStory(
       form({
         title: "Gallery opening on the South Bank",
-        kind: "shoot_opportunity",
         sourceName: "Evening Standard",
         sourceUrl: "https://example.com/story",
         sourcePublishedAt: "2026-08-20T10:30",
@@ -68,7 +63,7 @@ describe("parseManualStory", () => {
 
   it("refuses a source that is not an http(s) address", () => {
     for (const sourceUrl of ["not a url", "javascript:alert(1)", "ftp://example.com/x"]) {
-      const parsed = parseManualStory(form({ title: "A story", kind: "archive_match", sourceUrl }));
+      const parsed = parseManualStory(form({ title: "A story", sourceUrl }));
       expect(parsed.ok, sourceUrl).toBe(false);
       if (parsed.ok) return;
       expect(parsed.errors.sourceUrl).toBeTruthy();
@@ -76,9 +71,7 @@ describe("parseManualStory", () => {
   });
 
   it("refuses a confidence with nothing behind it", () => {
-    const parsed = parseManualStory(
-      form({ title: "A story", kind: "archive_match", confidence: "80" }),
-    );
+    const parsed = parseManualStory(form({ title: "A story", confidence: "80" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.errors.suggestionBasis).toMatch(/basis/i);
@@ -87,7 +80,7 @@ describe("parseManualStory", () => {
   it("refuses a confidence outside 0 to 100", () => {
     for (const confidence of ["-1", "101", "many"]) {
       const parsed = parseManualStory(
-        form({ title: "A story", kind: "archive_match", confidence, suggestionBasis: "A reason" }),
+        form({ title: "A story", confidence, suggestionBasis: "A reason" }),
       );
       expect(parsed.ok, confidence).toBe(false);
       if (parsed.ok) return;
@@ -96,18 +89,14 @@ describe("parseManualStory", () => {
   });
 
   it("refuses an unreadable timestamp rather than dropping it", () => {
-    const parsed = parseManualStory(
-      form({ title: "A story", kind: "archive_match", sourcePublishedAt: "not-a-time" }),
-    );
+    const parsed = parseManualStory(form({ title: "A story", sourcePublishedAt: "not-a-time" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.errors.sourcePublishedAt).toBeTruthy();
   });
 
   it("refuses an unrecognised signal rather than guessing one", () => {
-    const parsed = parseManualStory(
-      form({ title: "A story", kind: "archive_match", signal: "screaming" }),
-    );
+    const parsed = parseManualStory(form({ title: "A story", signal: "screaming" }));
     expect(parsed.ok).toBe(false);
     if (parsed.ok) return;
     expect(parsed.errors.signal).toBeTruthy();

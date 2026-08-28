@@ -39,11 +39,6 @@ export const MODE_FOR_KIND: Record<OpportunityKind, NewsMode> = {
   shoot_opportunity: "shoot",
 };
 
-export const KIND_LABELS: Record<OpportunityKind, string> = {
-  archive_match: "Archive match",
-  shoot_opportunity: "Shoot opportunity",
-};
-
 /** The two jobs, said plainly. Shown on the mode control and empty states. */
 export const MODE_DESCRIPTIONS: Record<NewsMode, string> = {
   archive: "Current stories your existing photographs can serve",

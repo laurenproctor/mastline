@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import {
   DISMISSAL_REASON_MAX,
   OpportunityError,
-  createManualOpportunity,
+  createManualStory,
   dismissOpportunity,
   watchOpportunity,
 } from "@/lib/data/opportunities";
@@ -30,8 +30,9 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
  * status -- is read on the server.
  *
  * Nothing here contacts a buyer, creates a shoot, builds a package, or sends
- * anything anywhere. Entering a story creates a private workspace record;
- * watching and dismissing record an operator's decision about one.
+ * anything anywhere. Entering a story creates one private canonical record
+ * and its two evaluation paths; watching and dismissing record an operator's
+ * decision about one path.
  */
 
 export interface StoryEntryState {
@@ -46,6 +47,10 @@ export async function createStoryAction(
   const parsed = parseManualStory(formData);
   if (!parsed.ok) return { errors: parsed.errors };
 
+  // Which mode the form was opened from. Only chooses which of the two
+  // freshly created paths the redirect lands on; both always exist.
+  const mode: NewsMode = parseNewsMode(String(formData.get("mode") ?? ""));
+
   let context;
   try {
     context = await requireWorkspaceContext(workspaceSlug, "opportunity.write");
@@ -55,30 +60,37 @@ export async function createStoryAction(
     }
     throw error;
   }
-  const { organizationId, actorId, canonicalSlug } = context;
+  const { organizationId, canonicalSlug } = context;
 
-  let createdId: string;
+  let result;
   try {
-    const created = await createManualOpportunity({
-      organizationId,
-      actorId,
-      ...parsed.value,
-    });
-    createdId = created.id;
+    // One atomic creation: the canonical signal and both paths, or nothing.
+    // Authorship comes from auth.uid() inside the database.
+    result = await createManualStory({ organizationId, ...parsed.value });
   } catch (error) {
     if (error instanceof OpportunityError) {
-      // The duplicate is keyed on the source URL, so the refusal points there.
-      return {
-        errors:
-          error.reason === "duplicate" ? { sourceUrl: error.message } : { _form: error.message },
-      };
+      return { errors: { _form: error.message } };
     }
     return { errors: { _form: "That story could not be recorded." } };
   }
 
   const routes = workspaceRoutes(canonicalSlug);
   revalidatePath(routes.news());
-  redirect(routes.newsOpportunity(createdId, { query: { created: "1" } }));
+
+  const target =
+    (mode === "shoot" ? result.shootOpportunityId : result.archiveOpportunityId) ??
+    result.archiveOpportunityId ??
+    result.shootOpportunityId;
+  if (!target) {
+    // A duplicate of a historical one-path signal whose only path is gone
+    // would land here. Nothing to open; the queue explains.
+    redirect(routes.news({ query: { mode } }));
+  }
+  redirect(
+    routes.newsOpportunity(target, {
+      query: result.outcome === "duplicate" ? { already: "1" } : { created: "1" },
+    }),
+  );
 }
 
 export interface DecisionState {

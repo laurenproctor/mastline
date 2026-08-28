@@ -69,11 +69,15 @@ export default async function NewsPage({
   };
 
   const now = new Date();
-  const lastTouched = all.reduce<string | undefined>(
-    (latest, opportunity) =>
-      !latest || opportunity.updatedAt > latest ? opportunity.updatedAt : latest,
-    undefined,
-  );
+  // The freshest touch on either register: a lifecycle decision on a path, or
+  // an edit to a story's canonical facts.
+  const lastTouched = all.reduce<string | undefined>((latest, opportunity) => {
+    const touched =
+      opportunity.updatedAt > opportunity.story.updatedAt
+        ? opportunity.updatedAt
+        : opportunity.story.updatedAt;
+    return !latest || touched > latest ? touched : latest;
+  }, undefined);
 
   // The confirmation is only shown for the story the address actually names.
   const done =
@@ -97,13 +101,13 @@ export default async function NewsPage({
       <div className="page">
         <PageHeader
           action={mayWrite ? "Add story" : undefined}
-          description="Turn current events into photographs worth selling or shooting."
+          description="Turn current events into photographs worth selling or shooting. Every story is evaluated for both."
           eyebrow={
             lastTouched
               ? `Manual story entry · last update ${formatDateTime(lastTouched)}`
               : "Manual story entry · live feeds not yet connected"
           }
-          href={mayWrite ? routes.newNewsStory() : undefined}
+          href={mayWrite ? routes.newNewsStory({ query: { mode } }) : undefined}
           title="News Radar"
         />
 
@@ -200,13 +204,13 @@ export default async function NewsPage({
                               className="story-link"
                               href={routes.newsOpportunity(opportunity.id)}
                             >
-                              {opportunity.title}
+                              {opportunity.story.title}
                             </Link>
                           </strong>
                           <small>
-                            {opportunity.sourceName ?? "Source not recorded"}
-                            {opportunity.sourcePublishedAt
-                              ? ` · ${formatElapsed(opportunity.sourcePublishedAt, now)}`
+                            {opportunity.story.sourceName ?? "Source not recorded"}
+                            {opportunity.story.sourcePublishedAt
+                              ? ` · ${formatElapsed(opportunity.story.sourcePublishedAt, now)}`
                               : ""}
                           </small>
                         </td>
@@ -261,9 +265,10 @@ export default async function NewsPage({
           )}
           {all.length > 0 && (
             <p className="section-note panel-body">
-              Signals and confidence are suggestions with a stated basis, not facts about a story.
-              Stories are entered by hand in this release; nothing here contacts a buyer, creates a
-              shoot, or sends anything on its own.
+              Each story is entered once and evaluated on both paths; deciding one path leaves the
+              other where it stood. Signals and confidence are suggestions with a stated basis, not
+              facts about a story. Stories are entered by hand in this release; nothing here
+              contacts a buyer, creates a shoot, or sends anything on its own.
               {!mayReview && " Your role can read the radar; decisions need an owner or editor."}
             </p>
           )}

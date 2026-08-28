@@ -21,7 +21,8 @@ The asset is the canonical center, but it is not isolated:
 | memberships | Person-to-organization role and status |
 | profiles | The readable face of an account: name, address, avatar key. Visible to people who share a workspace |
 | buyers | Agencies, publishers, picture desks, and direct licensees |
-| opportunities | News Radar stories, one row per kind: archive_match (may reactivate owned work) or shoot_opportunity (may justify a new shoot), with lifecycle, window, and labelled suggestion fields |
+| news_signals | The canonical News Radar story: source facts owned once per workspace, deduplicated per organization on the source URL |
+| opportunities | One evaluation path of a news signal — archive_match (may reactivate owned work) or shoot_opportunity (may justify a new shoot) — with its own labelled suggestion, window, and independent lifecycle |
 | shoots | Brief, place/time, assignment, confidentiality, workflow state |
 | assets | Canonical image/clip commercial record |
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
@@ -47,8 +48,8 @@ Statuses should be database enums or checked text, changed only by an explicit m
 
 | Record | Values |
 | --- | --- |
-| Opportunity | new, watching, pitching, acted, dismissed, expired — acted, dismissed, and expired are terminal; a dismissed or expired opportunity is never treated as new again |
-| Opportunity kind | archive_match, shoot_opportunity — two modes of one News Radar; the same story may exist once per kind, deduplicated on (organization, kind, source URL) |
+| Opportunity | new, watching, pitching, acted, dismissed, expired — acted, dismissed, and expired are terminal; a dismissed or expired path is never treated as new again, and the other path of the same story is unaffected |
+| Opportunity kind | archive_match, shoot_opportunity — two evaluation paths of one canonical news signal, unique per (signal, kind); the story itself exists once |
 | Shoot | draft, scheduled, active, ingesting, preparing, ready, dispatched, completed, archived, cancelled |
 | Asset | ingesting, active, restricted, archived, tombstoned |
 | Package | draft, needs_review, ready, approved, sending, delivered, failed, recalled |
@@ -57,22 +58,38 @@ Statuses should be database enums or checked text, changed only by an explicit m
 | Payment | expected, invoiced, reported, partial, received, overdue, disputed, written_off |
 | Rights match | new, reviewing, licensed, ignored, monitoring, escalated, resolved |
 
-## News Radar opportunities
+## News Radar: one signal, two paths
 
-One table, two first-class kinds, entered by hand in this release:
+`one news signal → archive opportunity path + shoot opportunity path`
 
-- Source facts (title, source name/URL, publication time, summary) are typed by
-  an operator today and will be written by an ingestion pass later. Lifecycle
-  decisions never edit them.
-- Inference is labelled: `signal`, `confidence`, and `suggestion_basis` (jsonb
-  with a human-readable `summary`). A check constraint refuses a confidence
-  whose basis is empty — a bare percentage is not a record.
-- Lifecycle: `status` plus `dismissal_reason` (dismissed rows only, enforced),
-  `acted_at` (acted rows only, enforced), and `created_by` (nullable: pre-Radar
-  rows and future machine-entered stories have no human author).
-- Duplicate protection: unique on (organization, kind, source URL) where a URL
-  exists, so the same story may be entered once as each kind and never twice as
-  one.
+- `news_signals` owns the source facts (title, source name/URL, publication
+  time, summary) exactly once per story, per workspace. Typed by an operator
+  today; written by an ingestion pass later. Lifecycle decisions never edit
+  them, and there is no second copy to drift: the legacy source columns on
+  `opportunities` were dropped, not deprecated, because the table had never
+  been written by application code and a column that still accepts writes is
+  how two copies diverge.
+- `opportunities` is one evaluation path per kind — `archive_match` or
+  `shoot_opportunity` — unique per (signal, kind), referencing the signal
+  through a composite foreign key on (news_signal_id, organization_id), so a
+  path in one workspace can never reference a signal in another whatever the
+  application does.
+- One manual entry creates the signal and BOTH paths atomically, through the
+  SECURITY INVOKER function `create_news_story` (empty search path, execute
+  revoked from PUBLIC and anon, granted to authenticated only). Authorship is
+  `auth.uid()` inside the database; the insert policy pins `created_by` to the
+  caller and the update grant is column-scoped to the source facts, so
+  authorship can be neither forged nor rewritten. `created_by` is nullable
+  (machine and historical rows) and `ON DELETE SET NULL`: history outlives its
+  author.
+- Repeating an organization/source-URL is answered with the existing records
+  ("duplicate"), not a second signal or pair of paths. Different workspaces
+  may hold the same URL.
+- Each path carries labelled inference — `signal`, `confidence`,
+  `suggestion_basis` (jsonb with a human-readable `summary`; a check refuses a
+  confidence with an empty basis) — and an independent lifecycle: `status`,
+  `dismissal_reason` (dismissed rows only, enforced), `acted_at` (acted rows
+  only, enforced). Dismissing one path does not touch the other.
 - Deliberately absent: a news-provider model, provider identifiers, and any
   matched-asset storage. Archive matching will add a relational
   opportunity-assets table; asset ids never go into `suggestion_basis`.
