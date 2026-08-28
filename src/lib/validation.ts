@@ -9,6 +9,15 @@
  */
 
 import {
+  REQUEST_CHANNELS,
+  REQUEST_ORIENTATIONS,
+  REQUEST_TYPES,
+  type RequestChannel,
+  type RequestOrientation,
+  type RequestType,
+} from "./domain";
+import { type CurrencyCode, fromMajor } from "./money";
+import {
   type OnboardingGoal,
   type Specialty,
   type WorkStyle,
@@ -380,6 +389,196 @@ export function parseStagedPhotographs(form: FormData): StagedPhotographsResult 
   }
 
   return { ok: true, value: photographs };
+}
+
+/**
+ * What a buyer asked for, as somebody typed it under pressure.
+ *
+ * Only the title is required. Everything else is optional and stays undefined
+ * when it is not filled in, which is the whole point: `undefined` means the
+ * buyer did not say, and the interface renders that as "Not provided". Nothing
+ * here defaults a commercial term to worldwide, perpetual, or unrestricted, and
+ * nothing turns an unmentioned fee into zero.
+ */
+export interface RequestIntakeInput {
+  title: string;
+  brief?: string;
+  buyerId?: string;
+  requestType: RequestType;
+  receivedVia?: RequestChannel;
+  subjectOrEvent?: string;
+  subjectNames: string[];
+  topics: string[];
+  eventAt?: string;
+  locationName?: string;
+  responseDeadline?: string;
+  expiresAt?: string;
+  deliverables?: string;
+  requestedFormats: string[];
+  orientation?: RequestOrientation;
+  approximateQuantity?: number;
+  usageMedia?: string;
+  territory?: string;
+  usageDuration?: string;
+  exclusivity?: string;
+  budgetDisclosed: boolean;
+  /** Minor units. Undefined is "they did not say"; 0 is "they said zero". */
+  budgetMinMinor?: number;
+  budgetMaxMinor?: number;
+  currency: CurrencyCode;
+  embargoUntil?: string;
+  deliveryRequirements?: string;
+  usageRestrictions?: string;
+  /** Written to request_sensitive_notes, never to the request row. */
+  sourceNote?: string;
+  confidentialLocation?: string;
+  confidentialIdentity?: string;
+}
+
+const MAX_BRIEF = 4000;
+
+/**
+ * A currency amount typed as major units, in minor units.
+ *
+ * Returns `undefined` for an empty field and `null` for one that could not be
+ * read, so that "they did not say" and "that is not a number" stay different
+ * answers all the way to the error message. A bare zero is a value, not an
+ * absence: `"0"` returns 0.
+ */
+function parseMinorAmount(
+  value: string | undefined,
+  currency: CurrencyCode,
+): number | undefined | null {
+  if (value === undefined) return undefined;
+  const cleaned = value.replace(/[$£€,\s]/g, "");
+  if (cleaned === "") return undefined;
+  const parsed = Number(cleaned);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return fromMajor(parsed, currency).minor;
+}
+
+export function parseRequestIntake(form: FormData): ParseResult<RequestIntakeInput> {
+  const errors: FieldErrors<RequestIntakeInput> = {};
+
+  const title = text(form, "title");
+  if (!title) errors.title = "Give the request a one-line title.";
+  else if (title.length > MAX_TITLE) errors.title = `Keep this under ${MAX_TITLE} characters.`;
+
+  const brief = optionalText(form, "brief");
+  if (brief && brief.length > MAX_BRIEF) {
+    errors.brief = `Keep the brief under ${MAX_BRIEF} characters.`;
+  }
+
+  const buyerId = optionalText(form, "buyerId");
+  if (buyerId && !isRecordId(buyerId)) errors.buyerId = "That buyer could not be read.";
+
+  const typeRaw = text(form, "requestType") || "other";
+  if (!REQUEST_TYPES.includes(typeRaw as RequestType)) {
+    errors.requestType = "Choose what kind of request this is.";
+  }
+
+  const channelRaw = optionalText(form, "receivedVia");
+  if (channelRaw && !REQUEST_CHANNELS.includes(channelRaw as RequestChannel)) {
+    errors.receivedVia = "Choose how the request arrived.";
+  }
+
+  const orientationRaw = optionalText(form, "orientation");
+  if (orientationRaw && !REQUEST_ORIENTATIONS.includes(orientationRaw as RequestOrientation)) {
+    errors.orientation = "Choose an orientation, or leave it unset.";
+  }
+
+  const eventAt = parseTimestamp(optionalText(form, "eventAt"));
+  if (eventAt === null) errors.eventAt = "That date and time could not be read.";
+
+  const responseDeadline = parseTimestamp(optionalText(form, "responseDeadline"));
+  if (responseDeadline === null) errors.responseDeadline = "That deadline could not be read.";
+
+  const expiresAt = parseTimestamp(optionalText(form, "expiresAt"));
+  if (expiresAt === null) errors.expiresAt = "That expiry could not be read.";
+
+  const embargoUntil = parseTimestamp(optionalText(form, "embargoUntil"));
+  if (embargoUntil === null) errors.embargoUntil = "That embargo date could not be read.";
+
+  const quantityRaw = optionalText(form, "approximateQuantity");
+  let approximateQuantity: number | undefined;
+  if (quantityRaw !== undefined) {
+    const parsed = Number(quantityRaw);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 100_000) {
+      errors.approximateQuantity = "Give a whole number of frames, or leave it blank.";
+    } else {
+      approximateQuantity = parsed;
+    }
+  }
+
+  const currencyRaw = text(form, "currency") || "USD";
+  const currency = (["USD", "GBP", "EUR"] as const).includes(currencyRaw as CurrencyCode)
+    ? (currencyRaw as CurrencyCode)
+    : null;
+  if (!currency) errors.currency = "Choose a currency.";
+
+  /*
+   * The budget is the one place where an empty field and a zero must not be
+   * allowed to converge. `budgetDisclosed` is the operator saying whether the
+   * subject came up at all; the figures are only read when it did, and a figure
+   * typed and then unticked is discarded rather than quietly stored.
+   */
+  const budgetDisclosed = form.get("budgetDisclosed") === "on";
+  const minRaw = parseMinorAmount(optionalText(form, "budgetMin"), currency ?? "USD");
+  const maxRaw = parseMinorAmount(optionalText(form, "budgetMax"), currency ?? "USD");
+  if (minRaw === null) errors.budgetMinMinor = "That figure could not be read.";
+  if (maxRaw === null) errors.budgetMaxMinor = "That figure could not be read.";
+
+  const budgetMinMinor = budgetDisclosed && minRaw !== null ? minRaw : undefined;
+  const budgetMaxMinor = budgetDisclosed && maxRaw !== null ? maxRaw : undefined;
+
+  if (budgetDisclosed && budgetMinMinor === undefined && budgetMaxMinor === undefined) {
+    errors.budgetMinMinor = "Give the figure the buyer stated, or untick that they gave one.";
+  }
+  if (
+    budgetMinMinor !== undefined &&
+    budgetMaxMinor !== undefined &&
+    budgetMinMinor > budgetMaxMinor
+  ) {
+    errors.budgetMaxMinor = "The maximum cannot be below the minimum.";
+  }
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    value: {
+      title,
+      brief,
+      buyerId,
+      requestType: typeRaw as RequestType,
+      receivedVia: channelRaw as RequestChannel | undefined,
+      subjectOrEvent: optionalText(form, "subjectOrEvent"),
+      subjectNames: parseList(optionalText(form, "subjectNames")),
+      topics: parseList(optionalText(form, "topics")),
+      eventAt: eventAt ?? undefined,
+      locationName: optionalText(form, "locationName"),
+      responseDeadline: responseDeadline ?? undefined,
+      expiresAt: expiresAt ?? undefined,
+      deliverables: optionalText(form, "deliverables"),
+      requestedFormats: parseList(optionalText(form, "requestedFormats")),
+      orientation: orientationRaw as RequestOrientation | undefined,
+      approximateQuantity,
+      usageMedia: optionalText(form, "usageMedia"),
+      territory: optionalText(form, "territory"),
+      usageDuration: optionalText(form, "usageDuration"),
+      exclusivity: optionalText(form, "exclusivity"),
+      budgetDisclosed,
+      budgetMinMinor,
+      budgetMaxMinor,
+      currency: currency as CurrencyCode,
+      embargoUntil: embargoUntil ?? undefined,
+      deliveryRequirements: optionalText(form, "deliveryRequirements"),
+      usageRestrictions: optionalText(form, "usageRestrictions"),
+      sourceNote: optionalText(form, "sourceNote"),
+      confidentialLocation: optionalText(form, "confidentialLocation"),
+      confidentialIdentity: optionalText(form, "confidentialIdentity"),
+    },
+  };
 }
 
 /**

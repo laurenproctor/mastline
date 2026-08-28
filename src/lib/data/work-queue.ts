@@ -3,10 +3,12 @@ import type { Asset, Id } from "../domain";
 import { type Money, money } from "../money";
 import { getMoneySummary, listPayments } from "./money";
 import { listPackages } from "./packages";
+import { listRequests } from "./requests";
 import { listShoots } from "./shoots";
 import { createClient } from "../supabase/server";
 import { listSubmissions } from "./submissions";
 import { reviewSelection } from "../metadata-rules";
+import { isPastDeadline, statusLabel } from "../requests";
 import type { WorkspaceRoutes } from "../workspace-routes";
 
 /**
@@ -19,7 +21,7 @@ import type { WorkspaceRoutes } from "../workspace-routes";
 
 export interface WorkQueueItem {
   readonly id: string;
-  readonly kind: "Shoot" | "Dispatch" | "Submission" | "Money";
+  readonly kind: "Request" | "Shoot" | "Dispatch" | "Submission" | "Money";
   readonly title: string;
   readonly detail: string;
   readonly occurredAt: string;
@@ -76,11 +78,22 @@ export async function getWorkQueue(
 ): Promise<readonly WorkQueueItem[]> {
   const supabase = client ?? (await createClient());
 
-  const [shoots, submissions, payments, packages, assetRows] = await Promise.all([
+  const [shoots, submissions, payments, packages, requests, assetRows] = await Promise.all([
     listShoots(organizationId, supabase),
     listSubmissions(organizationId, supabase),
     listPayments(organizationId, supabase),
     listPackages(organizationId, {}, supabase),
+    /*
+     * Inbound demand joins the same queue rather than getting one of its own.
+     * A photographer has one list of what to do next, and a picture desk
+     * waiting on an answer belongs on it beside a package waiting on approval.
+     * Only the open statuses are fetched: a closed request is not work.
+     */
+    listRequests(
+      organizationId,
+      { status: ["new", "needs_clarification", "qualified", "matching", "coverage_planned", "preparing_response", "negotiating"] },
+      supabase,
+    ),
     supabase
       .from("assets")
       .select(
@@ -125,6 +138,59 @@ export async function getWorkQueue(
   }
 
   const items: WorkQueueItem[] = [];
+  const now = new Date();
+
+  /*
+   * Four things about a request put it on this list, and the reason travels
+   * with the item so the ranking can be argued with:
+   *
+   *   - the buyer's deadline has gone by
+   *   - it is due within a day
+   *   - nobody has looked at it yet
+   *   - it is waiting on an answer from the desk
+   *
+   * A request that is none of those is being worked and does not need chasing.
+   * "Past deadline" is derived here, at read time, and never written back as a
+   * status -- there is no scheduler, and a status that changes while nobody is
+   * watching is one nobody can trust.
+   */
+  for (const request of requests) {
+    const pastDeadline = isPastDeadline(request, now);
+    const dueSoon =
+      !pastDeadline &&
+      request.responseDeadline !== undefined &&
+      new Date(request.responseDeadline).getTime() - now.getTime() < 24 * 3_600_000;
+
+    let rankingBasis: string | null = null;
+    if (pastDeadline) rankingBasis = "The buyer's deadline has passed and nothing has been recorded";
+    else if (dueSoon) rankingBasis = "The buyer needs an answer within a day";
+    else if (request.status === "new") rankingBasis = "Nobody has qualified this request yet";
+    else if (request.status === "needs_clarification") {
+      rankingBasis = "Waiting on an answer from the buyer";
+    }
+    if (!rankingBasis) continue;
+
+    items.push({
+      id: `wq_request_${request.id}`,
+      kind: "Request",
+      title: `${request.reference}: ${request.title}`,
+      detail: [
+        request.buyerName ?? "Buyer not identified",
+        statusLabel(request.status),
+        pastDeadline ? "Past deadline" : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      // The queue sorts urgent first, then newest first, so this is when the
+      // item became work -- not the deadline, which would order a week-old
+      // overdue request behind one that lapsed this morning.
+      occurredAt: request.createdAt,
+      urgent: pastDeadline || dueSoon,
+      actionLabel: pastDeadline ? "Answer" : "Open",
+      href: routes.request(request.id),
+      rankingBasis,
+    });
+  }
 
   for (const shoot of shoots) {
     if (["completed", "archived", "cancelled"].includes(shoot.status)) continue;
