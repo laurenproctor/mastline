@@ -20,6 +20,8 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
 import type { RequestIntakeInput } from "@/lib/validation";
 import {
   ORG_A,
+  ORG_A_PACKAGE_DELIVERED,
+  ORG_A_SHOOT,
   ORG_B,
   type SeededUser,
   clientFor,
@@ -295,11 +297,67 @@ describeIf("moving a request along", () => {
     );
   }
 
-  it("walks the ordinary path", async () => {
+  /*
+   * The ordinary path, once the work exists to justify it.
+   *
+   * This test used to walk straight from qualified to submitted on an empty
+   * request. It cannot any more, and that is the point of the phase that
+   * connected requests to the work answering them: coverage_planned needs a
+   * linked shoot, preparing_response needs a linked package, and submitted
+   * needs a submission somebody actually sent. Arranging the evidence here is
+   * not test scaffolding around an inconvenience -- it is the lifecycle.
+   *
+   * The refusals themselves are asserted in tests/request-relationships.test.ts.
+   */
+  it("walks the ordinary path once the evidence exists", async () => {
     const { id } = await record("owner");
+    const admin = serviceClient();
+    const { data: owner } = await admin
+      .from("memberships")
+      .select("user_id")
+      .eq("organization_id", ORG_A)
+      .eq("role", "owner")
+      .limit(1)
+      .single();
+    const linkedBy = owner!.user_id;
+
     expect(await move("owner", id, "qualified")).toBe("ok");
+
+    await admin.from("request_shoots").insert({
+      organization_id: ORG_A,
+      request_id: id,
+      shoot_id: ORG_A_SHOOT,
+      linked_by: linkedBy,
+    });
     expect(await move("owner", id, "coverage_planned")).toBe("ok");
+
+    await admin.from("request_packages").insert({
+      organization_id: ORG_A,
+      request_id: id,
+      package_id: ORG_A_PACKAGE_DELIVERED,
+      linked_by: linkedBy,
+    });
     expect(await move("owner", id, "preparing_response")).toBe("ok");
+
+    // A submission that was actually sent. Creating a delivery link, or a
+    // buyer opening one, would not be enough and must not be.
+    const { data: submission } = await admin
+      .from("submissions")
+      .insert({
+        organization_id: ORG_A,
+        package_id: ORG_A_PACKAGE_DELIVERED,
+        status: "sent",
+        created_by: linkedBy,
+        sent_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    await admin.from("request_submissions").insert({
+      organization_id: ORG_A,
+      request_id: id,
+      submission_id: submission!.id,
+      linked_by: linkedBy,
+    });
     expect(await move("owner", id, "submitted")).toBe("ok");
   });
 
@@ -900,6 +958,20 @@ describeIf("the inbox", () => {
   });
 });
 
+/**
+ * Statuses that a request cannot be born into, because each one asserts
+ * something about work that does not exist yet at creation. The refusals are
+ * asserted properly in tests/request-relationships.test.ts; here they only need
+ * to be expected.
+ */
+const EVIDENCE_GATED: readonly RequestStatus[] = [
+  "matching",
+  "coverage_planned",
+  "preparing_response",
+  "submitted",
+  "won",
+];
+
 describeIf("the status enum", () => {
   it("holds exactly what src/lib/domain.ts says it does", async () => {
     // A value in TypeScript that Postgres does not have is a runtime failure
@@ -923,6 +995,20 @@ describeIf("the status enum", () => {
         })
         .select("id, status, closed_at")
         .single();
+
+      /*
+       * Five statuses cannot be written onto a brand new row any more, because
+       * a request that has just been created has no linked shoot, package or
+       * submission to justify them. A refusal here is still proof the enum
+       * holds the value: Postgres casts the text to buyer_request_status before
+       * any trigger runs, so a value the type did not have would come back as
+       * 22P02 invalid input, not as 23001 restrict_violation.
+       */
+      if (EVIDENCE_GATED.includes(status)) {
+        expect(error?.code, `${status}: expected the evidence gate`).toBe("23001");
+        counter -= 0; // the row was never created; nothing to clean up
+        continue;
+      }
 
       expect(error, `${status}: ${error?.message}`).toBeNull();
       expect(data?.status).toBe(status);
