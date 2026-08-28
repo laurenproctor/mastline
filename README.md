@@ -91,7 +91,7 @@ Business rules are centralized, not spread across components:
 | `src/lib/billing/provider.ts` | The provider contract; Stripe sits behind it |
 | `src/lib/data/archive.ts` | Archive search, paged, executed in the database |
 | `src/lib/validation.ts` | Server Action input parsing |
-| `src/lib/mock/queries.ts` | The remaining mock seam, replaced screen by screen |
+| `src/lib/news-radar.ts` | The radar's two modes, URL addressing, and window labels |
 | `src/lib/data/` | Real, database-backed queries |
 
 No component hard-codes a price, a rate, or a monetary string.
@@ -124,7 +124,9 @@ fails the build if an unscoped one appears.
 | Route | Experience |
 | --- | --- |
 | `/<workspace>/work` | Daily action queue and business pulse |
-| `/<workspace>/news` | News-to-archive opportunity monitor |
+| `/<workspace>/news` | News Radar: Archive Matches and Shoot Opportunities, chosen by `?mode=` |
+| `/<workspace>/news/new` | Manual story entry |
+| `/<workspace>/news/<opportunityId>` | One opportunity: story facts, suggestion, lifecycle |
 | `/<workspace>/shoots/new` | Fast shoot intake |
 | `/<workspace>/shoots` | All shoots and their progress |
 | `/<workspace>/shoots/<shootId>` | Shoot workspace |
@@ -298,9 +300,19 @@ a checkout that cannot work.
   column, paged, with signed preview URLs minted only for the page being
   viewed. It used to fetch every asset and filter in JavaScript.
 
-Only News Radar still reads the mock layer, because there is no opportunity
-source to read from yet; the first release uses manually entered stories. That
-goes away in Phase 4.
+**News Radar foundation** — the mock layer is gone; the radar reads real
+records. One opportunity table carries two first-class kinds — `archive_match`
+(current stories that may reactivate owned work) and `shoot_opportunity`
+(current stories or scheduled events that may justify a new shoot) — as two
+modes of one screen, addressed by `?mode=archive` / `?mode=shoot`. Stories are
+entered by hand: live monitoring is not connected yet, archive matching is not
+implemented yet (an archive match holds no asset list, and Build Package stays
+unavailable), and the story-to-shoot handoff is not connected yet. Watching and
+dismissing are recorded operator decisions with the reason on the record;
+dismissed and expired are terminal. Every signal and confidence is a labelled
+suggestion with a stated basis — the database refuses a confidence without one
+— and no outbound action is automatic: entering, watching, or dismissing a
+story contacts nobody, creates nothing, and sends nothing.
 
 Not yet built: outbound delivery to a buyer's systems (Mastline records a
 dispatch, it does not transmit), and rights triage actions. See

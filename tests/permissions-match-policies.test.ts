@@ -119,6 +119,37 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
       }
       return false;
     }
+    case "opportunity.write": {
+      const { data } = await client
+        .from("opportunities")
+        .insert({ organization_id: ORG_A, title: `probe-${role}`, created_by: UID[role] })
+        .select("id");
+      if (data?.[0]?.id) {
+        await service.from("opportunities").delete().eq("id", data[0].id);
+        return true;
+      }
+      return false;
+    }
+    case "opportunity.review": {
+      // A lifecycle decision is an update, so the probe needs a row to decide
+      // about. Arranged by the service role, exercised as the subject.
+      const { data: fixture } = await service
+        .from("opportunities")
+        .insert({ organization_id: ORG_A, title: `probe-review-${role}` })
+        .select("id");
+      const fixtureId = fixture?.[0]?.id;
+      if (!fixtureId) throw new Error("Could not arrange the opportunity fixture");
+      try {
+        const { data } = await client
+          .from("opportunities")
+          .update({ status: "watching" })
+          .eq("id", fixtureId)
+          .select("id");
+        return (data?.length ?? 0) > 0;
+      } finally {
+        await service.from("opportunities").delete().eq("id", fixtureId);
+      }
+    }
     case "buyer.write": {
       const { data } = await client
         .from("buyers")
@@ -144,6 +175,8 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
 }
 
 const PROBES = [
+  "opportunity.write",
+  "opportunity.review",
   "shoot.write",
   "sensitive_note.read",
   "payment.write",

@@ -115,7 +115,27 @@ export type AssetVersionKind = "original" | "preview" | "edit" | "delivery" | "t
 export type StorageBucket = "originals" | "derivatives" | "evidence";
 export type BuyerType = "agency" | "publisher" | "picture_desk" | "direct_licensee" | "other";
 export type ShootPriority = "watch" | "standard" | "high" | "urgent";
-export type OpportunitySignal = "rising" | "high" | "steady" | "watch";
+
+export const OPPORTUNITY_SIGNALS = ["rising", "high", "steady", "watch"] as const;
+export type OpportunitySignal = (typeof OPPORTUNITY_SIGNALS)[number];
+
+/**
+ * The two jobs News Radar does. Two modes of one radar, not two applications:
+ * an archive match may make owned work saleable again; a shoot opportunity may
+ * justify creating a new shoot. One story may exist once as each.
+ */
+export const OPPORTUNITY_KINDS = ["archive_match", "shoot_opportunity"] as const;
+export type OpportunityKind = (typeof OPPORTUNITY_KINDS)[number];
+
+export const OPPORTUNITY_STATUSES = [
+  "new",
+  "watching",
+  "pitching",
+  "acted",
+  "dismissed",
+  "expired",
+] as const;
+export type OpportunityStatus = (typeof OPPORTUNITY_STATUSES)[number];
 
 /**
  * Anything the system inferred rather than observed carries its basis and
@@ -361,23 +381,51 @@ export interface RightsMatch {
   readonly decisionNote?: string;
 }
 
+/**
+ * One story on the News Radar, mirroring public.opportunities.
+ *
+ * The fields fall into three groups, and the grouping is the contract:
+ *
+ *   1. Source facts -- title, source, publication time, summary. Observed or
+ *      typed, never invented by the system.
+ *   2. Inference -- signal, confidence, suggestionBasis. Claims about why the
+ *      story matters, always rendered as labelled suggestions with their
+ *      basis, never as facts.
+ *   3. Lifecycle -- status, window, dismissal reason, acted time, authorship.
+ *      Operator decisions and record-keeping.
+ *
+ * Matched assets are deliberately absent: an archive match carries no asset
+ * list until the relational opportunity-assets model exists. Nothing here may
+ * pretend that matching has run.
+ */
 export interface Opportunity {
   readonly id: Id;
   readonly organizationId: Id;
+  readonly kind: OpportunityKind;
+
+  // Source facts.
   readonly title: string;
-  readonly sourceName: string;
-  readonly sourcePublishedAt: IsoTimestamp;
-  readonly signal: OpportunitySignal;
+  readonly sourceName?: string;
+  readonly sourceUrl?: string;
+  readonly sourcePublishedAt?: IsoTimestamp;
   readonly summary?: string;
-  readonly relatedTopics: readonly string[];
-  readonly status: "new" | "watching" | "pitching" | "acted" | "dismissed" | "expired";
-  /** Suggested, not asserted. Carries basis and confidence. */
-  readonly archiveMatch: Suggestion<{
-    assetIds: readonly Id[];
-    estimatedLow: Money;
-    estimatedHigh: Money;
-  }>;
+
+  // Inference. A confidence never appears without its stated basis.
+  readonly signal: OpportunitySignal;
+  /** 0 to 1, when anything claimed one. Labelled a suggestion wherever shown. */
+  readonly confidence?: number;
+  /** The human-readable reason behind signal and confidence. */
+  readonly suggestionBasis?: string;
+
+  // Lifecycle.
+  readonly status: OpportunityStatus;
   readonly windowClosesAt?: IsoTimestamp;
+  readonly dismissalReason?: string;
+  readonly actedAt?: IsoTimestamp;
+  /** Who entered the story. Absent on rows no person typed. */
+  readonly createdBy?: Id;
+  readonly createdAt: IsoTimestamp;
+  readonly updatedAt: IsoTimestamp;
 }
 
 export interface Expense {

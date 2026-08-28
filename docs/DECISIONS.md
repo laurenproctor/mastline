@@ -222,6 +222,46 @@ Item numbers below are permanent. Resolved items keep their number so older note
   "where was I?" for a legacy path or a bare sign-in and is checked against live
   membership before it is used.
 
+## News Radar foundation
+
+- **Two first-class kinds on one table, not two tables or two screens.**
+  `archive_match` and `shoot_opportunity` are two modes of one radar: one
+  lifecycle, one permission model, one queue component, and a story may exist
+  once as each because connecting it to owned work and covering it fresh are
+  different jobs. The mode is URL state (`?mode=archive`, `?mode=shoot`), so a
+  view can be linked and bookmarked and two tabs cannot disagree about it.
+- **Manual entry first.** The first release runs on stories typed by an
+  operator, so the lifecycle is proven with a live operator before any feed is
+  connected. Only the headline and the kind are required — the record is
+  private, and a photographer between jobs should not be blocked on facts they
+  do not have.
+- **The operator's judgement is recorded the way a machine's will be.** Signal,
+  confidence, and basis are one vocabulary whether a person or a matching pass
+  wrote them, and a check constraint refuses a confidence without a stated
+  basis. When live matching arrives, its output lands in the same labelled
+  fields instead of a parallel set of "real" ones.
+- **Dismissed and expired are terminal.** A dismissed or expired opportunity
+  never slides back to looking new; revisiting a story is a fresh, deliberate
+  entry. Dismissing therefore takes a second motion, with the optional reason
+  kept on the record; watching is one motion because everything after it is
+  still open. Repeating a decision is answered with the record as it stands —
+  no error, no duplicate event.
+- **`acted` is unreachable from a browser in this stage.** The Server Actions
+  accept only watch and dismiss; `markOpportunityActed` exists in the data
+  layer for the shoot/package handoffs of the next stage, where there will be
+  an act to record. A form cannot claim one happened.
+- **No matched assets yet, anywhere.** An archive match holds no asset list and
+  the detail screen draws that region as explicitly not built, with Build
+  Package disabled. Asset ids are deliberately kept out of `suggestion_basis`;
+  matching will add a relational opportunity-assets table.
+- **Deduplication is per kind on the source URL** — the only stable identity a
+  hand-entered story has. A story without a URL cannot be deduplicated and is
+  not refused for it.
+- **Capabilities split read / write / review** (`opportunity.*`), all mapped to
+  the existing owner-and-editor `opportunities_write` policy. The split exists
+  so the interface can say which thing a role cannot do; the database policy
+  needed no change, and the parity tests now probe both write and review.
+
 ## Captions drafted at import
 
 - **The caption writer runs on every frame as it is imported, not only when

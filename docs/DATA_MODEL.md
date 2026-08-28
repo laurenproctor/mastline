@@ -21,7 +21,7 @@ The asset is the canonical center, but it is not isolated:
 | memberships | Person-to-organization role and status |
 | profiles | The readable face of an account: name, address, avatar key. Visible to people who share a workspace |
 | buyers | Agencies, publishers, picture desks, and direct licensees |
-| opportunities | News/tip/demand signals and suggested archive value |
+| opportunities | News Radar stories, one row per kind: archive_match (may reactivate owned work) or shoot_opportunity (may justify a new shoot), with lifecycle, window, and labelled suggestion fields |
 | shoots | Brief, place/time, assignment, confidentiality, workflow state |
 | assets | Canonical image/clip commercial record |
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
@@ -47,6 +47,8 @@ Statuses should be database enums or checked text, changed only by an explicit m
 
 | Record | Values |
 | --- | --- |
+| Opportunity | new, watching, pitching, acted, dismissed, expired — acted, dismissed, and expired are terminal; a dismissed or expired opportunity is never treated as new again |
+| Opportunity kind | archive_match, shoot_opportunity — two modes of one News Radar; the same story may exist once per kind, deduplicated on (organization, kind, source URL) |
 | Shoot | draft, scheduled, active, ingesting, preparing, ready, dispatched, completed, archived, cancelled |
 | Asset | ingesting, active, restricted, archived, tombstoned |
 | Package | draft, needs_review, ready, approved, sending, delivered, failed, recalled |
@@ -54,6 +56,28 @@ Statuses should be database enums or checked text, changed only by an explicit m
 | License | proposed, active, expired, cancelled, disputed |
 | Payment | expected, invoiced, reported, partial, received, overdue, disputed, written_off |
 | Rights match | new, reviewing, licensed, ignored, monitoring, escalated, resolved |
+
+## News Radar opportunities
+
+One table, two first-class kinds, entered by hand in this release:
+
+- Source facts (title, source name/URL, publication time, summary) are typed by
+  an operator today and will be written by an ingestion pass later. Lifecycle
+  decisions never edit them.
+- Inference is labelled: `signal`, `confidence`, and `suggestion_basis` (jsonb
+  with a human-readable `summary`). A check constraint refuses a confidence
+  whose basis is empty — a bare percentage is not a record.
+- Lifecycle: `status` plus `dismissal_reason` (dismissed rows only, enforced),
+  `acted_at` (acted rows only, enforced), and `created_by` (nullable: pre-Radar
+  rows and future machine-entered stories have no human author).
+- Duplicate protection: unique on (organization, kind, source URL) where a URL
+  exists, so the same story may be entered once as each kind and never twice as
+  one.
+- Deliberately absent: a news-provider model, provider identifiers, and any
+  matched-asset storage. Archive matching will add a relational
+  opportunity-assets table; asset ids never go into `suggestion_basis`.
+- Live ingestion, archive matching, and the story-to-shoot handoff are not
+  built. Nothing on the radar contacts anyone or creates anything by itself.
 
 ## Money
 

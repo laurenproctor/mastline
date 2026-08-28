@@ -29,13 +29,31 @@ Queue actions: open/continue, assign, review, reconcile, snooze, and complete. P
 
 ## 2. News Radar — `/news`
 
-Question answered: **What is becoming commercially relevant to work I already own?**
+Question answered: **What is happening right now that this workspace should sell into or go shoot?**
 
-Columns: signal, story/source/time, archive match, matching assets, estimated value range, time window, next action.
+Two modes of one radar, chosen by a prominent control and addressed in the URL
+(`?mode=archive`, `?mode=shoot`):
 
-Selected detail: story summary, related topics, top archive matches, asset/licensing clearance, recommended buyer/play, estimated range, and Build Pitch. All matching, value, and buyer-fit outputs are labeled suggestions with basis and confidence.
+- **Archive Matches** — current stories connected to relevant photographs the
+  workspace already owns.
+- **Shoot Opportunities** — current stories or publicly scheduled events that
+  may justify creating a new shoot.
 
-No automatic buyer contact. First release may use manually entered stories so the archive-matching workflow can be tested before live feeds.
+Queue columns: signal, story/source/time, why it matters (stated basis plus
+confidence labelled as a suggestion), useful window, status, next action.
+Watch and dismiss sit on the row for roles that may decide; dismissing takes a
+second motion and keeps the optional reason on the record. Detail at
+`/news/[opportunityId]`: story facts, the suggestion kept visibly apart from
+them, lifecycle state, history, and an honestly drawn not-yet-built region —
+matched photographs for an archive match (Build Package stays unavailable
+until matching exists), a shoot-brief handoff for a shoot opportunity.
+
+**Implemented:** manual story entry at `/news/new` (headline and kind are the
+only required facts; one entry per kind per source URL), watch, dismiss, and
+the two-mode interface, all on real records with activity events.
+**Not yet connected:** live monitoring, archive matching, shoot creation from
+a story, pitches, and estimated value. No buyer is contacted automatically and
+nothing outbound happens from this screen.
 
 ## Commercial Opportunities — `/work/commercial`
 
