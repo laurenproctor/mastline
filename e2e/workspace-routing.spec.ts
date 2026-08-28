@@ -96,7 +96,7 @@ test.describe("building a package lands on the dispatch review", () => {
     expect(packageId).not.toBe(SEEDED_SHOOT);
 
     // 4. The review screen rendered, rather than the not-found page.
-    await expect(page.getByRole("heading", { level: 1, name: "Dispatch review" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Package review" })).toBeVisible();
     await expect(page.getByText(/does not exist in this workspace/i)).toHaveCount(0);
 
     /*
@@ -106,7 +106,8 @@ test.describe("building a package lands on the dispatch review", () => {
      *    package is named -- so without this the 404 fix could be declared
      *    working by a screen showing the wrong package.
      */
-    await expect(page.locator(".page-header")).toContainText(name);
+    // The redesigned review header names its subject in the line under the h1.
+    await expect(page.locator("main header").first()).toContainText(name);
     const tabs = page.getByRole("navigation", { name: "Packages on this shoot" });
     await expect(tabs.getByRole("link", { name: new RegExp(escapeRegExp(name)) })).toHaveAttribute(
       "aria-current",
@@ -132,8 +133,8 @@ test.describe("building a package lands on the dispatch review", () => {
     // pasted link, a bookmark, or a back button does.
     const response = await page.reload();
     expect(response?.status()).toBeLessThan(400);
-    await expect(page.getByRole("heading", { level: 1, name: "Dispatch review" })).toBeVisible();
-    await expect(page.locator(".page-header")).toContainText(name);
+    await expect(page.getByRole("heading", { level: 1, name: "Package review" })).toBeVisible();
+    await expect(page.locator("main header").first()).toContainText(name);
   });
 });
 

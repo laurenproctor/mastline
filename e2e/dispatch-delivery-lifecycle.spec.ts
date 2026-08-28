@@ -233,7 +233,9 @@ test.describe("a package reaches a recipient", () => {
       await deskPage.goto(new URL(url).pathname);
       await expect(deskPage.getByRole("heading", { level: 1 })).toContainText("Package");
       // The page says so rather than measuring quietly.
-      await expect(deskPage.getByText(/Viewing-time measurement is off for this visit/)).toBeVisible();
+      await expect(
+        deskPage.getByText(/Viewing-time measurement is off for this visit/),
+      ).toBeVisible();
     } finally {
       await deskContext.close();
     }
@@ -241,9 +243,7 @@ test.describe("a package reaches a recipient", () => {
     await page.goto(at(`/submissions/${SEEDED_SUBMISSION}`));
     const analytics = page.locator(".recipient-analytics").filter({ hasText: recipient });
     // Not "0 seconds". Missing measurement is not an absence of interest.
-    await expect(
-      analytics.getByText(/detailed viewing time was unavailable/),
-    ).toBeVisible();
+    await expect(analytics.getByText(/detailed viewing time was unavailable/)).toBeVisible();
   });
 
   test("refuses attribution that names a credential or a person", async ({ page }, testInfo) => {
@@ -288,7 +288,13 @@ test.describe("the dispatch screen after approval", () => {
     );
 
     await expect(page.getByText("This package has been sent")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: /A delivery link for this package/ })).toBeVisible();
+    // The redesigned review screen states which of the three post-approval
+    // facts is true; none of them claims a send the record cannot show.
+    await expect(
+      page.getByRole("heading", {
+        name: /A recipient has opened a link to this package|A recipient link for this package is marked shared|This package is approved and frozen/,
+      }),
+    ).toBeVisible();
   });
 });
 
