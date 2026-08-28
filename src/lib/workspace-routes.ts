@@ -90,6 +90,10 @@ export interface WorkspaceRoutes {
   readonly commercial: (options?: RouteOptions) => string;
   readonly opportunity: (opportunityId: string, options?: RouteOptions) => string;
   readonly news: (options?: RouteOptions) => string;
+  /** The buyer-request inbox. */
+  readonly requests: (options?: RouteOptions) => string;
+  readonly newRequest: (options?: RouteOptions) => string;
+  readonly request: (requestId: string, options?: RouteOptions) => string;
   readonly shoots: (options?: RouteOptions) => string;
   readonly newShoot: (options?: RouteOptions) => string;
   readonly shoot: (shootId: string, options?: RouteOptions) => string;
@@ -130,6 +134,10 @@ export function workspaceRoutes(canonicalSlug: string): WorkspaceRoutes {
     opportunity: (opportunityId: string, options?: RouteOptions) =>
       build(slug, ["work", "commercial", opportunityId], options),
     news: (options?: RouteOptions) => build(slug, ["news"], options),
+    requests: (options?: RouteOptions) => build(slug, ["requests"], options),
+    newRequest: (options?: RouteOptions) => build(slug, ["requests", "new"], options),
+    request: (requestId: string, options?: RouteOptions) =>
+      build(slug, ["requests", requestId], options),
     shoots: (options?: RouteOptions) => build(slug, ["shoots"], options),
     newShoot: (options?: RouteOptions) => build(slug, ["shoots", "new"], options),
     shoot: (shootId: string, options?: RouteOptions) => build(slug, ["shoots", shootId], options),
