@@ -143,6 +143,26 @@ export default async function DispatchPage({
   });
 
   const passed = review.checks.filter((check) => check.status === "pass").length;
+
+  /*
+   * Blockers split three ways, and the screen has to treat them differently.
+   *
+   * Package-level ones -- no buyer, no route, no terms -- are fixed in the form
+   * already on this page, so the form opens itself when one of them is why the
+   * package is stuck.
+   *
+   * Frame-level ones are fixed on the frame, which the gallery handles.
+   *
+   * The rest are structural: an asset that cannot be read, a version that no
+   * longer exists. Nothing on a review screen can mend those, and pretending
+   * otherwise with a control that cannot work is worse than saying so.
+   */
+  const PACKAGE_LEVEL = new Set(["buyer", "delivery_method", "terms"]);
+  const packageBlockers = review.blocking.filter((check) => PACKAGE_LEVEL.has(check.id));
+  const frameBlockers = review.blocking.filter((check) => check.id === "metadata");
+  const structuralBlockers = review.blocking.filter(
+    (check) => !PACKAGE_LEVEL.has(check.id) && check.id !== "metadata",
+  );
   const frameCount = pkg.assets.length;
   const frameWord = frameCount === 1 ? "frame" : "frames";
 
@@ -202,8 +222,14 @@ export default async function DispatchPage({
         <div className={styles.body}>
           <PackageGallery
             frames={frames}
+            // Fixing a frame is an asset edit, not a package edit, so it is
+            // gated on asset.write and stays available on a package that is
+            // still open. An approved package is frozen and offers none of it.
+            canEditFrames={!approved && can(role, "asset.write")}
             restrictions={pkg.restrictions ?? undefined}
+            shootId={shootId}
             terms={pkg.proposedTerms ?? undefined}
+            workspaceSlug={workspaceSlug}
           />
 
           <aside aria-label="Readiness and approval" className={styles.sidebar}>
@@ -270,6 +296,45 @@ export default async function DispatchPage({
                 </div>
               </dl>
 
+              {review.blocking.length > 0 && (
+                <div className={styles.sideBlockers}>
+                  <h3>Before this package can be sent</h3>
+                  <ul>
+                    {packageBlockers.map((check) => (
+                      <li key={check.id}>
+                        <strong>{check.title}</strong>
+                        <span>
+                          {check.remedy ?? check.detail}{" "}
+                          {mayEdit
+                            ? "Use Edit package details, open below."
+                            : "This needs the package-write permission."}
+                        </span>
+                      </li>
+                    ))}
+                    {frameBlockers.map((check) => (
+                      <li key={check.id}>
+                        <strong>{check.title}</strong>
+                        <span>
+                          {check.detail} The frames are listed above the gallery, each with a Fix
+                          control.
+                        </span>
+                      </li>
+                    ))}
+                    {structuralBlockers.map((check) => (
+                      <li key={check.id}>
+                        <strong>{check.title}</strong>
+                        <span>
+                          {check.detail} {check.remedy}{" "}
+                          <Link className="text-link" href={routes.shoot(shootId)}>
+                            Rebuild the package on the shoot
+                          </Link>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               <details className={styles.disclosure}>
                 <summary>
                   <span>View all checks</span>
@@ -312,9 +377,12 @@ export default async function DispatchPage({
               </details>
 
               {mayEdit && (
-                <details className={styles.disclosure}>
+                <details className={styles.disclosure} open={packageBlockers.length > 0}>
                   <summary>
-                    <span>Edit package details</span>
+                    <span>
+                      Edit package details
+                      {packageBlockers.length > 0 && " — needed"}
+                    </span>
                     <span aria-hidden="true">▾</span>
                   </summary>
                   <PackageDetails

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/format";
 import styles from "./dispatch-review.module.css";
+import { FrameFix } from "./frame-fix";
 
 /**
  * What the desk will receive.
@@ -171,13 +172,139 @@ function EditorialMeta({ frame }: { frame: ReviewFrame }) {
   );
 }
 
-function FrameCard({ frame }: { frame: ReviewFrame }) {
+function FrameCard({
+  frame,
+  fixable,
+  open,
+  onToggleFix,
+  workspaceSlug,
+  shootId,
+}: {
+  frame: ReviewFrame;
+  fixable: boolean;
+  open: boolean;
+  onToggleFix: (assetId: string | null) => void;
+  workspaceSlug: string;
+  shootId: string;
+}) {
+  const blocked = frame.missingRequired.length > 0;
+  const ref = useRef<HTMLElement>(null);
+
+  // Opened from the summary above: bring the frame to the operator rather than
+  // making them hunt for the one that was named.
+  useEffect(() => {
+    // Optional call: scrolling is a courtesy, and an environment without it
+    // (jsdom, an older engine) should still render the editor rather than
+    // throw on the way to it.
+    if (open) ref.current?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+  }, [open]);
+
   return (
-    <article className={styles.frame}>
-      <p className={styles.frameIndex}>{String(frame.position + 1).padStart(2, "0")}</p>
+    <article className={styles.frame} id={`frame-${frame.assetId}`} ref={ref}>
+      <p className={styles.frameIndex}>
+        {String(frame.position + 1).padStart(2, "0")}
+        {blocked && <span className={styles.frameBlocked}>Needs work</span>}
+      </p>
       <Shot frame={frame} />
       <EditorialMeta frame={frame} />
+
+      {blocked && (
+        <>
+          <p className={styles.frameMissing}>
+            Missing before this can be sent: {frame.missingRequired.join(", ")}
+          </p>
+          {fixable ? (
+            <button
+              aria-expanded={open}
+              className={styles.fixButton}
+              onClick={() => onToggleFix(open ? null : frame.assetId)}
+              type="button"
+            >
+              {open ? "Close" : "Fix this frame"}
+            </button>
+          ) : (
+            <p className={styles.fixNote}>
+              Editing a frame needs the asset-write permission.{" "}
+              <Link className="text-link" href={frame.assetHref}>
+                Open the asset
+              </Link>
+            </p>
+          )}
+        </>
+      )}
+
+      {open && fixable && (
+        <FrameFix
+          assetId={frame.assetId}
+          filename={frame.filename}
+          missing={frame.missingRequired}
+          onDone={() => onToggleFix(null)}
+          shootId={shootId}
+          values={{
+            caption: frame.caption,
+            headline: frame.headline,
+            creditLine: frame.credit,
+            copyrightNotice: frame.copyright,
+            subjects: frame.people,
+            locationName: frame.location,
+            usageRestrictions: frame.usageRestrictions,
+          }}
+          workspaceSlug={workspaceSlug}
+        />
+      )}
     </article>
+  );
+}
+
+/**
+ * What has to change, named and reachable.
+ *
+ * A blocked package used to say "2 checks need review" and leave the operator
+ * to work out which frames and where. Each line here names the frame, the
+ * fields, and opens the editor on it.
+ */
+function FrameBlockers({
+  frames,
+  fixable,
+  onFix,
+}: {
+  frames: readonly ReviewFrame[];
+  fixable: boolean;
+  onFix: (assetId: string) => void;
+}) {
+  const blocked = frames.filter((frame) => frame.missingRequired.length > 0);
+  if (blocked.length === 0) return null;
+
+  return (
+    <section aria-labelledby="blockers-heading" className={styles.blockers}>
+      <h3 id="blockers-heading">
+        {blocked.length} {blocked.length === 1 ? "frame needs" : "frames need"} work before this can
+        be sent
+      </h3>
+      <ul>
+        {blocked.map((frame) => (
+          <li key={frame.assetId}>
+            <span>
+              <strong>{String(frame.position + 1).padStart(2, "0")}</strong>{" "}
+              {frame.headline ?? frame.filename} — missing {frame.missingRequired.join(", ")}
+            </span>
+            {fixable ? (
+              <button
+                className={styles.fixInline}
+                onClick={() => onFix(frame.assetId)}
+                type="button"
+              >
+                Fix
+              </button>
+            ) : (
+              <Link className="text-link" href={frame.assetHref}>
+                Open
+              </Link>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -345,14 +472,29 @@ export function PackageGallery({
   frames,
   terms,
   restrictions,
+  workspaceSlug,
+  shootId,
+  canEditFrames = false,
 }: {
   frames: readonly ReviewFrame[];
   terms?: string;
   restrictions?: string;
+  workspaceSlug: string;
+  shootId: string;
+  canEditFrames?: boolean;
 }) {
   const [view, setView] = useState<View>("gallery");
   const [showAll, setShowAll] = useState(false);
+  const [fixing, setFixing] = useState<string | null>(null);
   const restId = useId();
+
+  /* Opening a fix from the summary has to reveal the frame even when it is one
+     of the ones the +N control is hiding. */
+  const openFix = (assetId: string) => {
+    setView("gallery");
+    setShowAll(true);
+    setFixing(assetId);
+  };
 
   const visible = showAll ? frames : frames.slice(0, ABOVE_THE_FOLD);
   const remaining = frames.length - ABOVE_THE_FOLD;
@@ -391,9 +533,19 @@ export function PackageGallery({
 
       {view === "gallery" && (
         <>
+          <FrameBlockers frames={frames} fixable={canEditFrames} onFix={openFix} />
+
           <div className={`${styles.frames} ${styles.framesThree}`}>
             {visible.map((frame) => (
-              <FrameCard frame={frame} key={frame.assetId} />
+              <FrameCard
+                frame={frame}
+                fixable={canEditFrames}
+                key={frame.assetId}
+                onToggleFix={setFixing}
+                open={fixing === frame.assetId}
+                shootId={shootId}
+                workspaceSlug={workspaceSlug}
+              />
             ))}
           </div>
 
