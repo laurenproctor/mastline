@@ -349,6 +349,15 @@ begin
   for i in 1..30 loop
     req := md5('syn-request-' || i)::uuid;
     update public.buyer_requests set
+      -- Supplied, not left to the trigger. protect_buyer_request coalesces
+      -- old, then new, then now(); handing it a value is what gives these a
+      -- past. Without it every request qualified the instant this file ran and
+      -- "median time to qualification" measured the fixture's age.
+      qualified_at = case when i >= 6 then now() - ((205 - i * 5) || ' days')::interval end,
+      closed_at = case when i >= 27 then now() - ((30 - i) || ' days')::interval end,
+      -- Two requests ran out with nothing done about them, so the metric that
+      -- counts those has something to count.
+      expires_at = case when i <= 2 then now() - ((10 - i) || ' days')::interval end,
       status = case
         when i between 6 and 8 then 'qualified'
         when i between 9 and 12 then 'matching'
@@ -358,9 +367,20 @@ begin
         when i between 24 and 25 then 'negotiating'
         when i between 26 and 29 then 'won'
         when i = 30 then 'lost'
+        -- Three closed early, before anything was sent. A funnel that only
+        -- ever loses at the last step is not a funnel anybody would recognise,
+        -- and win rate computed against one is flattering nonsense.
+        when i = 3 then 'declined'
+        when i = 4 then 'lost'
+        when i = 5 then 'lost'
         else 'new'
       end::public.buyer_request_status,
-      closed_reason = case when i = 30 then 'Desk went with a wire picture.' end
+      closed_reason = case
+        when i = 30 then 'Desk went with a wire picture.'
+        when i = 3 then 'Nobody free to cover it.'
+        when i = 4 then 'Another agency got there first.'
+        when i = 5 then 'Budget pulled before we answered.'
+      end
     where id = req and status = 'new';
   end loop;
 end $$;
