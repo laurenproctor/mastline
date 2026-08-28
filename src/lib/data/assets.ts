@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Asset, AssetVersion, CaptionRevision, Id } from "../domain";
 import type { AssetMetadataInput } from "../validation";
 import { money } from "../money";
+import { selectByIds } from "../in-batches";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
 import { recordEvent, recordEventWith } from "./activity";
@@ -134,16 +135,31 @@ export async function listAssets(
   if (rows.length === 0) return [];
 
   const ids = rows.map((row) => row.id);
-  const [versions, earnings] = await Promise.all([
-    supabase.from("asset_versions").select(VERSION_COLUMNS).in("asset_id", ids),
-    supabase
-      .from("asset_lifetime_earnings")
-      .select("asset_id, lifetime_earnings_minor")
-      .in("asset_id", ids),
+
+  /*
+   * Batched, because both of these key on every asset in the workspace and
+   * PostgREST puts the whole list in the URL. Past about 215 ids Kong answers
+   * 414, and these two used to swallow it: the export lost every file digest
+   * and object key, and every asset reported zero earnings, with nothing
+   * failing anywhere. See src/lib/data/in-batches.ts.
+   */
+  const [versionRows, earningRows] = await Promise.all([
+    selectByIds<Record<string, unknown>>(ids, "asset versions", (batch) =>
+      supabase.from("asset_versions").select(VERSION_COLUMNS).in("asset_id", batch),
+    ),
+    selectByIds<{ asset_id: string; lifetime_earnings_minor: number }>(
+      ids,
+      "asset earnings",
+      (batch) =>
+        supabase
+          .from("asset_lifetime_earnings")
+          .select("asset_id, lifetime_earnings_minor")
+          .in("asset_id", batch),
+    ),
   ]);
 
   const versionsByAsset = new Map<string, AssetVersion[]>();
-  for (const row of versions.data ?? []) {
+  for (const row of versionRows) {
     const version = toVersion(row as Record<string, unknown>);
     const bucket = versionsByAsset.get(version.assetId) ?? [];
     bucket.push(version);
@@ -151,10 +167,7 @@ export async function listAssets(
   }
 
   const earningsByAsset = new Map<string, number>(
-    (earnings.data ?? []).map((row) => [
-      row.asset_id as string,
-      Number(row.lifetime_earnings_minor ?? 0),
-    ]),
+    earningRows.map((row) => [row.asset_id, Number(row.lifetime_earnings_minor ?? 0)]),
   );
 
   return rows.map((row) =>
