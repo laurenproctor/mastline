@@ -121,26 +121,49 @@ It now gates two paths, not one:
   marked unreviewed. The workspace switch is
   `organizations.auto_caption_on_import`, on by default.
 
-**Known dead at time of writing.** The key in local `.env.local` is
-identity-linked, and every Messages API call with it returns:
+**Two faults had to be fixed before either path had ever worked.** Both were
+silent, and both surfaced only as "The suggestion service returned 400."
 
-    400 invalid_request_error: anthropic-workspace-id is required when
-    authenticating with an identity-linked API key; send the id of the
-    workspace this request acts in.
+1. **The key is identity-backed and not scoped to a workspace**, so the API
+   refuses to guess which workspace a request bills to:
 
-Whether production's key has the same problem is unverified — Vercel stores
-production values as sensitive and `vercel env pull` reads them back empty, so
-it cannot be checked from outside. If it does, both caption paths fail
-identically and invisibly: the import logs one `Could not draft a caption for
-<id>` warning per frame and writes nothing, and the Suggest button reports
-"The suggestion service returned 400."
+       400 invalid_request_error: anthropic-workspace-id is required when
+       authenticating with an identity-linked API key; send the id of the
+       workspace this request acts in.
 
-The fix is either a key that is not identity-linked, or passing the workspace id
-in `defaultHeaders` when constructing `new Anthropic()` in
-`src/lib/data/metadata-suggestions.ts`. Nothing else in the product depends on
-it: an import still stores the original, and a caption can still be typed.
-Confirm with one import into a real workspace before assuming the feature is
-live.
+   `ANTHROPIC_WORKSPACE_ID` is now read in
+   `src/lib/data/metadata-suggestions.ts` and sent as the `anthropic-workspace-id`
+   default header. Unset, no header is sent — which is correct for a key scoped
+   to a single workspace, and is what makes moving to one later a matter of
+   clearing a variable rather than editing code. Do not set it speculatively: a
+   workspace id that contradicts a scoped key's own workspace is a 404.
+
+   The alternative worth taking eventually is a **service account key scoped to
+   one workspace** (Console → Settings → Service accounts, then Settings → API
+   keys with **Linked account** set to it). That needs no header at all, and it
+   gives the deployment its own identity — the current key acts as a person, so
+   all usage attributes to them and the key is archived if they ever leave the
+   organization. This is not the legacy "workspace key" type, which belongs to a
+   workspace and acts as nobody; scope is a property of an identity-backed key.
+
+2. **`maxItems` is rejected under `strict: true`.** The suggestion tool declared
+   `keywords` with `maxItems`, and the API answered
+   `tools.0.custom: For 'array' type, property 'maxItems' is not supported` —
+   failing every request, with and without the workspace header. The cap is
+   stated in the tool description instead; `normaliseSuggestion` was always the
+   thing actually enforcing it.
+
+Verified end to end after both fixes: a real upload through the built app draws
+a real caption, stored with `caption_origin: model`, `caption_awaits_review:
+true`, confidence, basis, and an `asset.caption_drafted` event.
+
+Production runs the same code, but whether its key needs the header could not be
+checked from outside — Vercel stores production values as sensitive and reads
+them back empty. `ANTHROPIC_WORKSPACE_ID` is set for production on the
+assumption that it is the same identity-backed key. If production's key turns
+out to be scoped to a *different* workspace, the header will make requests 404
+instead; unset the variable in that case. Confirm with one import into a real
+workspace.
 
 The model is `claude-haiku-4-5` by default, overridable with
 `MASTLINE_SUGGESTION_MODEL` (unset in production, so the default applies).
