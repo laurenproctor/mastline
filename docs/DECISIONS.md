@@ -86,6 +86,45 @@ Item numbers below are permanent. Resolved items keep their number so older note
   picture desk opens without an account, with every open and download recorded.
   See `docs/DELIVERY_LINKS.md`. Watermarking and an explicit acceptance are still
   missing.
+- **Approval is not a dispatch, and a link is not a send.** Approving a package
+  used to set the package to `delivered`, the submission to `sent`, stamp
+  `sent_at`, write a `submission.sent` event reading "Sent to <buyer>", and move
+  the shoot to `dispatched` — all before a delivery link existed and before
+  anything had left Mastline. Seven distinct facts were being recorded as one.
+  They are now separate and each is written by the thing that evidences it:
+  approval freezes the package and opens a `queued` submission; creating a link
+  moves nothing; **Mark as shared** is what records a send; the first valid open
+  is what records a delivery. Copying a link to the clipboard writes nothing at
+  all. Settled 2026-08-28.
+- The package snapshot freezes at **approval**, not at `sent_at`. Keying
+  immutability on a send that now happens later would have left the record
+  editable for the whole window between approving and sharing — exactly the
+  window in which somebody might be tempted to adjust it.
+- **"Retry delivery" is gone.** It inserted a row with status `sending` and
+  reported "Attempt 2 recorded and queued." Nothing was queued: there is no
+  sender, no worker, and no code path that would ever have moved that attempt
+  off `sending`. A database insert is not a transmission. Provider-reported
+  attempts arriving through the delivery webhook remain visible as read-only
+  evidence, and the control returns when there is something behind it.
+- **Delivery analytics are first-party, consent-gated, and bounded by the
+  server.** Opens, acceptances, and downloads are commercial evidence and are
+  recorded whatever a visitor chooses. Viewing time is engagement measurement
+  and is not: where a choice is required and has not been made, the delivery
+  page renders no tracker. Every duration is a claim from a browser, bounded by
+  a per-beat ceiling, the wall clock, and a monotonic sequence, so a replayed or
+  inflated beat cannot move the number. The visitor identifier is random,
+  first-party, and hashed against the delivery so one browser on two links is
+  two unrelated visitors; there is no fingerprinting and the IP address is never
+  the identifier. Missing measurement is reported as unavailable, never as zero
+  engagement. Retention of the detailed session rows is configurable and the
+  durable rollups survive it. **Open:** the retention period itself, and whether
+  dwell time on a delivery page is caught by any particular privacy regime, are
+  for legal review rather than settled here.
+- Recipient names, email addresses, phone numbers, and contact references are
+  stored in protected columns and never rendered into a delivery URL — a query
+  string ends up in browser history, referrer headers, and every proxy log in
+  between. Attribution parameters, which carry none of that, do go in the URL
+  and are never read to decide access.
 - No route-level `loading.tsx`. It wraps its subtree in an implicit Suspense
   boundary, and with one present a Server Action that revalidated the route it
   was invoked from left its promise unresolved on the client: the write landed,

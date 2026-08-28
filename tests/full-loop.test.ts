@@ -3,7 +3,11 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { createPackageFromSelection } from "../src/lib/data/packages";
-import { approveAndSend, recordSubmissionOutcome } from "../src/lib/data/submissions";
+import {
+  approvePackageAndCreateSubmission,
+  recordSubmissionOutcome,
+} from "../src/lib/data/submissions";
+import { createDelivery, markDeliveryShared } from "../src/lib/data/delivery-links";
 import {
   allocatePayment,
   getMoneySummary,
@@ -12,7 +16,14 @@ import {
   recordPayment,
 } from "../src/lib/data/money";
 import { money } from "../src/lib/money";
-import { ORG_A, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
+import {
+  ORG_A,
+  anonClient,
+  clientFor,
+  hasLocalSupabase,
+  purgeShoot,
+  serviceClient,
+} from "./helpers/supabase";
 
 /**
  * One shoot, all the way from selection to money in the bank.
@@ -117,8 +128,8 @@ describeIf("assignment to payment", () => {
     });
     expect(assetCount).toBe(1);
 
-    // --- Dispatcher approves and sends -------------------------------------
-    const { submissionId, reference } = await approveAndSend({
+    // --- Dispatcher approves. Nothing is sent. -----------------------------
+    const { submissionId, reference } = await approvePackageAndCreateSubmission({
       client: dispatcher,
       organizationId: ORG_A,
       actorId: DISPATCHER,
@@ -127,15 +138,91 @@ describeIf("assignment to payment", () => {
     });
     expect(reference).toBeTruthy();
 
-    const { data: sent } = await service
+    const { data: approved } = await service
       .from("submissions")
-      .select("status, terms_snapshot, delivery_manifest")
+      .select("status, sent_at, delivered_at, terms_snapshot, delivery_manifest")
       .eq("id", submissionId)
       .single();
-    expect(sent!.status).toBe("sent");
-    const manifest = (sent!.delivery_manifest as { assets: { assetId: string }[] }).assets;
+    expect(approved!.status).toBe("queued");
+    expect(approved!.sent_at).toBeNull();
+    const manifest = (approved!.delivery_manifest as { assets: { assetId: string }[] }).assets;
     expect(manifest).toHaveLength(1);
     expect(manifest[0].assetId).toBe(assetId);
+
+    // --- A link for one recipient. Still nothing sent. ----------------------
+    const link = await createDelivery({
+      client: dispatcher,
+      organizationId: ORG_A,
+      actorId: DISPATCHER,
+      submissionId,
+      recipientLabel: "Chicago picture desk",
+      customParameters: { campaign: "awards-season", channel: "email" },
+      windowDays: 7,
+    });
+
+    const { data: afterLink } = await service
+      .from("submissions")
+      .select("status, sent_at")
+      .eq("id", submissionId)
+      .single();
+    expect(afterLink!.status).toBe("queued");
+    expect(afterLink!.sent_at).toBeNull();
+
+    // --- The photographer says they passed it on ----------------------------
+    await markDeliveryShared({
+      client: dispatcher,
+      organizationId: ORG_A,
+      actorId: DISPATCHER,
+      submissionId,
+      deliveryId: link.id,
+    });
+
+    const { data: afterShare } = await service
+      .from("submissions")
+      .select("status, sent_at, delivered_at")
+      .eq("id", submissionId)
+      .single();
+    expect(afterShare!.status).toBe("sent");
+    expect(afterShare!.sent_at).toBeTruthy();
+    expect(afterShare!.delivered_at).toBeNull();
+
+    // The package is sending, not delivered: nobody has opened anything.
+    const { data: sendingPackage } = await service
+      .from("packages")
+      .select("status")
+      .eq("id", packageId)
+      .single();
+    expect(sendingPackage!.status).toBe("sending");
+
+    // --- The desk opens it. That is the delivery. ---------------------------
+    const anon = anonClient();
+    await anon.rpc("open_delivery", { delivery_token: link.token });
+
+    const { data: afterOpen } = await service
+      .from("submissions")
+      .select("status, sent_at, delivered_at")
+      .eq("id", submissionId)
+      .single();
+    expect(afterOpen!.status).toBe("delivered");
+    expect(afterOpen!.delivered_at).toBeTruthy();
+    // The send timestamp is the share, not the open, and it did not move.
+    expect(afterOpen!.sent_at).toBe(afterShare!.sent_at);
+
+    // --- Somebody identifies themselves by accepting ------------------------
+    await anon.rpc("accept_delivery", {
+      delivery_token: link.token,
+      accepted_by_name: "Dana Whitfield",
+    });
+
+    const { data: afterAccept } = await service
+      .from("submissions")
+      .select("status, acknowledged_at, delivered_at")
+      .eq("id", submissionId)
+      .single();
+    expect(afterAccept!.status).toBe("acknowledged");
+    expect(afterAccept!.acknowledged_at).toBeTruthy();
+    // The first delivery time survives the acceptance.
+    expect(afterAccept!.delivered_at).toBe(afterOpen!.delivered_at);
 
     // --- The buyer comes back -----------------------------------------------
     await recordSubmissionOutcome({
@@ -230,7 +317,15 @@ describeIf("assignment to payment", () => {
     const actions = new Set((events ?? []).map((event) => event.action));
     expect(actions.has("package.created")).toBe(true);
     expect(actions.has("package.approved")).toBe(true);
-    expect(actions.has("submission.sent")).toBe(true);
+    /*
+     * The two steps that used to be invisible. Approval no longer writes a
+     * `submission.sent`, because approving sends nothing; what the timeline now
+     * carries is the link being made and, separately, the photographer saying
+     * they passed it on.
+     */
+    expect(actions.has("delivery.link_created")).toBe(true);
+    expect(actions.has("delivery.link_shared")).toBe(true);
+    expect(actions.has("submission.sent")).toBe(false);
     expect(actions.has("submission.sold")).toBe(true);
     expect(actions.has("license.recorded")).toBe(true);
     expect(actions.has("payment.recorded")).toBe(true);

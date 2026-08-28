@@ -5,17 +5,22 @@ import { isRecordId } from "../validation";
 import { recordEventWith } from "./activity";
 
 /**
- * Submissions: the factual record of what was sent.
+ * Submissions: the factual record of what was approved, and what became of it.
  *
- * Once sent_at is set the database refuses to change the package, buyer,
- * recipient, terms, restrictions, manifest, method, or send time. Outcome
- * fields stay open so a sale can be linked afterwards without rewriting
- * history.
+ * The snapshot is immutable from the moment it is created -- not from `sent_at`,
+ * which used to be the trigger's condition and was only ever right while
+ * approving a package and sending it were the same motion. They are not. A
+ * submission is created `queued` with `sent_at` null and stays there until a
+ * person records sharing a link, or somebody opens one.
  *
- * Note on scope: Mastline records the dispatch. It does not yet transmit to a
- * buyer's SFTP or portal -- delivery integrations are Phase 3. The record is
- * still the authoritative account of what the operator sent and under which
- * terms.
+ * Outcome fields stay open so a sale can be linked afterwards without rewriting
+ * history, and the delivery timestamps are forward-only: each is filled in once
+ * and never moved.
+ *
+ * Note on scope: Mastline still transmits nothing. There is no email, no SFTP,
+ * no portal integration. What it now does honestly is distinguish approving a
+ * package from creating a link for a recipient, sharing that link, and the
+ * recipient opening it -- four separate facts that used to be recorded as one.
  */
 
 const SUBMISSION_COLUMNS =
@@ -125,20 +130,36 @@ function buildReference(buyerName: string | null, sentAt: Date): string {
 }
 
 /**
- * Approve a package and record the dispatch.
+ * Approve a package and open a submission for it.
  *
- * This is the point of no return, so it does several things in a deliberate
- * order and refuses to proceed if any of them fails:
+ * This freezes the commercial package: the frames, the exact versions, their
+ * ordering, the buyer, the terms, the restrictions, the exclusivity, and the
+ * embargo all become permanent here, and the database enforces it from this
+ * moment rather than from a send that has not happened.
  *
- *   1. Re-read the package and its members from the database. The caller's view
- *      may be stale, and what gets frozen must be what is true now.
+ * What it deliberately does NOT do is claim a transmission. It used to: it set
+ * the package to `delivered`, the submission to `sent`, stamped `sent_at`,
+ * wrote a `submission.sent` event reading "Sent to <buyer>", and moved the
+ * shoot to `dispatched` -- all before a delivery link existed and before a
+ * single byte had left Mastline. Every one of those was a claim the product
+ * could not support.
+ *
+ * So the package becomes `approved`, the submission is created `queued` with
+ * `sent_at` null, one `package.approved` event is written, and the shoot is
+ * left alone. The next honest step is a recipient-specific link, which is where
+ * the caller redirects to.
+ *
+ * The order is deliberate and it refuses to proceed if any step fails:
+ *
+ *   1. Re-read the package and its members. The caller's view may be stale, and
+ *      what gets frozen must be what is true now.
  *   2. Stamp the approval on the package.
  *   3. Write the submission with a full snapshot of terms and membership.
  *
  * The caller must have already run the dispatch review. This re-checks the
  * things that would corrupt the record rather than trusting that it happened.
  */
-export async function approveAndSend(input: {
+export async function approvePackageAndCreateSubmission(input: {
   organizationId: Id;
   actorId: Id;
   packageId: Id;
@@ -162,12 +183,12 @@ export async function approveAndSend(input: {
   if (pkgError) throw new Error(`Could not read the package: ${pkgError.message}`);
   if (!pkg) throw new Error("That package could not be found in this workspace.");
 
-  if (["sending", "delivered"].includes(pkg.status as string)) {
-    throw new Error("This package has already been dispatched.");
+  if (["approved", "sending", "delivered"].includes(pkg.status as string)) {
+    throw new Error("This package has already been approved.");
   }
-  if (!pkg.buyer_id) throw new Error("Set a buyer before dispatching.");
-  if (!pkg.delivery_method) throw new Error("Record a delivery method before dispatching.");
-  if (!pkg.proposed_terms) throw new Error("Record the proposed terms before dispatching.");
+  if (!pkg.buyer_id) throw new Error("Set a buyer before approving.");
+  if (!pkg.delivery_method) throw new Error("Record a delivery method before approving.");
+  if (!pkg.proposed_terms) throw new Error("Record the proposed terms before approving.");
 
   const { data: members, error: memberError } = await supabase
     .from("package_assets")
@@ -179,17 +200,18 @@ export async function approveAndSend(input: {
   if (memberError) throw new Error(`Could not read the package contents: ${memberError.message}`);
   if (!members || members.length === 0) throw new Error("The package is empty.");
 
-  const sentAt = new Date();
+  const approvedAt = new Date();
   const buyer = pkg.buyers as unknown as { name: string; contact_name: string | null } | null;
-  let reference = buildReference(buyer?.name ?? null, sentAt);
+  let reference = buildReference(buyer?.name ?? null, approvedAt);
 
-  // The package records that it was approved, by whom, and when.
+  // The package records that it was approved, by whom, and when. `approved`,
+  // not `delivered`: nothing has been delivered.
   const { error: approveError } = await supabase
     .from("packages")
     .update({
-      status: "delivered",
+      status: "approved",
       approved_by: actorId,
-      approved_at: sentAt.toISOString(),
+      approved_at: approvedAt.toISOString(),
     })
     .eq("organization_id", organizationId)
     .eq("id", packageId);
@@ -203,21 +225,24 @@ export async function approveAndSend(input: {
   }));
 
   /**
-   * Everything about the dispatch except the reference, which is the one field
+   * Everything about the approval except the reference, which is the one field
    * that may have to be drawn again.
+   *
+   * `sent_at` is absent rather than null-by-omission: there is no send. It is
+   * filled in later by the share, or by a recipient opening the link.
    */
   const record = {
     organization_id: organizationId,
     package_id: packageId,
     buyer_id: pkg.buyer_id,
-    status: "sent",
+    status: "queued",
     recipient_snapshot: {
       desk: recipientLabel ?? buyer?.contact_name ?? null,
       buyer_name: buyer?.name ?? null,
     },
     terms_snapshot: pkg.proposed_terms,
     restrictions_snapshot: pkg.restrictions,
-    // Exactly which versions went out, frozen at this moment.
+    // Exactly which versions were approved, frozen at this moment.
     delivery_manifest: {
       assets: manifest,
       asset_count: manifest.length,
@@ -226,7 +251,6 @@ export async function approveAndSend(input: {
       package_note: pkg.package_note,
     },
     delivery_method: pkg.delivery_method,
-    sent_at: sentAt.toISOString(),
     follow_up_at: followUpAt ?? null,
     created_by: actorId,
   };
@@ -269,12 +293,13 @@ export async function approveAndSend(input: {
     if (result.error?.code !== UNIQUE_VIOLATION) break;
 
     // Taken. The next draw is independent, so this converges quickly.
-    reference = buildReference(buyer?.name ?? null, sentAt);
+    reference = buildReference(buyer?.name ?? null, approvedAt);
   }
 
   if (submissionError || !submission) {
     // Put the package back so the operator can try again rather than being
-    // left with an approved package and no record of a dispatch.
+    // left with an approved -- and therefore frozen -- package and no record of
+    // what it was approved for.
     await supabase
       .from("packages")
       .update({ status: "needs_review", approved_by: null, approved_at: null })
@@ -284,11 +309,11 @@ export async function approveAndSend(input: {
 
   const submissionId = submission.id as string;
 
-  await supabase
-    .from("shoots")
-    .update({ status: "dispatched" })
-    .eq("organization_id", organizationId)
-    .eq("id", pkg.shoot_id);
+  /*
+   * The shoot is NOT moved to `dispatched` here. Nothing has been dispatched.
+   * That happens when a link for this submission is marked shared, which is the
+   * first moment anybody can honestly say the work left.
+   */
 
   await recordEventWith(supabase, {
     organizationId,
@@ -296,19 +321,11 @@ export async function approveAndSend(input: {
     entityType: "package",
     entityId: packageId,
     action: "package.approved",
-    data: { summary: `Dispatch approved · ${manifest.length} assets`, count: manifest.length },
-  });
-
-  await recordEventWith(supabase, {
-    organizationId,
-    actorId,
-    entityType: "submission",
-    entityId: submissionId,
-    action: "submission.sent",
     data: {
-      summary: `Sent to ${buyer?.name ?? "buyer"} · ${reference}`,
+      summary: `Package approved · ${manifest.length} ${manifest.length === 1 ? "frame" : "frames"} · nothing sent yet`,
+      count: manifest.length,
+      submission_id: submissionId,
       reference,
-      asset_count: manifest.length,
     },
   });
 
@@ -333,14 +350,36 @@ export async function recordSubmissionOutcome(input: {
   const { organizationId, actorId, submissionId, status, outcomeNote, followUpAt } = input;
   const supabase = input.client ?? (await createClient());
 
+  /*
+   * The delivery timestamps are write-once in the database now, so restating an
+   * outcome must not restate them. Recording "delivered" twice used to overwrite
+   * the first delivery time with the second; it now raises instead, which is
+   * correct but is not what an operator pressing the button again deserves. So
+   * they are only ever filled in when they are empty.
+   */
+  const { data: current, error: readError } = await supabase
+    .from("submissions")
+    .select("delivered_at, acknowledged_at, sent_at")
+    .eq("organization_id", organizationId)
+    .eq("id", submissionId)
+    .maybeSingle();
+
+  if (readError) throw new Error(`Could not read the submission: ${readError.message}`);
+  if (!current) throw new Error("That submission could not be found in this workspace.");
+
+  const now = new Date().toISOString();
+  const firstDelivery = status === "delivered" && !current.delivered_at ? { delivered_at: now } : {};
+  const firstAcknowledgement =
+    status === "acknowledged" && !current.acknowledged_at ? { acknowledged_at: now } : {};
+
   const { error } = await supabase
     .from("submissions")
     .update({
       status,
       outcome_note: outcomeNote ?? null,
       ...(followUpAt !== undefined ? { follow_up_at: followUpAt } : {}),
-      ...(status === "delivered" ? { delivered_at: new Date().toISOString() } : {}),
-      ...(status === "acknowledged" ? { acknowledged_at: new Date().toISOString() } : {}),
+      ...firstDelivery,
+      ...firstAcknowledgement,
     })
     .eq("organization_id", organizationId)
     .eq("id", submissionId);

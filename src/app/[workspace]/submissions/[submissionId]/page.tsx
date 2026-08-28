@@ -16,8 +16,15 @@ import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DeliveryPanel } from "../_components/delivery-panel";
-import { DeliveryLinks } from "../_components/delivery-links-panel";
+import { DeliveryLinks, type DeliveryLinkView, type LinkStage } from "../_components/delivery-links-panel";
+import {
+  RecipientAnalytics,
+  type RecipientAnalyticsRow,
+} from "../_components/recipient-analytics";
 import { listAcceptances, listAccessEvents, listDeliveries } from "@/lib/data/delivery-links";
+import { listDeliveryEngagement } from "@/lib/data/delivery-analytics";
+import { deliveryStanding } from "@/lib/delivery";
+import { deliveryUrlWithParameters } from "@/lib/delivery-parameters";
 import { headers } from "next/headers";
 import { OutcomePanel } from "../_components/outcome-panel";
 
@@ -58,6 +65,10 @@ export default async function SubmissionPage({
     deliveries.map((delivery) => delivery.id),
   );
   const acceptances = await listAcceptances(organizationId, submissionId);
+  const engagement = await listDeliveryEngagement(
+    organizationId,
+    deliveries.map((delivery) => delivery.id),
+  );
   // Built from the request so a link copied from a preview deployment points at
   // that deployment rather than at production.
   const requestHeaders = await headers();
@@ -67,6 +78,135 @@ export default async function SubmissionPage({
   const assets = shoot ? await listAssets(organizationId, { shootId: shoot.id }) : [];
   const byId = new Map(assets.map((asset) => [asset.id, asset]));
   const buyer = buyers.find((candidate) => candidate.id === submission.buyerId) ?? null;
+
+  /*
+   * One view model per recipient link.
+   *
+   * The stage is worked out from evidence rather than from a single status
+   * column, because the states genuinely are independent: a link can be opened
+   * without ever having been marked shared (the photographer sent it and forgot
+   * to say so), and a link can be shared and never opened. Collapsing them into
+   * one "delivered" is precisely what this whole screen exists to stop.
+   */
+  const acceptanceByDelivery = new Map(
+    acceptances.map((acceptance) => [acceptance.deliveryId, acceptance] as const),
+  );
+  const now = new Date();
+
+  const linkViews: DeliveryLinkView[] = deliveries.map((link) => {
+    const standing = deliveryStanding({
+      expiresAt: link.expiresAt,
+      revokedAt: link.revokedAt,
+      now,
+    });
+    const measured = engagement.get(link.id);
+    const acceptance = acceptanceByDelivery.get(link.id);
+
+    const stage: LinkStage =
+      standing === "withdrawn"
+        ? "withdrawn"
+        : standing === "expired"
+          ? "expired"
+          : (measured?.downloadCount ?? 0) > 0
+            ? "downloaded"
+            : acceptance
+              ? "accepted"
+              : (measured?.openCount ?? 0) > 0
+                ? "opened"
+                : link.sharedAt
+                  ? "shared"
+                  : "created";
+
+    return {
+      id: link.id,
+      recipientLabel: link.recipientLabel,
+      contactReference: link.contactReference,
+      // The stored snapshot, not anything read back off a visitor's URL.
+      parameters: Object.entries(link.customParameters).sort(([a], [b]) =>
+        a < b ? -1 : a > b ? 1 : 0,
+      ),
+      url: deliveryUrlWithParameters(origin, link.token, link.customParameters),
+      stage,
+      isLive: standing === "live",
+      createdAt: link.createdAt,
+      sharedAt: link.sharedAt,
+      expiresAt: link.expiresAt,
+    };
+  });
+
+  const STAGE_TEXT: Record<LinkStage, string> = {
+    created: "Link created",
+    shared: "Shared",
+    opened: "Opened",
+    accepted: "Accepted",
+    downloaded: "Downloaded",
+    withdrawn: "Withdrawn",
+    expired: "Expired",
+  };
+
+  const analyticsRows: RecipientAnalyticsRow[] = linkViews.map((view) => {
+    const measured = engagement.get(view.id);
+    const acceptance = acceptanceByDelivery.get(view.id);
+    const perAsset = new Map((measured?.assets ?? []).map((entry) => [entry.assetId, entry]));
+
+    return {
+      deliveryId: view.id,
+      recipientLabel: view.recipientLabel,
+      parameters: view.parameters,
+      stageLabel: STAGE_TEXT[view.stage],
+      createdAt: view.createdAt,
+      sharedAt: view.sharedAt,
+      acceptedBy: acceptance?.acceptedBy,
+      acceptedAt: acceptance?.acceptedAt,
+      acceptedIpAddress: acceptance?.ipAddress,
+      acceptedTerms: acceptance?.termsSnapshot,
+      engagement: measured ?? {
+        deliveryId: view.id,
+        state: "never-opened" as const,
+        sessionCount: 0,
+        visitorCount: 0,
+        activeVisibleMs: 0,
+        averageSessionMs: 0,
+        openCount: 0,
+        downloadCount: 0,
+        downloadedAssetIds: [],
+        assets: [],
+      },
+      assets: submission.manifest.map((entry) => {
+        const seen = perAsset.get(entry.assetId);
+        return {
+          assetId: entry.assetId,
+          filename: byId.get(entry.assetId)?.canonicalFilename ?? entry.assetId.slice(0, 8),
+          viewed: Boolean(seen && seen.activeVisibleMs > 0),
+          viewCount: seen?.viewCount ?? 0,
+          activeVisibleMs: seen?.activeVisibleMs ?? 0,
+          downloaded: (measured?.downloadedAssetIds ?? []).includes(entry.assetId),
+        };
+      }),
+    };
+  });
+
+  /*
+   * The header used to read "Sent to <buyer>" the moment a submission existed,
+   * which was the moment a package was approved -- before a link existed and
+   * before anything had left. It now describes where the submission actually
+   * is.
+   */
+  const sharedLink = linkViews.find((view) => view.sharedAt);
+  const openedLink = linkViews.find(
+    (view) => (engagement.get(view.id)?.openCount ?? 0) > 0,
+  );
+  const headerDescription = openedLink
+    ? `Opened through the link created for ${openedLink.recipientLabel ?? "a recipient"}${
+        submission.deliveredAt ? ` · ${formatDateTime(submission.deliveredAt)}` : ""
+      }`
+    : sharedLink
+      ? `Link for ${sharedLink.recipientLabel ?? "a recipient"} marked as shared${
+          submission.sentAt ? ` · ${formatDateTime(submission.sentAt)}` : ""
+        }`
+      : linkViews.length > 0
+        ? `Approved for ${buyer?.name ?? "an unrecorded buyer"} · link created, not yet shared`
+        : `Approved for ${buyer?.name ?? "an unrecorded buyer"} · nothing sent yet`;
 
   const license = licenses.find((candidate) => candidate.submissionId === submissionId);
   const relatedPayments = payments.filter((payment) =>
@@ -93,16 +233,20 @@ export default async function SubmissionPage({
     <AppShell active="Submissions" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
-          description={`Sent to ${buyer?.name ?? "an unrecorded buyer"}${
-            submission.sentAt ? ` · ${formatDateTime(submission.sentAt)}` : ""
-          }`}
+          description={headerDescription}
           eyebrow={`Submission ${submission.reference}`}
           title={shoot?.title ?? "Submission"}
         />
 
         <div className="metrics">
           <Metric
-            detail={submission.deliveredAt ? "Receipt recorded" : "Awaiting outcome"}
+            detail={
+              submission.deliveredAt
+                ? "A recipient opened a link"
+                : submission.sentAt
+                  ? "A link was shared, not yet opened"
+                  : "Approved; nothing sent yet"
+            }
             label="Status"
             tone={submission.status === "sold" ? "good" : undefined}
             value={humanizeStatus(submission.status)}
@@ -235,21 +379,77 @@ export default async function SubmissionPage({
             </Panel>
           </div>
 
-          <Panel title="Delivery link">
+          <Panel title="Delivery links">
+            {/*
+              * The order of this panel is the order of the real work: make a
+              * link for one recipient, add any attribution, copy it, send it
+              * yourself, tell Mastline you have, then read what came back.
+              */}
+            <ol className="section-note delivery-next-steps">
+              <li>Create a recipient-specific delivery link.</li>
+              <li>Add optional attribution parameters.</li>
+              <li>Copy the delivery link.</li>
+              <li>Share it through your own channel — Mastline sends nothing.</li>
+              <li>Mark it as shared.</li>
+              <li>Review recipient engagement below.</li>
+            </ol>
             <DeliveryLinks
               workspaceSlug={workspaceSlug}
-              acceptances={acceptances}
               canSend={can(role, "submission.send")}
-              events={accessEvents}
-              links={deliveries}
-              origin={origin}
+              links={linkViews}
               submissionId={submissionId}
             />
           </Panel>
 
-          <Panel title="Next action">
+          <Panel title="Recipient analytics">
+            <RecipientAnalytics rows={analyticsRows} />
+          </Panel>
+
+          <Panel title="Access record">
+            {accessEvents.length === 0 ? (
+              <p className="panel-body section-note">
+                Nothing recorded yet. Opens, acceptances, downloads, and refusals appear here as
+                they happen.
+              </p>
+            ) : (
+              <TableScroll label="What the recipient did">
+                <table className="data-table">
+                  <caption className="visually-hidden">What the recipient did</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">What</th>
+                      <th scope="col">When</th>
+                      <th scope="col">From</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {accessEvents.map((event, index) => (
+                      <tr key={`${event.occurredAt}-${index}`}>
+                        <td>
+                          {event.kind === "opened" && "A link was opened"}
+                          {event.kind === "accepted" &&
+                            `Terms accepted — ${event.detail ?? "name recorded"}`}
+                          {event.kind === "downloaded" && "A frame was downloaded"}
+                          {event.kind === "refused" && `Refused — ${event.detail ?? "closed link"}`}
+                        </td>
+                        <td>{formatDateTime(event.occurredAt)}</td>
+                        <td>{event.ipAddress ?? "unknown"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableScroll>
+            )}
+            <p className="panel-body section-note">
+              Append-only evidence, recorded whatever the visitor&rsquo;s analytics choice. The
+              address is part of the record because /security promises it is: every download is
+              logged with the time and where it came from. It appears here and nowhere in the
+              engagement figures above.
+            </p>
+          </Panel>
+
+          <Panel title="Outcome">
             <DeliveryPanel
-              workspaceSlug={workspaceSlug}
               attempts={attempts.map((attempt) => ({
                 id: attempt.id,
                 attemptNumber: attempt.attemptNumber,
@@ -259,9 +459,7 @@ export default async function SubmissionPage({
                 attemptedAt: attempt.attemptedAt,
                 byPerson: Boolean(attempt.attemptedBy),
               }))}
-              canRetry={can(role, "submission.send")}
               status={submission.status}
-              submissionId={submissionId}
             />
 
             {license && (

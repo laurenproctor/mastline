@@ -3,19 +3,23 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The send gate, still two motions.
+ * The approval gate, still two motions.
  *
  * The shoot-creation flow lost its confirmation step deliberately: a private
  * draft is reversible and did not earn one. This is the screen that did earn
  * it, so these tests exist to make sure the two were not conflated -- that
- * dispatch still shows what is about to leave, still needs a second explicit
- * act, and never shares its copy with the button that writes a draft.
+ * approval still shows what is about to be frozen, still needs a second
+ * explicit act, and never shares its copy with the button that writes a draft.
+ *
+ * The copy assertions changed with the lifecycle. This button no longer claims
+ * a dispatch, because approving one does not perform one, and a test asserting
+ * the old wording would be pinning the product to a claim it cannot support.
  */
 
 const submitted: FormData[] = [];
 
 vi.mock("../actions", () => ({
-  approveAndSendAction: vi.fn(async (_workspaceSlug: string, _previous: unknown, form: FormData) => {
+  approvePackageAction: vi.fn(async (_workspaceSlug: string, _previous: unknown, form: FormData) => {
     submitted.push(form);
     return {};
   }),
@@ -39,22 +43,22 @@ beforeEach(() => {
   submitted.length = 0;
 });
 
-describe("dispatch keeps its own confirmation", () => {
-  it("does not send on the first press", async () => {
+describe("approval keeps its own confirmation", () => {
+  it("does not approve on the first press", async () => {
     const user = userEvent.setup();
     render(<ApprovePanel {...READY} />);
 
-    await user.click(screen.getByRole("button", { name: /approve and record dispatch/i }));
+    await user.click(screen.getByRole("button", { name: /approve package/i }));
 
     expect(submitted).toHaveLength(0);
-    expect(screen.getByRole("button", { name: /yes, record this dispatch/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /yes, approve this package/i })).toBeInTheDocument();
   });
 
   it("names the frames, the buyer, the terms, and the restrictions before it commits", async () => {
     const user = userEvent.setup();
     render(<ApprovePanel {...READY} />);
 
-    await user.click(screen.getByRole("button", { name: /approve and record dispatch/i }));
+    await user.click(screen.getByRole("button", { name: /approve package/i }));
 
     expect(screen.getByText("Northern Wire")).toBeInTheDocument();
     expect(screen.getByText("One-time editorial, worldwide")).toBeInTheDocument();
@@ -66,8 +70,8 @@ describe("dispatch keeps its own confirmation", () => {
     const user = userEvent.setup();
     render(<ApprovePanel {...READY} />);
 
-    await user.click(screen.getByRole("button", { name: /approve and record dispatch/i }));
-    await user.click(screen.getByRole("button", { name: /yes, record this dispatch/i }));
+    await user.click(screen.getByRole("button", { name: /approve package/i }));
+    await user.click(screen.getByRole("button", { name: /yes, approve this package/i }));
 
     expect(submitted).toHaveLength(1);
     expect(submitted[0].get("confirmed")).toBe("yes");
@@ -78,19 +82,19 @@ describe("dispatch keeps its own confirmation", () => {
     const user = userEvent.setup();
     render(<ApprovePanel {...READY} />);
 
-    await user.click(screen.getByRole("button", { name: /approve and record dispatch/i }));
+    await user.click(screen.getByRole("button", { name: /approve package/i }));
     await user.click(screen.getByRole("button", { name: /go back/i }));
 
     expect(submitted).toHaveLength(0);
     expect(
-      screen.getByRole("button", { name: /approve and record dispatch/i }),
+      screen.getByRole("button", { name: /approve package/i }),
     ).toBeInTheDocument();
   });
 
   it("stays disabled while any check is blocking", () => {
     render(<ApprovePanel {...READY} isApprovable={false} blockingTitles={["Missing captions"]} />);
 
-    expect(screen.getByRole("button", { name: /approve and record dispatch/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /approve package/i })).toBeDisabled();
     expect(screen.getByText(/missing captions/i)).toBeInTheDocument();
   });
 

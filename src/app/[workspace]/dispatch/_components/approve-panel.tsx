@@ -2,17 +2,24 @@
 
 import { useActionState, useState } from "react";
 import { Badge } from "@/components/primitives";
-import { type DispatchState, approveAndSendAction } from "../actions";
+import { type DispatchState, approvePackageAction } from "../actions";
 
 const INITIAL: DispatchState = {};
 
 /**
- * The send gate.
+ * The approval gate.
  *
  * Approval is deliberately two motions. The first reveals exactly what is about
  * to become permanent -- how many frames, to whom, under which terms -- and the
  * second commits it. The constitution requires a fresh human confirmation
  * before a consequential action, and a single button is not that.
+ *
+ * The copy used to say "Approve and record dispatch" and, on confirmation,
+ * "Yes, record this dispatch". Both were wrong in the same way: approving a
+ * package dispatches nothing. It freezes what was selected and opens a
+ * submission. The photographer then makes a link for a recipient, passes it on
+ * themselves, and tells Mastline they have -- three further steps, none of which
+ * has happened yet at this button.
  */
 export function ApprovePanel({
   workspaceSlug,
@@ -35,7 +42,7 @@ export function ApprovePanel({
   blockingTitles: readonly string[];
   defaultRecipient: string | null;
 }) {
-  const [state, formAction, pending] = useActionState(approveAndSendAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(approvePackageAction.bind(null, workspaceSlug), INITIAL);
   const [confirming, setConfirming] = useState(false);
 
   if (!isApprovable) {
@@ -45,10 +52,10 @@ export function ApprovePanel({
         <h3>Dispatch is blocked</h3>
         <p>
           Resolve {blockingTitles.map((title) => title.toLowerCase()).join(", ")} before this can be
-          sent.
+          approved.
         </p>
         <button className="button" disabled type="button">
-          Approve and record dispatch
+          Approve package
         </button>
         <p className="section-note">
           The approval control stays disabled until every blocking check passes.
@@ -67,7 +74,7 @@ export function ApprovePanel({
           {buyerName ?? "the selected buyer"}.
         </p>
         <button className="button blue" onClick={() => setConfirming(true)} type="button">
-          Approve and record dispatch
+          Approve package
         </button>
         <p className="section-note">Nothing is recorded without a confirmation step.</p>
       </div>
@@ -81,6 +88,10 @@ export function ApprovePanel({
 
       <Badge tone="danger">Confirm</Badge>
       <h3>This becomes permanent</h3>
+      <p className="section-note">
+        This freezes the selected frames, versions, buyer, terms, and restrictions. It does not send
+        anything.
+      </p>
 
       <dl className="confirm-list">
         <div>
@@ -124,7 +135,7 @@ export function ApprovePanel({
 
       <div className="actions">
         <button className="button blue" disabled={pending} type="submit">
-          {pending ? "Recording…" : "Yes, record this dispatch"}
+          {pending ? "Approving…" : "Yes, approve this package"}
         </button>
         <button
           className="button"
@@ -138,8 +149,8 @@ export function ApprovePanel({
 
       <p className="section-note">
         The exact frames, versions, and terms above are frozen on the submission and cannot be
-        edited afterwards. Mastline records the dispatch; it does not transmit to the buyer’s
-        systems yet.
+        edited afterwards. Nothing is sent by approving. The next step is a delivery link for a
+        specific recipient, which you pass on yourself.
       </p>
     </form>
   );

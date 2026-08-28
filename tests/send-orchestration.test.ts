@@ -3,17 +3,20 @@
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { createPackageFromSelection } from "../src/lib/data/packages";
-import { approveAndSend, recordSubmissionOutcome } from "../src/lib/data/submissions";
+import {
+  approvePackageAndCreateSubmission,
+  recordSubmissionOutcome,
+} from "../src/lib/data/submissions";
 import { allocatePayment, recordLicense, recordPayment } from "../src/lib/data/money";
 import { money } from "../src/lib/money";
 import { ORG_A, clientFor, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
- * The real send path, not a re-implementation of it.
+ * The real approval path, not a re-implementation of it.
  *
- * approveAndSend is the point of no return in the whole product, so it is
- * exercised through the same function a Server Action calls, with row level
- * security in force.
+ * approvePackageAndCreateSubmission is the point of no return in the whole
+ * product, so it is exercised through the same function a Server Action calls,
+ * with row level security in force.
  */
 const describeIf = hasLocalSupabase() ? describe : describe.skip;
 
@@ -138,8 +141,8 @@ describeIf("createPackageFromSelection", () => {
   });
 });
 
-describeIf("approveAndSend", () => {
-  it("freezes the manifest, stamps approval, and moves the shoot to dispatched", async () => {
+describeIf("approvePackageAndCreateSubmission", () => {
+  it("freezes the manifest and stamps approval without claiming a send", async () => {
     const dispatcher = await clientFor("dispatcher");
     const editor = await clientFor("editor");
     const { shootId, assetIds } = await readyShoot("SEND", 2);
@@ -156,7 +159,7 @@ describeIf("approveAndSend", () => {
       restrictions: "Editorial use only.",
     });
 
-    const { submissionId, reference } = await approveAndSend({
+    const { submissionId, reference } = await approvePackageAndCreateSubmission({
       client: dispatcher,
       organizationId: ORG_A,
       actorId: DISPATCHER,
@@ -175,8 +178,14 @@ describeIf("approveAndSend", () => {
       .eq("id", submissionId)
       .single();
 
-    expect(submission!.status).toBe("sent");
-    expect(submission!.sent_at).toBeTruthy();
+    /*
+     * The heart of this sprint. Approval freezes a package; it does not send
+     * one. A submission that says "sent" with a send timestamp, before a link
+     * exists and before anything has left Mastline, is the product asserting
+     * something it cannot support.
+     */
+    expect(submission!.status).toBe("queued");
+    expect(submission!.sent_at).toBeNull();
     expect(submission!.terms_snapshot).toBe("Non-exclusive agency distribution.");
     expect(submission!.restrictions_snapshot).toBe("Editorial use only.");
     expect((submission!.recipient_snapshot as Record<string, string>).desk).toBe(
@@ -192,28 +201,79 @@ describeIf("approveAndSend", () => {
       .select("status, approved_by, approved_at")
       .eq("id", packageId)
       .single();
-    expect(pkg!.status).toBe("delivered");
+    expect(pkg!.status).toBe("approved");
     expect(pkg!.approved_by).toBe(DISPATCHER);
     expect(pkg!.approved_at).toBeTruthy();
 
+    // The shoot has not been dispatched, because nothing has been dispatched.
     const { data: shoot } = await service
       .from("shoots")
       .select("status")
       .eq("id", shootId)
       .single();
-    expect(shoot!.status).toBe("dispatched");
+    expect(shoot!.status).not.toBe("dispatched");
 
-    // Both the approval and the send are in the operational record.
+    // The approval is in the operational record. A send is not, because there
+    // was none.
     const { data: events } = await service
       .from("activity_events")
       .select("action")
       .in("entity_id", [packageId, submissionId]);
     const actions = (events ?? []).map((event) => event.action);
     expect(actions).toContain("package.approved");
-    expect(actions).toContain("submission.sent");
+    expect(actions).not.toContain("submission.sent");
   });
 
-  it("refuses to dispatch the same package twice", async () => {
+  it("freezes the approved package against later edits", async () => {
+    const dispatcher = await clientFor("dispatcher");
+    const editor = await clientFor("editor");
+    const { shootId, assetIds } = await readyShoot("FROZEN", 1);
+
+    const { id: packageId } = await createPackageFromSelection({
+      client: editor,
+      organizationId: ORG_A,
+      actorId: "22222222-2222-2222-2222-222222222222",
+      shootId,
+      buyerId: BACKGRID,
+      name: "Frozen package",
+      deliveryMethod: "SFTP",
+      proposedTerms: "Original terms.",
+      restrictions: "Original restrictions.",
+    });
+
+    await approvePackageAndCreateSubmission({
+      client: dispatcher,
+      organizationId: ORG_A,
+      actorId: DISPATCHER,
+      packageId,
+    });
+
+    // The service role bypasses row level security, so what refuses these is
+    // the database itself rather than a policy.
+    const service = serviceClient();
+
+    for (const patch of [
+      { buyer_id: "a0000000-0000-0000-0000-0000000000b2" },
+      { proposed_terms: "Rewritten terms." },
+      { restrictions: "Rewritten restrictions." },
+      { exclusivity: "worldwide exclusive" },
+      { delivery_method: "Email" },
+      { embargo_until: new Date().toISOString() },
+    ]) {
+      const { error } = await service.from("packages").update(patch).eq("id", packageId);
+      expect(error, `changing ${Object.keys(patch)[0]} should be refused`).toBeTruthy();
+    }
+
+    // ...and its membership, which the manifest depends on.
+    const removal = await service
+      .from("package_assets")
+      .delete()
+      .eq("package_id", packageId)
+      .eq("asset_id", assetIds[0]);
+    expect(removal.error).toBeTruthy();
+  });
+
+  it("refuses to approve the same package twice", async () => {
     const dispatcher = await clientFor("dispatcher");
     const editor = await clientFor("editor");
     const { shootId } = await readyShoot("TWICE", 1);
@@ -229,7 +289,7 @@ describeIf("approveAndSend", () => {
       proposedTerms: "Terms.",
     });
 
-    await approveAndSend({
+    await approvePackageAndCreateSubmission({
       client: dispatcher,
       organizationId: ORG_A,
       actorId: DISPATCHER,
@@ -237,20 +297,20 @@ describeIf("approveAndSend", () => {
     });
 
     await expect(
-      approveAndSend({
+      approvePackageAndCreateSubmission({
         client: dispatcher,
         organizationId: ORG_A,
         actorId: DISPATCHER,
         packageId,
       }),
-    ).rejects.toThrow(/already been dispatched/i);
+    ).rejects.toThrow(/already been approved/i);
   });
 
   it.each([
     ["buyer", { buyerId: null }, /Set a buyer/i],
     ["delivery method", { deliveryMethod: undefined }, /delivery method/i],
     ["terms", { proposedTerms: undefined }, /proposed terms/i],
-  ])("refuses to dispatch without a %s", async (_label, overrides, expected) => {
+  ])("refuses to approve without a %s", async (_label, overrides, expected) => {
     const dispatcher = await clientFor("dispatcher");
     const editor = await clientFor("editor");
     const { shootId } = await readyShoot(`MISSING${Math.round(performance.now())}`, 1);
@@ -268,7 +328,7 @@ describeIf("approveAndSend", () => {
     });
 
     await expect(
-      approveAndSend({
+      approvePackageAndCreateSubmission({
         client: dispatcher,
         organizationId: ORG_A,
         actorId: DISPATCHER,
@@ -277,7 +337,7 @@ describeIf("approveAndSend", () => {
     ).rejects.toThrow(expected);
   });
 
-  it("does not let an editor dispatch", async () => {
+  it("does not let an editor approve", async () => {
     const editor = await clientFor("editor");
     const { shootId } = await readyShoot("EDITORSEND", 1);
 
@@ -293,7 +353,7 @@ describeIf("approveAndSend", () => {
     });
 
     await expect(
-      approveAndSend({
+      approvePackageAndCreateSubmission({
         client: editor,
         organizationId: ORG_A,
         actorId: "22222222-2222-2222-2222-222222222222",
@@ -438,7 +498,7 @@ describeIf("recording an outcome", () => {
       proposedTerms: "Original terms.",
     });
 
-    const { submissionId } = await approveAndSend({
+    const { submissionId } = await approvePackageAndCreateSubmission({
       client: dispatcher,
       organizationId: ORG_A,
       actorId: DISPATCHER,

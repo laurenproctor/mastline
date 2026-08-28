@@ -54,11 +54,18 @@ export const EXPORT_MANIFEST_NOTE = [
   "asset_versions.csv  every stored file, with its SHA-256 and object key",
   "caption_history.csv previous captions, newest last",
   "shoots.csv          shoot briefs",
-  "submissions.csv     what was sent, to whom, and under which terms",
+  "submissions.csv     what was approved, to whom, and under which terms",
+  "delivery_links.csv  every recipient link, its attribution, and what it did",
   "licenses.csv        sales, including the Sales Engine split where it applied",
   "payments.csv        money received, with its full breakdown",
   "allocations.csv     which payment paid for which work",
   "activity.csv        the append-only operational record",
+  "",
+  "delivery_links.csv carries the recipient label and contact reference, which",
+  "are the personal fields Mastline deliberately keeps out of the delivery URL.",
+  "Viewing durations are approximate and are measured only while the recipient",
+  "page was visible and in use. An empty duration means no measurement was",
+  "recorded, which is not the same as no engagement.",
   "",
   "Confidential source notes are NOT included. Export them separately and",
   "deliberately when they are needed.",
@@ -129,6 +136,39 @@ export interface ExportInput {
     deliveredAt?: string;
     outcomeNote?: string;
     assetCount: number;
+  }[];
+  /**
+   * Recipient delivery links, their attribution, and what each one did.
+   *
+   * The recipient label and contact reference are here precisely because they
+   * are NOT in the delivery URL: a photographer taking their history with them
+   * should get the record of who they sent work to, which is a different thing
+   * from putting a name in a query string every proxy between here and the desk
+   * can read.
+   *
+   * The engagement figures are approximate by construction, and a blank one
+   * means nothing was measured rather than that nothing happened.
+   */
+  readonly deliveryLinks: readonly {
+    id: string;
+    submissionId: string;
+    submissionReference: string;
+    recipientLabel?: string;
+    contactReference?: string;
+    parameters: string;
+    createdAt: string;
+    sharedAt?: string;
+    revokedAt?: string;
+    expiresAt: string;
+    firstOpenedAt?: string;
+    lastOpenedAt?: string;
+    openCount: number;
+    sessionCount: number;
+    visitorCount: number;
+    activeVisibleMs?: number;
+    downloadCount: number;
+    acceptedBy?: string;
+    acceptedAt?: string;
   }[];
   readonly licenses: readonly {
     id: string;
@@ -343,6 +383,53 @@ export function buildExport(input: ExportInput): readonly ExportFile[] {
         submission.sentAt ?? "",
         submission.deliveredAt ?? "",
         submission.outcomeNote ?? "",
+      ]),
+    ),
+
+    csv(
+      "delivery_links.csv",
+      [
+        "delivery_id",
+        "submission_id",
+        "submission_reference",
+        "recipient_label",
+        "contact_reference",
+        "parameters",
+        "created_at",
+        "shared_at",
+        "revoked_at",
+        "expires_at",
+        "first_opened_at",
+        "last_opened_at",
+        "open_count",
+        "session_count",
+        "browser_count",
+        "active_visible_ms",
+        "download_count",
+        "accepted_by",
+        "accepted_at",
+      ],
+      input.deliveryLinks.map((link) => [
+        link.id,
+        link.submissionId,
+        link.submissionReference,
+        link.recipientLabel ?? "",
+        link.contactReference ?? "",
+        link.parameters,
+        link.createdAt,
+        link.sharedAt ?? "",
+        link.revokedAt ?? "",
+        link.expiresAt,
+        link.firstOpenedAt ?? "",
+        link.lastOpenedAt ?? "",
+        link.openCount,
+        link.sessionCount,
+        link.visitorCount,
+        // Blank rather than zero: no measurement is not no engagement.
+        link.activeVisibleMs ?? "",
+        link.downloadCount,
+        link.acceptedBy ?? "",
+        link.acceptedAt ?? "",
       ]),
     ),
 

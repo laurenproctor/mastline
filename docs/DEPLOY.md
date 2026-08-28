@@ -31,9 +31,15 @@ done and what is still needed.
 Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
 Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-All 22 migrations are applied, including the three private buckets
-(`originals`, `derivatives`, `evidence`), none public. Production was never
-seeded; the first workspace is made through real sign-up.
+There are 30 migrations in `supabase/migrations`, including the three private
+buckets (`originals`, `derivatives`, `evidence`), none public. Production was
+never seeded; the first workspace is made through real sign-up.
+
+The count is stated rather than claimed as applied: what is actually on the
+remote is whatever `supabase migration list --linked` says, and this file has
+been wrong about that before. The last four -- recipient delivery links,
+approval-time immutability, delivery view analytics, and the open lifecycle --
+have been applied and exercised locally only.
 
 `supabase migration list --linked` is the check that matters here, and it is
 worth running before any deploy that touches data: it prints local and remote

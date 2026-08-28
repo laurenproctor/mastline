@@ -123,6 +123,43 @@ const INPUT: ExportInput = {
       assetCount: 1,
     },
   ],
+  deliveryLinks: [
+    {
+      id: "dly_1",
+      submissionId: "sub_1",
+      submissionReference: "BG-0819-4417",
+      recipientLabel: "New York picture desk",
+      contactReference: "buyer-contact-123",
+      parameters: "campaign=awards-season; channel=email",
+      createdAt: "2026-08-19T18:50:00.000Z",
+      sharedAt: "2026-08-19T18:55:00.000Z",
+      expiresAt: "2026-08-26T18:50:00.000Z",
+      firstOpenedAt: "2026-08-19T19:10:00.000Z",
+      lastOpenedAt: "2026-08-20T09:02:00.000Z",
+      openCount: 2,
+      sessionCount: 2,
+      visitorCount: 1,
+      activeVisibleMs: 124_000,
+      downloadCount: 1,
+      acceptedBy: "Dana Whitfield",
+      acceptedAt: "2026-08-19T19:12:00.000Z",
+    },
+    {
+      // Created and shared, never opened. Everything measured is absent rather
+      // than zero, which is what the CSV has to be able to say.
+      id: "dly_2",
+      submissionId: "sub_1",
+      submissionReference: "BG-0819-4417",
+      recipientLabel: "London syndication",
+      parameters: "campaign=awards-season; desk=london",
+      createdAt: "2026-08-19T18:51:00.000Z",
+      expiresAt: "2026-08-26T18:51:00.000Z",
+      openCount: 0,
+      sessionCount: 0,
+      visitorCount: 0,
+      downloadCount: 0,
+    },
+  ],
   licenses: [
     {
       id: "lic_1",
@@ -181,6 +218,7 @@ describe("buildExport", () => {
       "caption_history.csv",
       "shoots.csv",
       "submissions.csv",
+      "delivery_links.csv",
       "licenses.csv",
       "payments.csv",
       "allocations.csv",
@@ -261,12 +299,39 @@ describe("buildExport", () => {
     }
   });
 
+  it("carries every recipient link, its attribution, and what it did", () => {
+    const files = buildExport(INPUT);
+    const links = files.find((file) => file.name === "delivery_links.csv");
+    expect(links).toBeTruthy();
+
+    const rows = parseCsv(links!.body);
+    const header = rows[0];
+    const opened = rows[1];
+    const never = rows[2];
+
+    // The personal fields are in the export, because the photographer's record
+    // of who they sent work to is theirs -- and they are in the export
+    // precisely because they are not in the URL.
+    expect(opened[header.indexOf("recipient_label")]).toBe("New York picture desk");
+    expect(opened[header.indexOf("contact_reference")]).toBe("buyer-contact-123");
+    expect(opened[header.indexOf("parameters")]).toBe("campaign=awards-season; channel=email");
+    expect(opened[header.indexOf("accepted_by")]).toBe("Dana Whitfield");
+    expect(opened[header.indexOf("active_visible_ms")]).toBe("124000");
+
+    // A link nobody opened reports blank measurements, not confident zeroes.
+    expect(never[header.indexOf("recipient_label")]).toBe("London syndication");
+    expect(never[header.indexOf("first_opened_at")]).toBe("");
+    expect(never[header.indexOf("active_visible_ms")]).toBe("");
+    expect(never[header.indexOf("accepted_by")]).toBe("");
+  });
+
   it("handles an empty workspace without producing broken files", () => {
     const empty = buildExport({
       ...INPUT,
       assets: [],
       shoots: [],
       submissions: [],
+      deliveryLinks: [],
       licenses: [],
       payments: [],
       activity: [],

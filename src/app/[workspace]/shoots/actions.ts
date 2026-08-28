@@ -95,8 +95,9 @@ function hasOwnMetadata(metadata: AssetMetadataInput): boolean {
  *
  * This writes a PRIVATE DRAFT and nothing else. It does not build a package,
  * does not create a submission, does not contact a buyer, and does not move the
- * shoot past `draft`. Sending is a separate screen with its own confirmation
- * (approveAndSendAction), and the two must never be reachable from one button.
+ * shoot past `draft`. Approval is a separate screen with its own confirmation
+ * (approvePackageAction), and the two must never be reachable from one button.
+ * Sending is a third thing again, further along still: a link, shared by hand.
  *
  * Files are not required and never have been: the brief usually exists before
  * anyone has left for the location. When files ARE present they have already

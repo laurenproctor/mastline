@@ -3,12 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createPackageFromSelection, updatePackage } from "@/lib/data/packages";
-import { approveAndSend, recordSubmissionOutcome } from "@/lib/data/submissions";
+import { approvePackageAndCreateSubmission, recordSubmissionOutcome } from "@/lib/data/submissions";
 import { getPackage } from "@/lib/data/packages";
 import { listAssets } from "@/lib/data/assets";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { reviewDispatch } from "@/lib/dispatch-rules";
-import { retryDelivery } from "@/lib/data/delivery";
 import { requireWorkspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import type { SubmissionStatus } from "@/lib/domain";
@@ -106,14 +105,18 @@ export async function updatePackageAction(
 }
 
 /**
- * Approve the package and record the dispatch.
+ * Approve the package.
  *
  * The form must carry an explicit confirmation, which the UI collects in a
- * separate step showing exactly what is about to leave. The dispatch review is
- * re-run here rather than trusted from the page that rendered the button: the
- * page may be stale, and this is the last gate.
+ * separate step showing exactly what is about to become permanent. The dispatch
+ * review is re-run here rather than trusted from the page that rendered the
+ * button: the page may be stale, and this is the last gate.
+ *
+ * Nothing is sent. This freezes the package and opens a `queued` submission;
+ * the operator's next step is a recipient-specific delivery link, which is why
+ * it redirects to the submission rather than back to the dispatch screen.
  */
-export async function approveAndSendAction(
+export async function approvePackageAction(
   workspaceSlug: string,
   _previous: DispatchState,
   formData: FormData,
@@ -122,7 +125,7 @@ export async function approveAndSendAction(
   const confirmed = formData.get("confirmed") === "yes";
 
   if (!confirmed) {
-    return { error: "Dispatch needs an explicit confirmation before anything is recorded." };
+    return { error: "Approval needs an explicit confirmation before anything is recorded." };
   }
 
   const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "submission.send");
@@ -139,22 +142,22 @@ export async function approveAndSendAction(
   const review = reviewDispatch({ pkg, assets, buyer });
   if (!review.isApprovable) {
     return {
-      error: `Dispatch is blocked: ${review.blocking.map((check) => check.title.toLowerCase()).join(", ")}.`,
+      error: `Approval is blocked: ${review.blocking.map((check) => check.title.toLowerCase()).join(", ")}.`,
     };
   }
 
   let submissionId: string;
   try {
-    const sent = await approveAndSend({
+    const approved = await approvePackageAndCreateSubmission({
       organizationId,
       actorId,
       packageId,
       recipientLabel: String(formData.get("recipientLabel") ?? "") || undefined,
       followUpAt: String(formData.get("followUpAt") ?? "") || undefined,
     });
-    submissionId = sent.submissionId;
+    submissionId = approved.submissionId;
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not record the dispatch." };
+    return { error: error instanceof Error ? error.message : "Could not approve the package." };
   }
 
   const routes = workspaceRoutes(canonicalSlug);
@@ -192,30 +195,4 @@ export async function recordOutcomeAction(
   revalidatePath(routes.submission(submissionId));
   revalidatePath(routes.submissions());
   return { ok: true, message: "Outcome recorded. What was sent is unchanged." };
-}
-
-/**
- * Retry a failed delivery.
- *
- * The submission snapshot is untouched: what goes out again is exactly what
- * went out before. Only a failed delivery can be retried, so this cannot
- * resend something that already arrived.
- */
-export async function retryDeliveryAction(
-  workspaceSlug: string,
-  _previous: DispatchState,
-  formData: FormData,
-): Promise<DispatchState> {
-  const submissionId = String(formData.get("submissionId") ?? "");
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "submission.send");
-
-  try {
-    const { attemptNumber } = await retryDelivery({ organizationId, actorId, submissionId });
-    const routes = workspaceRoutes(canonicalSlug);
-    revalidatePath(routes.submission(submissionId));
-    revalidatePath(routes.work());
-    return { ok: true, message: `Attempt ${attemptNumber} recorded and queued.` };
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Could not retry the delivery." };
-  }
 }

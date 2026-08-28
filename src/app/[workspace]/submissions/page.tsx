@@ -53,7 +53,7 @@ export default async function SubmissionsPage({
     <AppShell active="Submissions" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
-          description="What was sent, to whom, under which terms, and what happened next."
+          description="What was approved, to whom, under which terms, and what happened next. A submission is only sent once a delivery link has been shared."
           eyebrow="System of record"
           title="Submissions"
         />

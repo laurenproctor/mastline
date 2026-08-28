@@ -54,8 +54,9 @@ const ERROR_ORDER = ["title", "startsAt", "priority", "embargoUntil", "photograp
  * the rights facts that travel with them, and a review that names what will and
  * will not happen. The one button at the bottom writes a draft.
  *
- * What this form deliberately CANNOT do: send anything. There is no code path
- * from here to approveAndSendAction, and the copy never borrows its verbs.
+ * What this form deliberately CANNOT do: approve or send anything. There is no
+ * code path from here to approvePackageAction, and the copy never borrows its
+ * verbs.
  */
 export function CreateShootForm({
   workspaceSlug,
