@@ -30,6 +30,7 @@ const EXCLUDED_FROM_SITEMAP: Record<string, string> = {
   "reset-password": "auth screen, reached from an emailed link",
   auth: "OAuth callback handlers, no page",
   d: "tokenised delivery links, not public documents",
+  r: "tokenised request-intake links, private to one buyer and not public documents",
   api: "machine surface, no page",
   "[workspace]": "the workspace-scoped application, gated on its second segment",
 };

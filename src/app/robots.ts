@@ -30,6 +30,9 @@ export default function robots(): MetadataRoute.Robots {
           // Tokenised delivery links are held by picture desks and are not
           // public documents, whatever a crawler may have found them in.
           "/d/",
+          // And request-intake links, which are narrower still: one buyer, one
+          // request, and a token that stops working the moment it is used.
+          "/r/",
           // Auth screens are a dead end in search results.
           "/sign-in/",
           "/sign-up/",
