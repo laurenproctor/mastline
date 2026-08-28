@@ -1,3 +1,4 @@
+import "@/styles/mastline-dashboard-design-system.css";
 import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
@@ -101,7 +102,7 @@ export async function AppShell({
   const navMode = cookieStore.get(NAV_PROTOTYPE_COOKIE)?.value === "bottom" ? "bottom" : "tiles";
 
   return (
-    <div className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"}>
+    <div className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"} data-mastline-app>
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
