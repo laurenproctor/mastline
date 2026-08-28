@@ -3743,3 +3743,391 @@ img.avatar {
     padding-left: 8px;
   }
 }
+
+/* --- Work Queue ------------------------------------------------------------
+
+   The buildable-now composition: a Next up board, the ranked queue behind
+   server-rendered filters, recipient evidence, active shoots, and one money
+   strip. Every class is work- scoped so nothing here restyles the primitives
+   other screens share. */
+
+.work-next-up {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 16px 22px 18px;
+  margin-bottom: 18px;
+}
+.work-next-up .eyebrow {
+  color: var(--blue);
+  margin-bottom: 10px;
+}
+/* Red only for a recorded failure, an overdue payment, or a passed
+   explicit follow-up date -- the item's own `urgent` flag, never a guess. */
+.work-next-up.danger {
+  border-left: 3px solid var(--red);
+}
+.work-next-up.danger .eyebrow {
+  color: var(--red);
+}
+.work-next-up-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+}
+.work-next-up-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+.work-next-up.danger .work-next-up-mark {
+  background: var(--red);
+}
+.work-next-up-title {
+  margin: 0 0 3px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  letter-spacing: -0.015em;
+}
+.work-next-up-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-note);
+}
+.work-next-up-age {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+}
+.work-next-up-action {
+  font-weight: 750;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.work-next-up.complete .work-next-up-title {
+  font-size: 19px;
+}
+
+.work-queue-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-areas:
+    "attention shoots"
+    "activity shoots";
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+.work-queue-layout > * {
+  min-width: 0;
+}
+.work-attention {
+  grid-area: attention;
+}
+.work-active-shoots {
+  grid-area: shoots;
+}
+.work-recipient-activity {
+  grid-area: activity;
+}
+
+.work-filter-list {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.work-filter-list ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.work-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: var(--fs-note);
+  font-weight: 650;
+  color: var(--ink-2);
+}
+.work-filter-count {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+/* Selected state is carried by aria-current, so style and semantics agree. */
+.work-filter[aria-current] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+.work-filter[aria-current] .work-filter-count {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.work-attention-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.work-attention-row {
+  display: grid;
+  grid-template-columns: 22px 86px minmax(0, 1fr) 90px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.work-attention-row:last-child {
+  border-bottom: 0;
+}
+.work-attention-rank {
+  color: var(--muted);
+  font-size: var(--fs-note);
+  text-align: center;
+}
+.work-attention-row h3 {
+  margin: 0 0 4px;
+  font-size: var(--fs-body);
+}
+.work-attention-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-note);
+}
+.work-attention-row .age {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  text-align: right;
+  white-space: nowrap;
+}
+.work-attention-row .row-action {
+  text-align: right;
+  font-weight: 750;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.work-attention-row.danger {
+  border-left: 2px solid var(--red);
+}
+
+.work-recipient-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.work-recipient-list li {
+  border-bottom: 1px solid var(--line);
+}
+.work-recipient-list li:last-child {
+  border-bottom: 0;
+}
+.work-recipient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+  padding: 13px 18px;
+  color: inherit;
+  font-size: var(--fs-note);
+}
+.work-recipient-row .age {
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+}
+.work-recipient-text strong {
+  font-weight: 750;
+}
+
+.work-active-shoot {
+  padding: 18px;
+  border-bottom: 1px solid var(--line);
+}
+.work-active-shoot:last-child {
+  border-bottom: 0;
+}
+.work-active-shoot h3 {
+  margin: 0 0 12px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 400;
+}
+.work-shoot-thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+}
+.work-shoot-thumbs img {
+  display: block;
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  background: #1b1d20;
+}
+.work-shoot-facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 14px;
+  margin: 0 0 14px;
+}
+.work-shoot-facts dt {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: var(--fs-label);
+  color: var(--muted);
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+.work-shoot-facts dd {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+/* "Complete" is the word; the green only underlines it. */
+.work-shoot-facts dd.good {
+  color: var(--green);
+  font-weight: 750;
+}
+.work-shoot-action {
+  white-space: nowrap;
+}
+
+.work-money-strip {
+  display: grid;
+  grid-template-columns: 170px repeat(3, minmax(0, 1fr));
+}
+.work-money-strip > * {
+  min-width: 0;
+}
+.work-money-label {
+  margin: 0;
+  padding: 20px 18px;
+  font-size: var(--fs-base);
+  border-right: 1px solid var(--line);
+}
+.work-money-cell {
+  padding: 18px;
+  border-right: 1px solid var(--line);
+}
+.work-money-cell:last-child {
+  border-right: 0;
+}
+.work-money-cell strong {
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  margin-bottom: 3px;
+}
+.work-money-cell strong span {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--fs-note);
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.work-money-cell p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: var(--fs-note);
+}
+
+@media (max-width: 1100px) {
+  .work-queue-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "attention"
+      "shoots"
+      "activity";
+  }
+  .work-money-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .work-money-label {
+    grid-column: 1 / -1;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 14px 18px;
+  }
+  .work-money-cell:nth-child(2),
+  .work-money-cell:nth-child(4) {
+    border-right: 1px solid var(--line);
+  }
+  .work-money-cell:nth-child(3),
+  .work-money-cell:last-child {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .work-next-up {
+    padding: 14px 16px 16px;
+  }
+  /* The board stacks in reading order: what, how old, what to do about it. */
+  .work-next-up-body {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 14px;
+  }
+  .work-next-up-age {
+    grid-column: 2;
+  }
+  .work-next-up-action {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* A queue row becomes a small card, matching the .list-row treatment. */
+  .work-attention-row {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 14px 16px;
+  }
+  .work-attention-row > .badge,
+  .work-attention-text,
+  .work-attention-row .age,
+  .work-attention-row .row-action {
+    grid-column: 2;
+  }
+  .work-attention-row > .badge {
+    justify-self: start;
+  }
+  .work-attention-row .age {
+    text-align: left;
+  }
+  .work-attention-row .row-action {
+    justify-self: start;
+    text-align: left;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .work-money-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .work-money-cell,
+  .work-money-cell:nth-child(2),
+  .work-money-cell:nth-child(4) {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .work-money-cell:last-child {
+    border-bottom: 0;
+  }
+}

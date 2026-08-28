@@ -30,6 +30,17 @@ export function formatLongDate(iso: string, timeZone = DEFAULT_TIMEZONE): string
   }).format(new Date(iso));
 }
 
+/** The dateline form, with the year: "Friday, August 28, 2026". */
+export function formatFullDate(iso: string, timeZone = DEFAULT_TIMEZONE): string {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone,
+  }).format(new Date(iso));
+}
+
 export function formatTime(iso: string, timeZone = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",

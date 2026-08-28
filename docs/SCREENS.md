@@ -15,17 +15,18 @@ Global behavior:
 
 ## 1. Work Queue — `/work`
 
-Question answered: **What needs attention now?**
+Question answered: **What existing action moves my work closest to dispatch, outcome, or payment?**
 
-Modules:
+Modules, as built:
 
-- Header with date, action count, and Import a Shoot
-- Business pulse: net received, outstanding, median submission time, archive revenue
-- Needs Attention queue spanning unfinished metadata, failed deliveries, pending outcomes, statement exceptions, overdue payments, rights matches, and archive opportunities
-- On Deck shoot with caption/package progress
-- Recently finished work and recent commercial activity
+- Header with the dateline in the workspace timezone and **Import a shoot** (shown only with `shoot.write`)
+- **Next up**: the first item of the deterministic queue, made unmissable. Not a separate recommendation. Red only for a recorded failure, an overdue payment, or a passed explicit follow-up date.
+- **Needs attention**: the ranked remainder behind server-rendered filters (`All`, `In preparation`, `Ready to send`, `Awaiting outcome`, `Money`) driven by a `?queue=` workspace-scoped query parameter. Each filter shows its count; each row carries rank, kind, factual detail, elapsed time, one action, and its `rankingBasis`.
+- **Recent recipient activity**: recorded delivery evidence only — opens, acceptances, refusals, and authorized downloads (grouped per delivery). No per-photo view is ever claimed; IP addresses and user agents stay on the submission record; delivery tokens never reach the page.
+- **Active shoots**: up to two most recently active pre-dispatch shoots, with asset counts, selection metadata completeness, package state, recipient-link state, up to four signed preview derivatives, and one contextual action.
+- **Money to reconcile**: expected net across payments awaiting receipt, received-but-unallocated net, and submissions awaiting an outcome. No forecasts or potential value.
 
-Queue actions: open/continue, assign, review, reconcile, snooze, and complete. Priority should combine deadline, commercial impact, workflow blockage, and confidence; expose why an item is ranked.
+Deterministic ranking, in order: recorded failure; overdue payment; passed follow-up date; metadata blockers on selected photos; package awaiting review; submission without a recipient link; submission awaiting outcome; received money unallocated; other unfinished work by last activity. The ranking is a pure function (`buildWorkQueue`) tested without a database, and the dashboard loader uses a fixed number of queries regardless of workspace size.
 
 ## 2. News Radar — `/news`
 
