@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
 
@@ -514,9 +514,7 @@ export async function deletePackage(packageId: string): Promise<void> {
     body: JSON.stringify({ target_package: packageId }),
   });
   if (!purged.ok) {
-    throw new Error(
-      `Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`,
-    );
+    throw new Error(`Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`);
   }
 }
 
@@ -541,7 +539,13 @@ export async function deleteShoot(shootId: string): Promise<void> {
 
 /** The assets on a shoot: id and the fields the creation flow should have set. */
 export async function assetsOnShoot(shootId: string): Promise<
-  { id: string; status: string; caption: string | null; credit_line: string | null; selected: boolean }[]
+  {
+    id: string;
+    status: string;
+    caption: string | null;
+    credit_line: string | null;
+    selected: boolean;
+  }[]
 > {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -742,11 +746,13 @@ export async function engagementForRecipient(recipientLabel: string): Promise<{
     `${url}/rest/v1/delivery_engagement_totals?delivery_id=eq.${deliveryId}&select=active_visible_ms,session_count,visitor_count`,
     { headers: auth },
   );
-  const total = ((await totals.json()) as {
-    active_visible_ms: number;
-    session_count: number;
-    visitor_count: number;
-  }[])[0];
+  const total = (
+    (await totals.json()) as {
+      active_visible_ms: number;
+      session_count: number;
+      visitor_count: number;
+    }[]
+  )[0];
 
   const assets = await fetch(
     `${url}/rest/v1/delivery_asset_engagement_totals?delivery_id=eq.${deliveryId}&select=asset_id`,
@@ -761,4 +767,75 @@ export async function engagementForRecipient(recipientLabel: string): Promise<{
     visitorCount: Number(total?.visitor_count ?? 0),
     assetRows,
   };
+}
+
+/**
+ * A live request-intake link, and the raw token to reach it with.
+ *
+ * The token is minted here and only its sha256 is stored, exactly as the
+ * application does it -- there is no way to read a token back out of the
+ * database, so a fixture has to keep the one it made.
+ */
+export async function putIntakeLinkFixture(): Promise<{ id: string; token: string }> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot place the intake link fixture.");
+
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
+
+  const org = "aaaaaaaa-0000-0000-0000-000000000001";
+  const buyers = (await (
+    await fetch(`${url}/rest/v1/buyers?organization_id=eq.${org}&select=id&limit=1`, { headers })
+  ).json()) as { id: string }[];
+  const members = (await (
+    await fetch(
+      `${url}/rest/v1/memberships?organization_id=eq.${org}&role=eq.owner&select=user_id&limit=1`,
+      { headers },
+    )
+  ).json()) as { user_id: string }[];
+
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
+
+  const created = await fetch(`${url}/rest/v1/request_intake_links`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      organization_id: org,
+      buyer_id: buyers[0]!.id,
+      created_by: members[0]!.user_id,
+      recipient_label: "Northstar Picture Desk",
+      token_hash: `\\x${tokenHash}`,
+      expires_at: new Date(Date.now() + 14 * 86_400_000).toISOString(),
+    }),
+  });
+
+  const rows = (await created.json()) as { id: string }[];
+  if (!rows[0]?.id) throw new Error(`Could not place the intake link fixture: ${created.status}`);
+  return { id: rows[0].id, token };
+}
+
+/** Remove the link and whatever request it produced. */
+export async function removeIntakeLinkFixture(id: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return;
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+  const rows = (await (
+    await fetch(`${url}/rest/v1/request_intake_links?id=eq.${id}&select=resulting_request_id`, {
+      headers,
+    })
+  ).json()) as { resulting_request_id: string | null }[];
+
+  await fetch(`${url}/rest/v1/request_intake_links?id=eq.${id}`, { method: "DELETE", headers });
+  const requestId = rows[0]?.resulting_request_id;
+  if (requestId) {
+    await fetch(`${url}/rest/v1/buyer_requests?id=eq.${requestId}`, { method: "DELETE", headers });
+  }
 }

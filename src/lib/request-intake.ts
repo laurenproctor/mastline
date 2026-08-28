@@ -52,6 +52,15 @@ export const INTAKE_LIMITS = {
   exclusivity: 500,
   usageRestrictions: 2000,
   submitterName: 120,
+  /*
+   * The array was the hole. Every text field above is bounded, and they sum to
+   * roughly 12KB, so a submission could only get large through a list nothing
+   * capped -- an unbounded array behind a function anyone holding a link may
+   * call. Bounded by count and by item, with TOTAL_BYTES left as a backstop for
+   * whatever gets added next.
+   */
+  formatCount: 20,
+  formatLength: 40,
   TOTAL_BYTES: 32_000,
 } as const;
 
@@ -81,6 +90,7 @@ export interface IntakeSubmission {
 }
 
 export type IntakeFailure =
+  | "too_many_formats"
   | "title_required"
   | "title_too_long"
   | "too_long"
@@ -173,11 +183,18 @@ export function parseIntake(raw: Record<string, unknown>): IntakeParse {
   )
     return { ok: false, failure: "budget_backwards", field: "budgetMax" };
 
-  const formats = Array.isArray(raw.requestedFormats)
+  const rawFormats = Array.isArray(raw.requestedFormats)
     ? raw.requestedFormats.filter((f): f is string => typeof f === "string" && f.trim() !== "")
     : typeof raw.requestedFormats === "string" && raw.requestedFormats.trim() !== ""
       ? raw.requestedFormats.split(",").map((f) => f.trim())
       : [];
+
+  if (
+    rawFormats.length > INTAKE_LIMITS.formatCount ||
+    rawFormats.some((format) => format.length > INTAKE_LIMITS.formatLength)
+  )
+    return { ok: false, failure: "too_many_formats", field: "requestedFormats" };
+  const formats = rawFormats;
 
   const value: IntakeSubmission = {
     title,
@@ -216,6 +233,8 @@ export function intakeFailureMessage(failure: IntakeFailure): string {
       return `Keep the title under ${INTAKE_LIMITS.title} characters.`;
     case "too_long":
       return "That is longer than this field accepts.";
+    case "too_many_formats":
+      return `Choose up to ${INTAKE_LIMITS.formatCount} formats.`;
     case "too_large":
       return "That submission is too large. Shorten the brief and try again.";
     case "name_too_short":
