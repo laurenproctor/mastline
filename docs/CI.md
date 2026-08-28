@@ -45,11 +45,18 @@ commands the repository already documents in the README:
 
 | Step | Command | What a failure means |
 | --- | --- | --- |
-| Check formatting | `npm run format:check` | Prettier would rewrite a file. Run `npm run format`. |
 | Check types | `npm run typecheck` | `tsc --noEmit`, strict. |
 | Lint | `npm run lint` | ESLint, including the `eqeqeq` and unused-variable rules the money and status types depend on. |
 | Unit tests | `npm run test` | Vitest. See the note on the database suites below. |
 | Build | `npm run build` | The production Next.js build. |
+| Check formatting | `npm run format:check` | Prettier would rewrite a file. Run `npm run format`. |
+
+Formatting runs **last**, which is backwards for a check that takes four
+seconds. It is deliberate and temporary: the step is red on files that predate
+this workflow, and a failed step skips every step after it. First in the list,
+it would hide whether types, lint, tests, and the build pass on a runner for as
+long as the formatting commit takes to land. Move it back to the front once it
+is green.
 
 This is `npm run verify` with formatting added at the front, run as five named
 steps instead of one, so the pull request shows which stage failed without

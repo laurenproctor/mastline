@@ -44,9 +44,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check formatting
-        run: npm run format:check
-
       - name: Check types
         run: npm run typecheck
 
@@ -62,6 +59,14 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Last, not first. It is the cheapest check and would normally lead, but
+      # it is currently red on 73 files that predate this workflow, and a red
+      # first step skips every step after it -- which would leave types, lint,
+      # tests, and the build unproven on a runner for as long as the formatting
+      # commit takes to land. Order it however you like once it is green.
+      - name: Check formatting
+        run: npm run format:check
 
   migrations:
     name: Migration integrity
