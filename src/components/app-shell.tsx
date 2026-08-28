@@ -102,10 +102,7 @@ export async function AppShell({
   const navMode = cookieStore.get(NAV_PROTOTYPE_COOKIE)?.value === "bottom" ? "bottom" : "tiles";
 
   return (
-    <div
-      className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"}
-      data-mastline-app
-    >
+    <div className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"} data-mastline-app>
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
