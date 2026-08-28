@@ -192,8 +192,14 @@ export default async function RequestDetailPage({
                   </p>
                   <div className="three-col">
                     <Fact label="Source note" value={sensitiveNote.sourceNote} />
-                    <Fact label="Confidential location" value={sensitiveNote.confidentialLocation} />
-                    <Fact label="Confidential identity" value={sensitiveNote.confidentialIdentity} />
+                    <Fact
+                      label="Confidential location"
+                      value={sensitiveNote.confidentialLocation}
+                    />
+                    <Fact
+                      label="Confidential identity"
+                      value={sensitiveNote.confidentialIdentity}
+                    />
                   </div>
                 </div>
               </Panel>
@@ -271,11 +277,7 @@ export default async function RequestDetailPage({
 
           <div className="stack">
             <Panel title="Where it has got to">
-              <LifecyclePanel
-                canWrite={canWrite}
-                request={request}
-                workspaceSlug={canonicalSlug}
-              />
+              <LifecyclePanel canWrite={canWrite} request={request} workspaceSlug={canonicalSlug} />
             </Panel>
 
             <Panel title="Who is answering it">

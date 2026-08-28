@@ -33,8 +33,23 @@ import { recordEventWith } from "./activity";
  * write and one activity event.
  */
 
+/**
+ * One round trip for a request and the two things always rendered beside it.
+ *
+ * The buyer's name and whether a confidential note exists were two extra
+ * queries per read, which the work queue -- the screen an operator opens every
+ * morning -- pays for on top of everything else it fetches. Both are embedded
+ * instead, and both stay honest under row level security: the embed is
+ * evaluated with the caller's policies, so a dispatcher reading a request with
+ * a source note gets an empty `request_sensitive_notes` array rather than a
+ * flag they were not entitled to. Absence of the flag is not evidence of
+ * absence of a note, which is the same contract shoots have.
+ *
+ * `request_sensitive_notes` embeds unambiguously because that table carries
+ * exactly one foreign key back to this one. See the migration.
+ */
 const REQUEST_COLUMNS =
-  "id, organization_id, buyer_id, created_by, assigned_to, assigned_at, assigned_by, reference, source, received_via, request_type, status, title, brief, subject_or_event, subject_names, topics, event_at, location_name, response_deadline, expires_at, deliverables, requested_formats, orientation, approximate_quantity, usage_media, territory, usage_duration, exclusivity, budget_disclosed, budget_min_minor, budget_max_minor, currency, embargo_until, delivery_requirements, usage_restrictions, closed_reason, created_at, updated_at, qualified_at, closed_at";
+  "id, organization_id, buyer_id, created_by, assigned_to, assigned_at, assigned_by, reference, source, received_via, request_type, status, title, brief, subject_or_event, subject_names, topics, event_at, location_name, response_deadline, expires_at, deliverables, requested_formats, orientation, approximate_quantity, usage_media, territory, usage_duration, exclusivity, budget_disclosed, budget_min_minor, budget_max_minor, currency, embargo_until, delivery_requirements, usage_restrictions, closed_reason, created_at, updated_at, qualified_at, closed_at, buyers(name), request_sensitive_notes(request_id)";
 
 interface RequestRow {
   id: string;
@@ -78,6 +93,10 @@ interface RequestRow {
   updated_at: string;
   qualified_at: string | null;
   closed_at: string | null;
+  /** Embedded. Null when no buyer has been identified yet. */
+  buyers: { name: string } | null;
+  /** Embedded, and empty for a role whose policies cannot see the notes table. */
+  request_sensitive_notes: { request_id: string }[] | null;
 }
 
 /** `bigint` arrives as a string once it exceeds what JSON can hold safely. */
@@ -86,10 +105,7 @@ function minorUnits(value: number | string | null): number | undefined {
   return typeof value === "string" ? Number(value) : value;
 }
 
-function toRequest(
-  row: RequestRow,
-  context: { hasSensitiveNote: boolean; buyerName?: string },
-): BuyerRequest {
+function toRequest(row: RequestRow): BuyerRequest {
   const currency = row.currency as CurrencyCode;
   const min = minorUnits(row.budget_min_minor);
   const max = minorUnits(row.budget_max_minor);
@@ -98,7 +114,7 @@ function toRequest(
     id: row.id,
     organizationId: row.organization_id,
     buyerId: row.buyer_id ?? undefined,
-    buyerName: context.buyerName,
+    buyerName: row.buyers?.name ?? undefined,
     createdBy: row.created_by,
     assignedTo: row.assigned_to ?? undefined,
     assignedAt: row.assigned_at ?? undefined,
@@ -139,38 +155,8 @@ function toRequest(
     updatedAt: row.updated_at,
     qualifiedAt: row.qualified_at ?? undefined,
     closedAt: row.closed_at ?? undefined,
-    hasSensitiveNote: context.hasSensitiveNote,
+    hasSensitiveNote: (row.request_sensitive_notes ?? []).length > 0,
   };
-}
-
-/**
- * Which requests carry a confidential note.
- *
- * Only owners and editors can read the notes table, so for everyone else this
- * returns an empty set and the interface simply does not mention that a note
- * exists. Absence of the flag is not evidence of absence of a note -- the same
- * reasoning as `sensitiveNoteShootIds` in shoots.ts.
- */
-async function sensitiveNoteRequestIds(
-  organizationId: Id,
-  supabase: SupabaseClient,
-): Promise<Set<string>> {
-  const { data } = await supabase
-    .from("request_sensitive_notes")
-    .select("request_id")
-    .eq("organization_id", organizationId);
-  return new Set((data ?? []).map((row) => row.request_id as string));
-}
-
-async function buyerNames(
-  organizationId: Id,
-  supabase: SupabaseClient,
-): Promise<Map<string, string>> {
-  const { data } = await supabase
-    .from("buyers")
-    .select("id, name")
-    .eq("organization_id", organizationId);
-  return new Map((data ?? []).map((row) => [row.id as string, row.name as string]));
 }
 
 /**
@@ -474,23 +460,13 @@ export async function listRequests(
       .lte("response_deadline", horizon.toISOString());
   }
 
-  const [{ data, error }, noteIds, names] = await Promise.all([
-    query,
-    sensitiveNoteRequestIds(organizationId, supabase),
-    buyerNames(organizationId, supabase),
-  ]);
-
+  const { data, error } = await query;
   if (error) throw new Error(`Could not load requests: ${error.message}`);
 
-  const requests = (data ?? []).map((row) => {
-    const typed = row as unknown as RequestRow;
-    return toRequest(typed, {
-      hasSensitiveNote: noteIds.has(typed.id),
-      buyerName: typed.buyer_id ? names.get(typed.buyer_id) : undefined,
-    });
-  });
-
-  return sortForInbox(requests, now);
+  return sortForInbox(
+    (data ?? []).map((row) => toRequest(row as unknown as RequestRow)),
+    now,
+  );
 }
 
 /**
@@ -535,25 +511,16 @@ export async function getRequest(
   if (!isRecordId(requestId)) return null;
 
   const supabase = client ?? (await createClient());
-  const [{ data, error }, noteIds, names] = await Promise.all([
-    supabase
-      .from("buyer_requests")
-      .select(REQUEST_COLUMNS)
-      .eq("organization_id", organizationId)
-      .eq("id", requestId)
-      .maybeSingle(),
-    sensitiveNoteRequestIds(organizationId, supabase),
-    buyerNames(organizationId, supabase),
-  ]);
+  const { data, error } = await supabase
+    .from("buyer_requests")
+    .select(REQUEST_COLUMNS)
+    .eq("organization_id", organizationId)
+    .eq("id", requestId)
+    .maybeSingle();
 
   if (error) throw new Error(`Could not load the request: ${error.message}`);
   if (!data) return null;
-
-  const row = data as unknown as RequestRow;
-  return toRequest(row, {
-    hasSensitiveNote: noteIds.has(row.id),
-    buyerName: row.buyer_id ? names.get(row.buyer_id) : undefined,
-  });
+  return toRequest(data as unknown as RequestRow);
 }
 
 /** Returns null when the caller's role cannot read source material. */
@@ -818,9 +785,7 @@ export interface TransitionRequestInput {
  * inbox cannot silently overwrite one another: the second one matches no row,
  * is told what happened, and writes no event.
  */
-export async function transitionRequest(
-  input: TransitionRequestInput,
-): Promise<BuyerRequest> {
+export async function transitionRequest(input: TransitionRequestInput): Promise<BuyerRequest> {
   const { organizationId, actorId, requestId, status, expectedUpdatedAt } = input;
   const supabase = input.client ?? (await createClient());
 

@@ -303,8 +303,14 @@ comment on column public.buyer_requests.closed_reason is
 -- comes back over the Data API to anyone who can read the request.
 -- ---------------------------------------------------------------------------
 
+-- One foreign key onto the request, not two. `request_id` is the primary key
+-- here, so an inline `references buyer_requests(id)` would have been the
+-- obvious way to write it -- but the composite key below already guarantees
+-- everything that one would, including the cascade, and having both made
+-- PostgREST refuse to embed the table: two relationships, no way to choose
+-- between them without naming a generated constraint in a query string.
 create table if not exists public.request_sensitive_notes (
-  request_id uuid primary key references public.buyer_requests(id) on delete cascade,
+  request_id uuid primary key,
   organization_id uuid not null references public.organizations(id) on delete cascade,
   source_note text check (source_note is null or char_length(source_note) <= 4000),
   confidential_location text
@@ -315,7 +321,8 @@ create table if not exists public.request_sensitive_notes (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
 
-  foreign key (request_id, organization_id)
+  constraint request_sensitive_notes_request_fkey
+    foreign key (request_id, organization_id)
     references public.buyer_requests (id, organization_id) on delete cascade
 );
 
@@ -470,7 +477,14 @@ for each row execute function private.protect_new_buyer_request();
 revoke all on function private.protect_buyer_request() from public;
 revoke all on function private.protect_new_buyer_request() from public;
 revoke all on function private.request_is_closed(public.buyer_request_status) from public;
+
+-- The triggers above are not security definer, so they run as whoever is
+-- writing the row -- and that is every role that can write one, the service
+-- role included. Granting to `authenticated` alone made every service-role
+-- insert fail with "permission denied for function request_is_closed", which
+-- is a fixture failing rather than a policy working.
 grant execute on function private.request_is_closed(public.buyer_request_status) to authenticated;
+grant execute on function private.request_is_closed(public.buyer_request_status) to service_role;
 
 -- updated_at, like every other table that has one.
 drop trigger if exists set_updated_at on public.buyer_requests;
@@ -541,6 +555,11 @@ create policy request_sensitive_notes_write on public.request_sensitive_notes
 -- ---------------------------------------------------------------------------
 
 grant select, insert, update on public.buyer_requests to authenticated;
+-- Explicitly taken back rather than merely not granted. Supabase's default
+-- privileges hand ALL on a new public table to `authenticated`, so silence here
+-- is not absence: without this revoke, any member with a write policy could
+-- delete a request outright.
+revoke delete on public.buyer_requests from authenticated;
 grant select, insert, update, delete on public.buyer_requests to service_role;
 
 grant select, insert, update, delete on public.request_sensitive_notes to authenticated;
