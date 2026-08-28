@@ -64,6 +64,11 @@ each other's records.
 | `npm run build` | Production build |
 | `npm run verify` | All four, in order |
 
+Every pull request into `main` runs formatting, types, lint, unit tests, the
+production build, and a migration-integrity check that applies the whole
+migration chain to an empty database. See `docs/CI.md`, which also records
+the branch-protection settings still to be enabled by hand.
+
 ### Where the rules live
 
 Business rules are centralized, not spread across components:

@@ -1,0 +1,122 @@
+# Pull-request gates for Mastline.
+#
+# Two jobs, deliberately separate so a red one names the thing that broke:
+#
+#   verify     — formatting, types, lint, unit tests, production build
+#   migrations — the migration chain applies from an empty database
+#
+# Neither job needs a credential. The migration job runs the Supabase stack the
+# CLI starts on the runner; it never links to, reads from, or pushes to the
+# hosted project. Applying a migration to production stays a deliberate,
+# manual act (see docs/DEPLOY.md).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+# Read-only. Nothing here comments, labels, publishes, or deploys.
+permissions:
+  contents: read
+
+# A new push to the same pull request makes the run already in flight obsolete.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      # ci, not install: the lockfile is the input, and a lockfile that has
+      # drifted from package.json should fail here rather than be rewritten.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # The suites under tests/ need a local Postgres and skip themselves when
+      # the Supabase environment is absent, which it is here. This step runs the
+      # unit and component suites. It is not a substitute for the database
+      # tests, which stay a local and pre-deploy check.
+      - name: Unit tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+      # Last, not first. It is the cheapest check and would normally lead, but
+      # it is currently red on 73 files that predate this workflow, and a red
+      # first step skips every step after it -- which would leave types, lint,
+      # tests, and the build unproven on a runner for as long as the formatting
+      # commit takes to land. Order it however you like once it is green.
+      - name: Check formatting
+        run: npm run format:check
+
+  migrations:
+    name: Migration integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      # Cheap, needs no database, so it runs before anything is started: a
+      # duplicated version prefix or a misnamed file is answered in seconds.
+      - name: Check migration filenames and versions
+        run: node scripts/check-migrations.mjs
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          # Pinned, not "latest": the CLI applies the migrations, so an
+          # unannounced CLI change would otherwise arrive as a mystery red build
+          # on an unrelated pull request.
+          version: 2.101.0
+
+      # Starts local Postgres only, applies every migration in order from an
+      # empty database, then loads supabase/seed.sql. A migration that cannot
+      # apply fails this step; verified by deliberately breaking one.
+      - name: Apply the migration chain to an empty database
+        run: supabase db start
+
+      # Proves the chain was actually run rather than merely recorded. The CLI
+      # has been seen marking a migration applied without executing its DDL, and
+      # a duplicated version prefix produces the same shape of lie.
+      # --agent no is load-bearing. The CLI wraps JSON results in an envelope
+      # when it detects an agent driving it and emits a bare array otherwise,
+      # so without this the shape depends on who is running the command. That
+      # difference is exactly what made the first run of this job red.
+      - name: Read the migration history table
+        run: |
+          supabase db query --local --output-format json --agent no \
+            "select version from supabase_migrations.schema_migrations order by version;" \
+            > applied.json
+          cat applied.json
+
+      - name: Compare applied versions against the files on disk
+        run: node scripts/check-migrations.mjs --applied-json applied.json
+
+      - name: Stop the local stack
+        if: always()
+        run: supabase stop --no-backup
