@@ -116,7 +116,42 @@ if (appliedFlag !== -1) {
   let applied;
   try {
     const payload = JSON.parse(readFileSync(path, "utf8"));
-    applied = (payload.rows ?? []).map((row) => String(row.version));
+
+    // `supabase db query --output-format json` has two shapes. Driven by an
+    // agent it wraps the result: {boundary, rows, warning}. Anywhere else --
+    // a CI runner, a plain terminal -- it emits the bare array. Accept both,
+    // and refuse anything else rather than guessing.
+    //
+    // This is not hypothetical tidiness. The first version of this script read
+    // `payload.rows ?? []`, which turned the bare array into "zero applied" and
+    // failed the build for the wrong reason. Silently reading an unrecognised
+    // payload as empty is the dangerous half: it happened to fail closed here,
+    // but the same blindness could report a clean chain that was never run.
+    const rows = Array.isArray(payload) ? payload : payload?.rows;
+    if (!Array.isArray(rows)) {
+      throw new Error(
+        `expected an array of rows, or an object with a rows array, but got ` +
+          `${payload === null ? "null" : typeof payload} with keys ` +
+          `[${Object.keys(payload ?? {}).join(", ")}]`,
+      );
+    }
+
+    applied = rows.map((row) => {
+      if (row?.version === undefined) {
+        throw new Error(`a row has no "version" column: ${JSON.stringify(row)}`);
+      }
+      return String(row.version);
+    });
+
+    // An empty history table is never a pass. If the chain really did apply
+    // nothing, the per-version messages below would say so 30 times over; this
+    // says it once, in the language of the thing that actually went wrong.
+    if (applied.length === 0) {
+      throw new Error(
+        "the migration history table is empty. Either no migration was applied, " +
+          "or this JSON did not come from the database the migrations went to.",
+      );
+    }
   } catch (error) {
     process.stderr.write(`Could not read applied versions from ${path}: ${error.message}\n`);
     process.exit(1);

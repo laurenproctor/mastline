@@ -97,6 +97,21 @@ Three checks, cheapest first.
    every version on disk is genuinely recorded, and nothing is recorded that has
    no file.
 
+   **`--agent no` on that query is load-bearing.** With `--output-format json`
+   the CLI has two output shapes: driven by an agent it wraps the result as
+   `{boundary, rows, warning}`, and everywhere else it emits the bare array.
+   Without the flag, the shape depends on who is running the command — which is
+   how the first run of this job went red. The rehearsal had been done inside an
+   agent session, so it only ever saw the wrapped shape; the runner sent the
+   bare array, the parser read it as zero applied migrations, and the job
+   reported a clean 30-migration chain as a total failure to apply.
+
+   `check-migrations.mjs` now accepts both shapes and, more importantly,
+   **refuses a payload it does not recognise** instead of reading it as empty.
+   An empty history table is also an explicit failure rather than 30 identical
+   complaints. The silent-empty reading was the real defect: it failed closed
+   this time, but nothing about it guaranteed that.
+
 Then the stack is stopped, with `if: always()` so a failure earlier in the job
 still tears it down.
 

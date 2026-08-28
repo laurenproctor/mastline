@@ -98,11 +98,16 @@ jobs:
       # Proves the chain was actually run rather than merely recorded. The CLI
       # has been seen marking a migration applied without executing its DDL, and
       # a duplicated version prefix produces the same shape of lie.
+      # --agent no is load-bearing. The CLI wraps JSON results in an envelope
+      # when it detects an agent driving it and emits a bare array otherwise,
+      # so without this the shape depends on who is running the command. That
+      # difference is exactly what made the first run of this job red.
       - name: Read the migration history table
         run: |
-          supabase db query --local --output-format json \
+          supabase db query --local --output-format json --agent no \
             "select version from supabase_migrations.schema_migrations order by version;" \
             > applied.json
+          cat applied.json
 
       - name: Compare applied versions against the files on disk
         run: node scripts/check-migrations.mjs --applied-json applied.json
