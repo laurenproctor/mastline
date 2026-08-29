@@ -290,6 +290,49 @@
 .gate-panel .field-error {
   color: #b3261e;
 }
+/* The same treatment for the design-system Field, which the way-in forms
+   share with the application. Its dashboard stylesheet is not loaded on these
+   routes, deliberately, so the rules above are restated for its classes. */
+.gate-panel .ml-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.gate-panel .ml-field .ml-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.gate-panel .ml-field .ml-input {
+  height: 52px;
+  width: 100%;
+  padding: 0 14px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--rule-2);
+}
+.gate-panel .ml-field .ml-input:focus-visible {
+  border-color: transparent;
+  border-width: 2px;
+  padding: 0 13px;
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    var(--bgrad) border-box;
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+.gate-panel .ml-field small {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.gate-panel .ml-error {
+  color: #b3261e;
+}
 .gate-names {
   display: grid;
   grid-template-columns: 1fr 1fr;
