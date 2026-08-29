@@ -65,6 +65,23 @@ package name, the credit, the terms, any embargo, and every frame with its
 caption. Each frame offers a full-resolution download once the terms are
 accepted.
 
+**Every one of those words, and every one of those files, comes from the
+approved snapshot.** `open_delivery`, `delivery_assets`, `delivery_preview`,
+and the download functions read `submission_assets` -- the frame membership,
+the ordering, the filename, headline, caption, people, credit, capture time,
+and the exact bucket and object key frozen at approval -- and nothing mutable.
+The package's name, note, and embargo are read from the package row, which is
+frozen by the approval trigger. A recipient link therefore shows the same
+content regardless of anything that happens afterwards: an asset caption
+edited for a later package, a new preview or delivery derivative, a change to
+which version is preferred, or a change to the photographer's defaults. To
+change what a recipient will receive, withdraw the link and approve a new
+package; nothing rewrites an approved submission in place.
+
+`delivery_manifest` on the submission is unchanged and unchanged in meaning:
+it is a summary. The relational rows are what is read. See
+`docs/DATA_MODEL.md`, "The approved-frame record".
+
 Every open, every download, and every refusal is recorded with the time and the
 address it came from, and shown back to the photographer on the submission —
 which is what `/security` promises.
@@ -95,10 +112,17 @@ source note, a price, or a buyer's details.
 every asset in the workspace. Asking for one that does not is refused and
 recorded.
 
-**Downloads are authorised and logged by the same function**, before any file is
-handed over, so there is no path that downloads without logging. Signing the URL
-afterwards runs with the service role: the caller is anonymous and has, rightly,
-no rights of their own on a private bucket.
+**Downloads are authorised, signed, recorded, and then released -- in that
+order.** `authorize_delivery_download` checks the token, the expiry, the
+withdrawal, the acceptance, and that the frame is in this submission's
+snapshot, records any refusal, and returns the frozen object. The route signs
+exactly that object with the service role -- the caller is anonymous and has,
+rightly, no rights of their own on a private bucket. Only once it holds a
+signed response does it call `record_delivery_download`, which re-validates
+and writes the append-only `downloaded` event; the redirect is released only
+if that returns a row. A signing failure writes no download event, and a
+download that could not be recorded releases nothing. `src/lib/delivery-download.ts`
+is the orchestration, tested with a signer that fails on command.
 
 **An unknown token, a withdrawn link, and an expired one give the same page.**
 Telling a stranger which it was tells them something about a link they do not
@@ -133,10 +157,18 @@ the frame — a preview nobody can assess does not get bought. Text is escaped:
 "O'Brien Picture Desk" would otherwise produce invalid SVG and fail the whole
 render.
 
-Previews fall back to the delivery derivative when no preview version exists,
-which is the common case for a RAW file the browser could not decode at import.
-The route scales to 1400px on the long edge before marking, so falling back
-never means quietly handing over the full file.
+Previews are rendered from the **exact preview frozen at approval** -- the
+preview derivative the reviewer was looking at, whose version id, bucket, key,
+and digest sit on the snapshot row -- and, where no preview existed at
+approval, from the exact approved object itself, scaled to 1400px on the long
+edge and marked. Never from whichever preview or delivery derivative is
+preferred today. A frame with no frozen preview whose approved object is a RAW
+original therefore has no preview (`has_preview` is false and the page draws
+its "No preview" state); nothing is substituted. If the frozen object cannot
+be read or decoded, the route fails closed with the same neutral 404 and logs
+the frame id for the operator, without the storage location. The marked copy
+is cached under the snapshot row id and the source digest, so two approvals
+of the same frame can never share a cached preview.
 
 `sharp` is a direct dependency now, at 0.35.3 rather than the 0.34.5 Next
 bundles: everything below 0.35.0 carries four high-severity libvips CVEs.
@@ -281,3 +313,15 @@ and never:
 The single exception is acceptance, where somebody types their own name. That
 is an explicit identification and is reported as one, on its own line, with the
 terms they saw at the time.
+
+## Legacy links after the snapshot migration
+
+Links created before migration `20260829153325` keep working where the
+version frozen in the submission's manifest could be validated: those
+submissions were backfilled with `snapshot_origin = 'legacy_backfill'`, and
+their editorial fields are the metadata as it stood at migration time, which
+the submission screen says plainly. A manifest entry that could not be
+resolved receives no snapshot row and no substitute; the link opens, shows
+the terms, lists the frames that froze, and cannot show, preview, or download
+the one that did not. `submission_snapshot_gaps_admin()` names each such
+entry for the operator, and the submission screen marks it "Not deliverable".

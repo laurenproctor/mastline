@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Id, PackageAsset, Submission, SubmissionStatus } from "../domain";
+import type { AssetVersionKind, Id, PackageAsset, Submission, SubmissionStatus } from "../domain";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
 import { recordEventWith } from "./activity";
@@ -101,63 +101,174 @@ export async function getSubmission(
 }
 
 /**
- * How many references to try before giving up.
- *
- * The tail is one of nine thousand values, and the constraint is per workspace
- * per reference, so a collision needs the same buyer, the same day, and the
- * same draw. That is rare per dispatch and not rare at all across a busy day:
- * at forty dispatches to one agency it is roughly one run in twelve, which is a
- * birthday problem rather than bad luck. Six attempts takes the chance of
- * exhausting them to nothing a photographer will meet.
+ * A frame as it was approved: the exact version and object, and the editorial
+ * facts frozen at that moment. Read from `submission_assets`, which is what a
+ * recipient link renders and downloads from.
  */
-const REFERENCE_ATTEMPTS = 6;
+export interface SubmissionFrame {
+  /** The snapshot row itself. Never rendered; used to key caches and tests. */
+  readonly id: Id;
+  readonly assetId: Id;
+  readonly assetVersionId: Id;
+  readonly position: number;
+  readonly filename: string;
+  readonly headline?: string;
+  readonly caption?: string;
+  readonly people: readonly string[];
+  readonly creditLine?: string;
+  readonly copyrightNotice?: string;
+  readonly copyrightOwner?: string;
+  readonly capturedAt?: string;
+  readonly location?: string;
+  readonly usageRestrictions?: string;
+  /** The approved object: which kind of version, and its identity. */
+  readonly versionKind: AssetVersionKind;
+  readonly storageBucket: string;
+  readonly sha256: string;
+  readonly mimeType: string;
+  readonly bytes: number;
+  readonly width?: number;
+  readonly height?: number;
+  /**
+   * The preview derivative the reviewer was shown at approval, when one
+   * existed. Absent means the recipient preview is rendered from the approved
+   * object itself, or not at all -- never from a preview made later.
+   */
+  readonly previewVersionId?: Id;
+  readonly previewSha256?: string;
+  /**
+   * "approval": written by the approval transaction. "legacy_backfill": written
+   * by the snapshot migration from the manifest, with the metadata as it stood
+   * at migration time -- not provably what the recipient saw at approval.
+   */
+  readonly origin: "approval" | "legacy_backfill";
+  /** When the snapshot was taken: the approval instant, or the migration run. */
+  readonly createdAt: string;
+}
 
-/** Postgres unique_violation. What the database says when the tail is taken. */
-const UNIQUE_VIOLATION = "23505";
+const FRAME_COLUMNS =
+  "id, submission_id, asset_id, asset_version_id, position, filename_snapshot, headline_snapshot, caption_snapshot, people_snapshot, credit_line_snapshot, copyright_notice_snapshot, copyright_owner_snapshot, captured_at_snapshot, location_snapshot, usage_restrictions_snapshot, version_kind_snapshot, storage_bucket_snapshot, sha256_snapshot, mime_type_snapshot, bytes_snapshot, width_snapshot, height_snapshot, preview_asset_version_id, preview_sha256_snapshot, snapshot_origin, created_at";
 
-/** A reference a picture desk can quote back, e.g. BG-0820-4417. */
-function buildReference(buyerName: string | null, sentAt: Date): string {
-  const initials = (buyerName ?? "MS")
-    .split(/\s+/)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 3);
-  const month = String(sentAt.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(sentAt.getUTCDate()).padStart(2, "0");
-  const tail = Math.floor(Math.random() * 9000 + 1000);
-  return `${initials || "MS"}-${month}${day}-${tail}`;
+const text = (value: unknown): string | undefined =>
+  typeof value === "string" && value.length > 0 ? value : undefined;
+
+function toFrame(row: Record<string, unknown>): SubmissionFrame {
+  const people = row.people_snapshot;
+  return {
+    id: row.id as string,
+    assetId: row.asset_id as string,
+    assetVersionId: row.asset_version_id as string,
+    position: row.position as number,
+    filename: row.filename_snapshot as string,
+    headline: text(row.headline_snapshot),
+    caption: text(row.caption_snapshot),
+    people: Array.isArray(people) ? people.filter((p): p is string => typeof p === "string") : [],
+    creditLine: text(row.credit_line_snapshot),
+    copyrightNotice: text(row.copyright_notice_snapshot),
+    copyrightOwner: text(row.copyright_owner_snapshot),
+    capturedAt: text(row.captured_at_snapshot),
+    location: text(row.location_snapshot),
+    usageRestrictions: text(row.usage_restrictions_snapshot),
+    versionKind: row.version_kind_snapshot as AssetVersionKind,
+    storageBucket: row.storage_bucket_snapshot as string,
+    sha256: row.sha256_snapshot as string,
+    mimeType: row.mime_type_snapshot as string,
+    bytes: Number(row.bytes_snapshot),
+    width: (row.width_snapshot as number | null) ?? undefined,
+    height: (row.height_snapshot as number | null) ?? undefined,
+    previewVersionId: text(row.preview_asset_version_id),
+    previewSha256: text(row.preview_sha256_snapshot),
+    origin: row.snapshot_origin as SubmissionFrame["origin"],
+    createdAt: row.created_at as string,
+  };
+}
+
+/**
+ * Manifest entries the snapshot does not cover.
+ *
+ * For a submission approved through `approve_package()` this is always empty:
+ * the manifest and the rows are written from one read. For a submission that
+ * predates the record, the backfill wrote a row per manifest entry it could
+ * resolve to a version of its own asset, and skipped -- never substituted --
+ * the rest. Those frames are unavailable to every recipient link, and the
+ * submission screen says which ones and why.
+ */
+export function unresolvedManifestEntries(
+  manifest: readonly PackageAsset[],
+  frames: readonly SubmissionFrame[],
+): readonly PackageAsset[] {
+  const covered = new Set(frames.map((frame) => `${frame.assetId}:${frame.assetVersionId}`));
+  return manifest.filter((entry) => !covered.has(`${entry.assetId}:${entry.assetVersionId}`));
+}
+
+/** The approved frames of one submission, in order. Empty for a legacy submission the backfill could not resolve. */
+export async function listSubmissionAssets(
+  organizationId: Id,
+  submissionId: Id,
+  client?: SupabaseClient,
+): Promise<readonly SubmissionFrame[]> {
+  if (!isRecordId(submissionId)) return [];
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("submission_assets")
+    .select(FRAME_COLUMNS)
+    .eq("organization_id", organizationId)
+    .eq("submission_id", submissionId)
+    .order("position");
+
+  if (error) throw new Error(`Could not load the approved frames: ${error.message}`);
+  return (data ?? []).map((row) => toFrame(row as Record<string, unknown>));
+}
+
+/**
+ * How many approved submissions each asset appears in.
+ *
+ * One query for a whole contact sheet, so the inspector can say "this frame is
+ * in two approved submissions; editing it here changes neither" without a
+ * lookup per frame.
+ */
+export async function countApprovedSubmissionsByAsset(
+  organizationId: Id,
+  assetIds: readonly Id[],
+  client?: SupabaseClient,
+): Promise<ReadonlyMap<Id, number>> {
+  const counts = new Map<Id, number>();
+  if (assetIds.length === 0) return counts;
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("submission_assets")
+    .select("asset_id")
+    .eq("organization_id", organizationId)
+    .in("asset_id", [...assetIds]);
+
+  if (error) throw new Error(`Could not count approved submissions: ${error.message}`);
+  for (const row of data ?? []) {
+    const assetId = row.asset_id as string;
+    counts.set(assetId, (counts.get(assetId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /**
  * Approve a package and open a submission for it.
  *
- * This freezes the commercial package: the frames, the exact versions, their
- * ordering, the buyer, the terms, the restrictions, the exclusivity, and the
- * embargo all become permanent here, and the database enforces it from this
- * moment rather than from a send that has not happened.
+ * One database transaction, inside `approve_package()`: the package and its
+ * membership are locked and re-read, every referenced version is verified to
+ * belong to its asset and this workspace, the editorial metadata being approved
+ * is read behind that lock, the package becomes `approved`, the submission is
+ * created with its manifest, one `submission_assets` row is written per frame
+ * from the same read, and the approval event is recorded. If any of that
+ * fails, none of it happened: there is no partially approved package to put
+ * back, which is why the compensating "return it to review" update this
+ * function used to make is gone.
  *
- * What it deliberately does NOT do is claim a transmission. It used to: it set
- * the package to `delivered`, the submission to `sent`, stamped `sent_at`,
- * wrote a `submission.sent` event reading "Sent to <buyer>", and moved the
- * shoot to `dispatched` -- all before a delivery link existed and before a
- * single byte had left Mastline. Every one of those was a claim the product
- * could not support.
+ * What it deliberately does NOT do is claim a transmission. The package becomes
+ * `approved`, the submission is created `queued` with `sent_at` null, and the
+ * shoot is left alone. The next honest step is a recipient-specific link.
  *
- * So the package becomes `approved`, the submission is created `queued` with
- * `sent_at` null, one `package.approved` event is written, and the shoot is
- * left alone. The next honest step is a recipient-specific link, which is where
- * the caller redirects to.
- *
- * The order is deliberate and it refuses to proceed if any step fails:
- *
- *   1. Re-read the package and its members. The caller's view may be stale, and
- *      what gets frozen must be what is true now.
- *   2. Stamp the approval on the package.
- *   3. Write the submission with a full snapshot of terms and membership.
- *
- * The caller must have already run the dispatch review. This re-checks the
- * things that would corrupt the record rather than trusting that it happened.
+ * The caller's client is used so the function runs as the signed-in operator:
+ * the database decides membership and role, and a package in another
+ * workspace comes back as "could not be found" rather than as anything else.
  */
 export async function approvePackageAndCreateSubmission(input: {
   organizationId: Id;
@@ -165,171 +276,39 @@ export async function approvePackageAndCreateSubmission(input: {
   packageId: Id;
   recipientLabel?: string;
   followUpAt?: string;
-  /** The caller's client, so row level security applies to every step. */
+  /** The caller's client, so the database authorises the caller. */
   client?: SupabaseClient;
 }): Promise<{ submissionId: Id; reference: string }> {
-  const { organizationId, actorId, packageId, recipientLabel, followUpAt } = input;
+  const { organizationId, packageId, recipientLabel, followUpAt } = input;
   const supabase = input.client ?? (await createClient());
 
-  const { data: pkg, error: pkgError } = await supabase
+  /*
+   * A package outside the caller's workspace must read as "not found" here as
+   * well as inside the function. Resolving it through the caller's own client
+   * first keeps that answer identical to every other screen's, and a malformed
+   * id is "no such record" rather than a database error.
+   */
+  if (!isRecordId(packageId)) throw new Error("That package could not be found in this workspace.");
+  const { data: pkg, error: readError } = await supabase
     .from("packages")
-    .select(
-      "id, status, buyer_id, delivery_method, proposed_terms, restrictions, exclusivity, embargo_until, package_note, shoot_id, buyers(name, contact_name)",
-    )
+    .select("id")
     .eq("organization_id", organizationId)
     .eq("id", packageId)
     .maybeSingle();
-
-  if (pkgError) throw new Error(`Could not read the package: ${pkgError.message}`);
+  if (readError) throw new Error(`Could not read the package: ${readError.message}`);
   if (!pkg) throw new Error("That package could not be found in this workspace.");
 
-  if (["approved", "sending", "delivered"].includes(pkg.status as string)) {
-    throw new Error("This package has already been approved.");
-  }
-  if (!pkg.buyer_id) throw new Error("Set a buyer before approving.");
-  if (!pkg.delivery_method) throw new Error("Record a delivery method before approving.");
-  if (!pkg.proposed_terms) throw new Error("Record the proposed terms before approving.");
-
-  const { data: members, error: memberError } = await supabase
-    .from("package_assets")
-    .select("asset_id, asset_version_id, position")
-    .eq("organization_id", organizationId)
-    .eq("package_id", packageId)
-    .order("position");
-
-  if (memberError) throw new Error(`Could not read the package contents: ${memberError.message}`);
-  if (!members || members.length === 0) throw new Error("The package is empty.");
-
-  const approvedAt = new Date();
-  const buyer = pkg.buyers as unknown as { name: string; contact_name: string | null } | null;
-  let reference = buildReference(buyer?.name ?? null, approvedAt);
-
-  // The package records that it was approved, by whom, and when. `approved`,
-  // not `delivered`: nothing has been delivered.
-  const { error: approveError } = await supabase
-    .from("packages")
-    .update({
-      status: "approved",
-      approved_by: actorId,
-      approved_at: approvedAt.toISOString(),
-    })
-    .eq("organization_id", organizationId)
-    .eq("id", packageId);
-
-  if (approveError) throw new Error(`Could not approve the package: ${approveError.message}`);
-
-  const manifest = members.map((row) => ({
-    assetId: row.asset_id as string,
-    assetVersionId: row.asset_version_id as string,
-    position: row.position as number,
-  }));
-
-  /**
-   * Everything about the approval except the reference, which is the one field
-   * that may have to be drawn again.
-   *
-   * `sent_at` is absent rather than null-by-omission: there is no send. It is
-   * filled in later by the share, or by a recipient opening the link.
-   */
-  const record = {
-    organization_id: organizationId,
-    package_id: packageId,
-    buyer_id: pkg.buyer_id,
-    status: "queued",
-    recipient_snapshot: {
-      desk: recipientLabel ?? buyer?.contact_name ?? null,
-      buyer_name: buyer?.name ?? null,
-    },
-    terms_snapshot: pkg.proposed_terms,
-    restrictions_snapshot: pkg.restrictions,
-    // Exactly which versions were approved, frozen at this moment.
-    delivery_manifest: {
-      assets: manifest,
-      asset_count: manifest.length,
-      exclusivity: pkg.exclusivity,
-      embargo_until: pkg.embargo_until,
-      package_note: pkg.package_note,
-    },
-    delivery_method: pkg.delivery_method,
-    follow_up_at: followUpAt ?? null,
-    created_by: actorId,
-  };
-
-  /*
-   * Draw a reference, and let the database be the one that says it is free.
-   *
-   * The tail was a single random draw with no second chance, so two dispatches
-   * to the same agency on the same day that happened to draw the same number
-   * ended here: "duplicate key value violates unique constraint", raised at the
-   * point of no return, with the package rolled back and nothing the
-   * photographer could do differently. It is not a rare shape either -- same
-   * buyer, same day is the ordinary case, and the numbers collide long before
-   * anybody would expect them to.
-   *
-   * Checking first would not fix it. Between a select and an insert another
-   * dispatch can take the number, and this is exactly the moment not to have a
-   * race. So the insert is the check: a unique violation means that reference
-   * is taken, and only that, so it draws another and tries again. Any other
-   * error is a real failure and breaks out immediately rather than being
-   * retried into a storm.
-   */
-  let submission: { id: string } | null = null;
-  let submissionError: { code?: string; message: string } | null = null;
-
-  for (let attempt = 0; attempt < REFERENCE_ATTEMPTS; attempt += 1) {
-    const result = await supabase
-      .from("submissions")
-      .insert({ ...record, external_reference: reference })
-      .select("id")
-      .single();
-
-    if (!result.error && result.data) {
-      submission = result.data as { id: string };
-      submissionError = null;
-      break;
-    }
-
-    submissionError = result.error;
-    if (result.error?.code !== UNIQUE_VIOLATION) break;
-
-    // Taken. The next draw is independent, so this converges quickly.
-    reference = buildReference(buyer?.name ?? null, approvedAt);
-  }
-
-  if (submissionError || !submission) {
-    // Put the package back so the operator can try again rather than being
-    // left with an approved -- and therefore frozen -- package and no record of
-    // what it was approved for.
-    await supabase
-      .from("packages")
-      .update({ status: "needs_review", approved_by: null, approved_at: null })
-      .eq("id", packageId);
-    throw new Error(`Could not record the submission: ${submissionError?.message}`);
-  }
-
-  const submissionId = submission.id as string;
-
-  /*
-   * The shoot is NOT moved to `dispatched` here. Nothing has been dispatched.
-   * That happens when a link for this submission is marked shared, which is the
-   * first moment anybody can honestly say the work left.
-   */
-
-  await recordEventWith(supabase, {
-    organizationId,
-    actorId,
-    entityType: "package",
-    entityId: packageId,
-    action: "package.approved",
-    data: {
-      summary: `Package approved · ${manifest.length} ${manifest.length === 1 ? "frame" : "frames"} · nothing sent yet`,
-      count: manifest.length,
-      submission_id: submissionId,
-      reference,
-    },
+  const { data, error } = await supabase.rpc("approve_package", {
+    target_package: packageId,
+    recipient_label: recipientLabel?.trim() || null,
+    follow_up_at: followUpAt ? new Date(followUpAt).toISOString() : null,
   });
 
-  return { submissionId, reference };
+  if (error) throw new Error(error.message);
+  const row = (data ?? [])[0] as { submission_id: string; reference: string } | undefined;
+  if (!row) throw new Error("Could not record the submission.");
+
+  return { submissionId: row.submission_id, reference: row.reference };
 }
 
 /**

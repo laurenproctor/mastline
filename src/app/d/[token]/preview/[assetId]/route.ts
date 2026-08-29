@@ -12,6 +12,12 @@ import { createClient } from "@/lib/supabase/server";
  * which meant the clean file was one right-click away. It goes through here now,
  * so the only version a recipient can reach is the marked one.
  *
+ * It is rendered from the exact object the approval froze in the submission's
+ * snapshot -- scaled and marked here -- never from whichever preview or
+ * delivery derivative is preferred today. `delivery_preview()` returns nothing
+ * for a frame outside this submission, or whose approved object cannot be
+ * rendered as an image, and nothing is substituted.
+ *
  * Marked once per delivery and kept: the mark names the recipient, so it cannot
  * be shared between links, but a desk refreshing the page should not re-render
  * it every time. The cached copy lives beside the original in the private
@@ -43,7 +49,13 @@ export async function GET(
   if (error || !row) return new NextResponse("Not found", { status: 404 });
 
   const admin = createAdminClient();
-  const markedKey = `watermarked/${token.slice(0, 24)}/${assetId}.jpg`;
+  /*
+   * The cache is keyed on the snapshot row and the digest of the exact object
+   * it was rendered from, not on the asset alone. Two approvals of the same
+   * frame -- or a legacy row and a later one -- can name different objects,
+   * and a marked preview of one must never be served for the other.
+   */
+  const markedKey = `watermarked/${token.slice(0, 24)}/${row.snapshot_id}-${String(row.sha256).slice(0, 16)}.jpg`;
 
   const cached = await admin.storage.from("derivatives").download(markedKey);
   if (cached.data) {
@@ -55,8 +67,16 @@ export async function GET(
     });
   }
 
+  /*
+   * The exact object the approval froze. If it cannot be read, nothing else is
+   * read in its place: the recipient sees the page's "no preview" state and
+   * the failure is recorded for the operator, without the location.
+   */
   const source = await admin.storage.from(row.storage_bucket).download(row.object_key);
-  if (source.error || !source.data) return new NextResponse("Not found", { status: 404 });
+  if (source.error || !source.data) {
+    console.error(`delivery preview: the approved object for frame ${assetId} could not be read`);
+    return new NextResponse("Not found", { status: 404 });
+  }
 
   let marked: { body: Buffer; contentType: string };
   try {
@@ -74,6 +94,7 @@ export async function GET(
   } catch {
     // A preview that cannot be marked is not served unmarked. The page shows
     // its "no preview" state instead, which is the honest outcome.
+    console.error(`delivery preview: the approved object for frame ${assetId} could not be marked`);
     return new NextResponse("Not found", { status: 404 });
   }
 
