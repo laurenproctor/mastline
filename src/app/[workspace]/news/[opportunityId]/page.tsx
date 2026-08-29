@@ -4,6 +4,13 @@ import { AppShell } from "@/components/app-shell";
 import { Badge, PageHeader, Panel } from "@/components/primitives";
 import { listActivity } from "@/lib/data/activity";
 import {
+  getEvaluation,
+  getShootBrief,
+  getSignalContext,
+  listArchiveMatches,
+  unevaluated,
+} from "@/lib/data/news-radar-evaluations";
+import {
   DISMISSAL_REASON_MAX,
   allowedOpportunityDecisions,
   getOpportunity,
@@ -12,10 +19,26 @@ import {
 import { listWorkspaceMembers } from "@/lib/data/workspace";
 import { formatConfidence, formatDateTime, humanizeStatus } from "@/lib/format";
 import { MODE_FOR_KIND, SIGNAL_TONES, STATUS_TONES, usefulWindow } from "@/lib/news-radar";
+import { suggestContext } from "@/lib/news-radar-context";
+import { FAILURE_LABELS, type EvaluationFailureCode } from "@/lib/news-radar-evaluation";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DecisionNotice, OpportunityDecisions } from "../_components/story-actions";
+import { ArchiveMatches } from "./_components/archive-matches";
+import { ContextPanel } from "./_components/context-panel";
+import { ShootBriefPanel } from "./_components/shoot-brief";
+
+const EVALUATED_MESSAGES: Record<string, string> = {
+  recorded: "Evaluated. The result below was computed from the recorded facts and written once.",
+  unchanged:
+    "Nothing to recompute: the same evaluator has already run over exactly these inputs. Nothing was written.",
+};
+
+const CONTEXT_MESSAGES: Record<string, string> = {
+  saved: "Context saved. Both paths read it; re-evaluate either to apply it.",
+  accepted: "Suggestion recorded as a fact, with its basis kept beside it.",
+};
 
 const PATH_LABELS = {
   archive_match: "Archive match path",
@@ -30,16 +53,29 @@ const PATH_LABELS = {
  * signal, confidence, basis -- which is a claim with a stated reason; and
  * this path's own lifecycle, which is the only thing the screen can change.
  * The header says WHICH path is being reviewed, and the other evaluation of
- * the same story is one link away. The regions each mode will grow into
- * later (matched photographs, a shoot brief) are drawn honestly as not yet
- * built, with no invented records inside them.
+ * the same story is one link away.
+ *
+ * Each mode's region holds the deterministic evaluation of this path: ranked
+ * real photographs with their reasons on the archive path, a typed brief on
+ * the shoot path -- both computed only from recorded facts, only when asked,
+ * and both drawn with their state, their evaluator, and what is missing said
+ * out loud. The story's structured context, which both evaluations read, is
+ * recorded here too, in registers that keep source facts, a person's entries,
+ * and the system's suggestions visibly apart.
  */
 export default async function OpportunityPage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspace: string; opportunityId: string }>;
-  searchParams: Promise<{ done?: string; created?: string; already?: string }>;
+  searchParams: Promise<{
+    done?: string;
+    created?: string;
+    already?: string;
+    context?: string;
+    evaluated?: string;
+    failure?: string;
+  }>;
 }) {
   const { workspace: requestedWorkspace, opportunityId } = await params;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
@@ -53,7 +89,14 @@ export default async function OpportunityPage({
    */
   const workspaceSlug = canonicalSlug;
   const role = session.activeWorkspace.role;
-  const { done: doneParam, created, already } = await searchParams;
+  const {
+    done: doneParam,
+    created,
+    already,
+    context: contextParam,
+    evaluated: evaluatedParam,
+    failure: failureParam,
+  } = await searchParams;
 
   // A malformed id, an id from another workspace, and an id that never existed
   // all answer the same way: not found.
@@ -63,16 +106,38 @@ export default async function OpportunityPage({
 
   const mode = MODE_FOR_KIND[opportunity.kind];
   const mayReview = can(role, "opportunity.review");
+  const mayWrite = can(role, "opportunity.write");
   const decisions = mayReview ? allowedOpportunityDecisions(opportunity.status) : [];
   const now = new Date();
   const window = usefulWindow(opportunity.windowClosesAt, now);
 
-  const [sibling, pathActivity, signalActivity, members] = await Promise.all([
-    getSiblingPath(organizationId, opportunity.newsSignalId, opportunity.id),
-    listActivity(organizationId, { entityType: "opportunity", entityId: opportunity.id }),
-    listActivity(organizationId, { entityType: "news_signal", entityId: opportunity.newsSignalId }),
-    listWorkspaceMembers(organizationId),
-  ]);
+  const [sibling, pathActivity, signalActivity, members, stored, evaluationRow, matches, brief] =
+    await Promise.all([
+      getSiblingPath(organizationId, opportunity.newsSignalId, opportunity.id),
+      listActivity(organizationId, { entityType: "opportunity", entityId: opportunity.id }),
+      listActivity(organizationId, {
+        entityType: "news_signal",
+        entityId: opportunity.newsSignalId,
+      }),
+      listWorkspaceMembers(organizationId),
+      getSignalContext(organizationId, opportunity.newsSignalId),
+      getEvaluation(organizationId, opportunity.id),
+      opportunity.kind === "archive_match"
+        ? listArchiveMatches(organizationId, opportunity.id)
+        : Promise.resolve([]),
+      opportunity.kind === "shoot_opportunity"
+        ? getShootBrief(organizationId, opportunity.id)
+        : Promise.resolve(null),
+    ]);
+  const evaluation = evaluationRow ?? unevaluated(opportunity);
+  const suggestions = suggestContext(story, stored);
+  const evaluatedMessage =
+    evaluatedParam === "failed"
+      ? `Evaluation failed. ${FAILURE_LABELS[(failureParam ?? "write_failed") as EvaluationFailureCode] ?? FAILURE_LABELS.write_failed}`
+      : evaluatedParam
+        ? EVALUATED_MESSAGES[evaluatedParam]
+        : undefined;
+  const contextMessage = contextParam ? CONTEXT_MESSAGES[contextParam] : undefined;
   // One history: the canonical entry, then the decisions made on this path.
   // The other path's decisions live on its own screen.
   const activity = [...pathActivity, ...signalActivity].sort((a, b) =>
@@ -108,6 +173,16 @@ export default async function OpportunityPage({
           </p>
         )}
         {doneParam && <DecisionNotice done={doneParam} />}
+        {contextMessage && (
+          <p className="inspector-saved" role="status">
+            {contextMessage}
+          </p>
+        )}
+        {evaluatedMessage && (
+          <p className="inspector-saved" role="status">
+            {evaluatedMessage}
+          </p>
+        )}
 
         <div className="panel-grid">
           <Panel title="The story — shared by both paths">
@@ -192,39 +267,32 @@ export default async function OpportunityPage({
               </p>
             </div>
 
+            <ContextPanel
+              canEdit={mayWrite}
+              opportunityId={opportunity.id}
+              stored={stored}
+              story={story}
+              suggestions={suggestions}
+              workspaceSlug={workspaceSlug}
+            />
+
             {opportunity.kind === "archive_match" ? (
-              <div className="side-card future-region">
-                <h3>Matched photographs</h3>
-                <p className="section-note">
-                  Archive matching is not built yet. When it is, the photographs this story could
-                  reactivate will appear here, each as a labelled suggestion with its own basis and
-                  confidence — never as an assertion.
-                </p>
-                <div className="actions">
-                  <button className="button" disabled type="button">
-                    Build package
-                  </button>
-                </div>
-                <p className="section-note">
-                  Building a package from archive matches stays unavailable until matched
-                  photographs exist to build it from.
-                </p>
-              </div>
+              <ArchiveMatches
+                canEvaluate={mayWrite}
+                evaluation={evaluation}
+                matches={matches}
+                opportunityId={opportunity.id}
+                workspaceSlug={workspaceSlug}
+              />
             ) : (
-              <div className="side-card future-region">
-                <h3>Shoot brief</h3>
-                <p className="section-note">
-                  The handoff from this story to a new shoot is not built yet. When it is, reviewing
-                  this opportunity will offer a pre-filled shoot brief — using only the facts
-                  recorded here, never invented event details — and creating the shoot will remain a
-                  deliberate action on the Create Shoot screen.
-                </p>
-                <div className="actions">
-                  <button className="button" disabled type="button">
-                    Create shoot from this story
-                  </button>
-                </div>
-              </div>
+              <ShootBriefPanel
+                brief={brief}
+                canEvaluate={mayWrite}
+                evaluation={evaluation}
+                now={now}
+                opportunityId={opportunity.id}
+                workspaceSlug={workspaceSlug}
+              />
             )}
           </Panel>
 
