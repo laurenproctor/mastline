@@ -31,15 +31,48 @@ done and what is still needed.
 Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
 Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-There are 30 migrations in `supabase/migrations`, including the three private
+There are 33 migrations in `supabase/migrations`, including the three private
 buckets (`originals`, `derivatives`, `evidence`), none public. Production was
 never seeded; the first workspace is made through real sign-up.
 
 The count is stated rather than claimed as applied: what is actually on the
 remote is whatever `supabase migration list --linked` says, and this file has
-been wrong about that before. The last four -- recipient delivery links,
-approval-time immutability, delivery view analytics, and the open lifecycle --
-have been applied and exercised locally only.
+been wrong about that before. As of 2026-08-29 the remote history holds 32
+rows and they are **not** the first 32 files on disk:
+
+- **Two migrations reached production before they reached Git.**
+  `20260828035034_buyer_requests` and `20260829090000_resumable_field_imports`
+  were pushed to the hosted project from an uncommitted checkout. Their DDL is
+  live (`public.buyer_requests`, `public.request_sensitive_notes`,
+  `public.import_batches`, `public.import_files`, five enums, seven `private`
+  functions, their triggers, policies and grants). The reconciliation branch
+  `chore/reconcile-production-migrations` adds exactly those two files to
+  source control under their recorded versions, so the chain on disk describes
+  the schema that is live. It does **not** reapply them: `db push` sees their
+  versions already in the remote history and skips them. Before the files were
+  committed, a schema-only catalog description of every object they create
+  (columns, constraints, indexes, RLS/forced-RLS, policies, table grants,
+  function signatures, owners, definer state, search paths, execute
+  privileges, trigger definitions, comments) was taken from production and
+  from a fresh local apply of the files, and the two were compared: identical,
+  all 261 lines, including the table grants. Two further uncommitted
+  migrations in the same checkout,
+  `20260830090000` and `20260830100000`, are **not** in production and were
+  not incorporated.
+- **Production still lacks `20260830120000_news_radar_canonical_signal`**,
+  which `main` has carried since PR #12. `public.news_signals` does not exist
+  remotely. It must be dry-run and applied on its own, deliberately, before
+  anything that sorts after it.
+- **PR #19 (`20260830130000_immutable_dispatch_snapshots`) is blocked** until
+  parity is restored: the reconciliation PR merged, the News Radar migration
+  applied, PR #19 reconciled with the resulting `main`, and its migration
+  retested against the combined 33-migration chain. Only then may its dry run
+  list a single file.
+
+None of that drift was harmless by definition. What was verified is stated
+above; what was not verified -- row-level behaviour of the two features in
+production, and whether anything else was pushed from that checkout -- is not
+claimed.
 
 `supabase migration list --linked` is the check that matters here, and it is
 worth running before any deploy that touches data: it prints local and remote
