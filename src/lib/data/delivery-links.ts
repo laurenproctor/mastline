@@ -304,14 +304,26 @@ export async function revokeDelivery(input: {
  * unknown, withdrawn, or out of date -- deliberately the same answer for all
  * three, because telling a stranger which of those it was is telling them
  * something about a link they do not hold.
+ *
+ * Every frame comes from the submission's approved snapshot: the filename,
+ * headline, caption, people, and capture time as they stood when the
+ * photographer approved them. Nothing here reads the live asset, the current
+ * package membership, or whichever derivative is preferred today.
  */
 export interface DeliveryFrame {
   readonly assetId: string;
   readonly filename: string;
   readonly headline?: string;
   readonly caption?: string;
+  /** Who is in the frame, as the photographer recorded it at approval. */
+  readonly people: readonly string[];
   readonly capturedAt?: string;
-  readonly previewKey?: string;
+  /**
+   * Whether the exact approved object can be rendered as a preview. A frame
+   * whose approved object is a RAW original has none; nothing else is
+   * substituted for it. No storage location ever reaches this type.
+   */
+  readonly hasPreview: boolean;
 }
 
 export interface OpenedDelivery {
@@ -362,8 +374,11 @@ export async function openDelivery(
       filename: asset.canonical_filename as string,
       headline: (asset.headline as string | null) ?? undefined,
       caption: (asset.caption as string | null) ?? undefined,
+      people: Array.isArray(asset.people)
+        ? (asset.people as unknown[]).filter((p): p is string => typeof p === "string")
+        : [],
       capturedAt: (asset.captured_at as string | null) ?? undefined,
-      previewKey: (asset.preview_key as string | null) ?? undefined,
+      hasPreview: asset.has_preview === true,
     })),
   };
 }
