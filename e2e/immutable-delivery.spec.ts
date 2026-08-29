@@ -216,7 +216,7 @@ test.describe("what was approved is what the recipient gets", () => {
       const made = page.locator(".delivery-link").filter({ hasText: recipient });
       await made.getByRole("button", { name: "Withdraw this link" }).click();
       await expect(
-        page.locator(".delivery-link").filter({ hasText: recipient }).locator(".badge"),
+        page.locator(".delivery-link").filter({ hasText: recipient }).locator(".ml-badge"),
       ).toHaveText("Withdrawn");
 
       const after = await browser.newContext();

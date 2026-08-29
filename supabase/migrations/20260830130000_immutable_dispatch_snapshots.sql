@@ -1342,6 +1342,62 @@ $$;
 revoke all on function private.purge_assets(uuid[]) from public;
 revoke all on function private.purge_assets(uuid[]) from authenticated;
 
+-- ---------------------------------------------------------------------------
+-- Delivery evidence is written by functions, never by a client
+--
+-- delivery_access_events and delivery_acceptances were granted `select` to
+-- authenticated when they were created, and nothing more -- but the platform
+-- default at the time handed every privilege to every role, so on a real
+-- database both tables read `authenticated=arwdDxtm`. Row level security has
+-- been the only thing refusing a direct insert, update, or delete, and a
+-- policy is one accidental migration away from letting one through.
+--
+-- Every legitimate write to either table already happens inside a security
+-- definer function -- open_delivery, accept_delivery, the download gate, the
+-- refusal paths -- which run as their owner and need no client grant. The
+-- purge routines are definer functions too. So the grants say what the
+-- design says: clients read their own workspace's evidence and write none of
+-- it. RLS still decides which rows a member may read; the grant now refuses
+-- the write before any policy is consulted, which is what makes the two
+-- separate controls.
+-- ---------------------------------------------------------------------------
+
+revoke all on public.delivery_access_events from public;
+revoke all on public.delivery_access_events from anon;
+revoke all on public.delivery_access_events from authenticated;
+revoke all on public.delivery_access_events from service_role;
+grant select on public.delivery_access_events to authenticated;
+grant select on public.delivery_access_events to service_role;
+
+revoke all on public.delivery_acceptances from public;
+revoke all on public.delivery_acceptances from anon;
+revoke all on public.delivery_acceptances from authenticated;
+revoke all on public.delivery_acceptances from service_role;
+grant select on public.delivery_acceptances to authenticated;
+grant select on public.delivery_acceptances to service_role;
+
+-- What a role actually holds on a table, so a test can read the grant layer
+-- rather than infer it from a refused request. Service role only.
+create or replace function public.table_grants_admin(target_table text)
+returns table (grantee text, privilege_type text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select p.grantee::text, p.privilege_type::text
+  from information_schema.table_privileges p
+  where p.table_schema = 'public'
+    and p.table_name = target_table
+    and p.grantee in ('anon', 'authenticated', 'service_role')
+  order by 1, 2;
+$$;
+
+revoke all on function public.table_grants_admin(text) from public;
+revoke all on function public.table_grants_admin(text) from anon;
+revoke all on function public.table_grants_admin(text) from authenticated;
+grant execute on function public.table_grants_admin(text) to service_role;
+
 -- The platform default hands anon everything on a new table. Every migration
 -- closes with this, and it is load-bearing.
 revoke all on all tables in schema public from anon;
