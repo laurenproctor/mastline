@@ -210,7 +210,7 @@ whichever derivative is preferred today.
   Location and usage restrictions are frozen for the internal record; the
   recipient page does not show them.
 - `snapshot_origin` is `approval` for rows the approval transaction wrote and
-  `legacy_backfill` for rows migration `20260829153325` reconstructed. See
+  `legacy_backfill` for rows migration `20260830130000` reconstructed. See
   the legacy note below. `created_at` is the snapshot timestamp: the approval
   instant for `approval` rows, the migration run for `legacy_backfill` rows.
 - Immutable: the same append-only trigger the caption history and the activity

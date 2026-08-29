@@ -27,8 +27,17 @@ const from = vi.fn(() => ({ createSignedUrl }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.9", "user-agent": "desk" }),
 }));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc }) }));
-vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ storage: { from } }) }));
+// Everything the route asks the database runs with the service role: the two
+// functions are executable by nothing else. The anonymous server client is
+// deliberately absent, so a call through it would fail loudly here.
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => {
+    throw new Error("the download route must not use the anonymous client");
+  },
+}));
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({ rpc, storage: { from } }),
+}));
 
 const { GET } = await import("./route");
 

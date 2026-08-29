@@ -4,7 +4,6 @@ import { callerAddress, callerAgent, isDeliveryToken } from "@/lib/delivery";
 import { serveDeliveryDownload } from "@/lib/delivery-download";
 import { isRecordId } from "@/lib/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 /**
  * Taking a copy of the exact frame that was approved.
@@ -33,7 +32,15 @@ export async function GET(
   }
 
   const requestHeaders = await headers();
-  const supabase = await createClient();
+  /*
+   * Both database calls run with the service role: authorisation answers with
+   * a private object's location, and recording writes commercial evidence, so
+   * neither is executable by the anonymous role a browser holds. The token is
+   * still the credential -- the functions check it, the expiry, the
+   * withdrawal, the acceptance, and the snapshot before answering -- and this
+   * route is the only caller.
+   */
+  const admin = createAdminClient();
   const caller = {
     delivery_token: token,
     target_asset: assetId,
@@ -43,7 +50,7 @@ export async function GET(
 
   const outcome = await serveDeliveryDownload({
     authorize: async () => {
-      const { data, error } = await supabase.rpc("authorize_delivery_download", caller);
+      const { data, error } = await admin.rpc("authorize_delivery_download", caller);
       if (error) return null;
       const row = (data ?? [])[0] as
         { object_key: string; storage_bucket: string; filename: string } | undefined;
@@ -55,14 +62,14 @@ export async function GET(
       };
     },
     sign: async (target) => {
-      const { data, error } = await createAdminClient()
-        .storage.from(target.storageBucket)
+      const { data, error } = await admin.storage
+        .from(target.storageBucket)
         .createSignedUrl(target.objectKey, 300, { download: target.filename });
       if (error || !data) return null;
       return { url: data.signedUrl };
     },
     record: async () => {
-      const { data, error } = await supabase.rpc("record_delivery_download", caller);
+      const { data, error } = await admin.rpc("record_delivery_download", caller);
       if (error) return false;
       return (data ?? []).length > 0;
     },

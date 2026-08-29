@@ -2,7 +2,9 @@
  * @vitest-environment node
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { listAssets } from "../src/lib/data/assets";
 import { createPackageFromSelection } from "../src/lib/data/packages";
+import { markedPreviewKey, reviewPreviewVersion } from "../src/lib/preview-selection";
 import {
   approvePackageAndCreateSubmission,
   listSubmissionAssets,
@@ -563,6 +565,14 @@ describeIf("approval writes the snapshot in the same transaction", () => {
       .select("id")
       .eq("package_id", pkg!.id);
     expect(submissions ?? []).toHaveLength(0);
+
+    // The cross-pointing row is removed here rather than left for afterAll:
+    // it names frames[1]'s version from frames[0]'s asset, so whichever
+    // asset the purge reaches first, the other's versions are still referenced
+    // and the purge fails on the foreign key. The package was never approved,
+    // so a plain delete is allowed.
+    const detach = await service.from("package_assets").delete().eq("package_id", pkg!.id);
+    expect(detach.error).toBeNull();
   });
 
   it("approves a package exactly once, even when asked twice at the same moment", async () => {
@@ -854,7 +864,6 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     const { submissionId, frames, shootId } = await approved("LATERDERIV", { frames: 1 });
     const [frame] = frames;
     const link = await linkFor(submissionId);
-    const anon = anonClient();
     const service = serviceClient();
 
     // After approval: a new preview, a new delivery derivative. Both would
@@ -877,7 +886,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
       expect(error).toBeNull();
     }
 
-    const preview = await anon.rpc("delivery_preview", {
+    const preview = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -888,7 +897,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     await accept(link.token);
 
-    const download = await anon.rpc("authorize_delivery_download", {
+    const download = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -907,7 +916,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     // Authorising is not downloading.
     expect((await eventsFor(link.id)).map((event) => event.kind)).not.toContain("downloaded");
 
-    const recorded = await anon.rpc("record_delivery_download", {
+    const recorded = await serviceClient().rpc("record_delivery_download", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -947,7 +956,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     // A frame from another package is not this submission's frame.
     await accept(link.token);
-    const outside = await anonClient().rpc("authorize_delivery_download", {
+    const outside = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: others[0].assetId,
     });
@@ -967,7 +976,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     // Before accepting.
     const early = await linkFor(submissionId, "Early desk");
-    const beforeYes = await anon.rpc("authorize_delivery_download", {
+    const beforeYes = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: early.token,
       target_asset: frame.assetId,
     });
@@ -977,7 +986,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     );
     // ...and recording is gated the same way, so no route can write a download
     // for an unaccepted link even if it skipped authorisation.
-    const recordedEarly = await anon.rpc("record_delivery_download", {
+    const recordedEarly = await serviceClient().rpc("record_delivery_download", {
       delivery_token: early.token,
       target_asset: frame.assetId,
     });
@@ -997,7 +1006,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
       })
       .eq("id", expired.id);
     expect(expire.error).toBeNull();
-    const afterExpiry = await anon.rpc("authorize_delivery_download", {
+    const afterExpiry = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: expired.token,
       target_asset: frame.assetId,
     });
@@ -1019,12 +1028,12 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
       submissionId,
       deliveryId: withdrawn.id,
     });
-    const afterWithdrawal = await anon.rpc("authorize_delivery_download", {
+    const afterWithdrawal = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: withdrawn.token,
       target_asset: frame.assetId,
     });
     expect(afterWithdrawal.data ?? []).toHaveLength(0);
-    const preview = await anon.rpc("delivery_preview", {
+    const preview = await serviceClient().rpc("delivery_preview", {
       delivery_token: withdrawn.token,
       target_asset: frame.assetId,
     });
@@ -1037,7 +1046,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     await accept(link.token);
     const anon = anonClient();
 
-    const foreign = await anon.rpc("authorize_delivery_download", {
+    const foreign = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: ORG_B_ASSET,
     });
@@ -1061,14 +1070,17 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
       async () => anon.rpc("open_delivery", { delivery_token: unknown }),
       async () => anon.rpc("delivery_assets", { delivery_token: unknown }),
       async () =>
-        anon.rpc("delivery_preview", { delivery_token: unknown, target_asset: ORG_B_ASSET }),
-      async () =>
-        anon.rpc("authorize_delivery_download", {
+        serviceClient().rpc("delivery_preview", {
           delivery_token: unknown,
           target_asset: ORG_B_ASSET,
         }),
       async () =>
-        anon.rpc("record_delivery_download", {
+        serviceClient().rpc("authorize_delivery_download", {
+          delivery_token: unknown,
+          target_asset: ORG_B_ASSET,
+        }),
+      async () =>
+        serviceClient().rpc("record_delivery_download", {
           delivery_token: unknown,
           target_asset: ORG_B_ASSET,
         }),
@@ -1091,7 +1103,6 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
       withPreview: true,
     });
     const [frame] = frames;
-    const anon = anonClient();
 
     // Both identities are on the row: the approved delivery object, and the
     // preview that was on the review screen.
@@ -1104,7 +1115,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     expect(row.preview_mime_type_snapshot).toBe("image/jpeg");
 
     const link = await linkFor(submissionId);
-    const before = await anon.rpc("delivery_preview", {
+    const before = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1117,7 +1128,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     const laterPreview = await laterVersion(frame.assetId, shootId, "preview", "PREVIEWID");
     await laterVersion(frame.assetId, shootId, "delivery", "PREVIEWID");
 
-    const after = await anon.rpc("delivery_preview", {
+    const after = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1126,7 +1137,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     // ...and the download is still the approved delivery object.
     await accept(link.token);
-    const download = await anon.rpc("authorize_delivery_download", {
+    const download = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1154,7 +1165,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     const listed = await anon.rpc("delivery_assets", { delivery_token: link.token });
     expect(listed.data![0].has_preview).toBe(true);
 
-    const before = await anon.rpc("delivery_preview", {
+    const before = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1164,7 +1175,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
     // A preview made after approval would have been "preferred" by the old
     // selection. It is not looked at.
     const later = await laterVersion(frame.assetId, shootId, "preview", "NOPREVIEW");
-    const after = await anon.rpc("delivery_preview", {
+    const after = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1198,7 +1209,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     const listed = await anon.rpc("delivery_assets", { delivery_token: link.token });
     expect(listed.data![0].has_preview).toBe(false);
-    const preview = await anon.rpc("delivery_preview", {
+    const preview = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1206,7 +1217,7 @@ describeIf("a recipient link reads the snapshot and nothing else", () => {
 
     // The download is still the exact approved object: the original.
     await accept(link.token);
-    const download = await anon.rpc("authorize_delivery_download", {
+    const download = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: frame.assetId,
     });
@@ -1342,7 +1353,7 @@ describeIf("submissions approved before the snapshot existed", () => {
     expect(opened.data![0].asset_count).toBe(1);
 
     await accept(link.token);
-    const refused = await anon.rpc("authorize_delivery_download", {
+    const refused = await serviceClient().rpc("authorize_delivery_download", {
       delivery_token: link.token,
       target_asset: bad.assetId,
     });
@@ -1350,7 +1361,7 @@ describeIf("submissions approved before the snapshot existed", () => {
     expect((await eventsFor(link.id)).map((event) => event.detail)).toContain(
       "frame not in this submission",
     );
-    const preview = await anon.rpc("delivery_preview", {
+    const preview = await serviceClient().rpc("delivery_preview", {
       delivery_token: link.token,
       target_asset: bad.assetId,
     });
@@ -1385,5 +1396,335 @@ describeIf("submissions approved before the snapshot existed", () => {
     const drift = await serviceClient().rpc("submission_snapshot_drift_admin");
     expect(drift.error).toBeNull();
     expect(drift.data ?? []).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Who may call what
+// ---------------------------------------------------------------------------
+
+describeIf(
+  "the functions that name a private object or write evidence are closed to browsers",
+  () => {
+    const SENSITIVE = [
+      "delivery_preview",
+      "authorize_delivery_download",
+      "record_delivery_download",
+    ] as const;
+
+    it("refuses anon and signed-in callers with permission denied, and never runs the body", async () => {
+      const { submissionId, frames } = await approved("PRIVS", { frames: 1 });
+      const link = await linkFor(submissionId);
+      await accept(link.token);
+      const before = (await eventsFor(link.id)).length;
+
+      const callers = [
+        ["anon", anonClient()],
+        ["viewer", await clientFor("viewer")],
+        ["owner", await clientFor("owner")],
+      ] as const;
+
+      for (const [who, client] of callers) {
+        for (const fn of SENSITIVE) {
+          const result = await client.rpc(fn, {
+            delivery_token: link.token,
+            target_asset: frames[0].assetId,
+          });
+          expect(result.error, `${who} calling ${fn}`).toBeTruthy();
+          expect(result.error!.code, `${who} calling ${fn}`).toBe("42501");
+          expect(result.error!.message).toMatch(/permission denied/i);
+          expect(result.data ?? []).toHaveLength(0);
+        }
+      }
+
+      // A refused call is refused before the function runs: no refusal event,
+      // and above all no `downloaded` event, was written by any of them.
+      expect((await eventsFor(link.id)).length).toBe(before);
+
+      // The route's role can still do all three, in order.
+      const trusted = serviceClient();
+      const preview = await trusted.rpc("delivery_preview", {
+        delivery_token: link.token,
+        target_asset: frames[0].assetId,
+      });
+      expect(preview.error).toBeNull();
+      expect(preview.data![0].object_key).toBe(frames[0].deliveryKey);
+      const authorised = await trusted.rpc("authorize_delivery_download", {
+        delivery_token: link.token,
+        target_asset: frames[0].assetId,
+      });
+      expect(authorised.error).toBeNull();
+      expect(authorised.data![0].object_key).toBe(frames[0].deliveryKey);
+      const recorded = await trusted.rpc("record_delivery_download", {
+        delivery_token: link.token,
+        target_asset: frames[0].assetId,
+      });
+      expect(recorded.error).toBeNull();
+      expect(recorded.data).toHaveLength(1);
+      expect(
+        (await eventsFor(link.id)).filter((event) => event.kind === "downloaded"),
+      ).toHaveLength(1);
+    });
+
+    it("gives a recipient no way to fabricate a download through PostgREST", async () => {
+      const { submissionId, frames } = await approved("FORGE", { frames: 1 });
+      const link = await linkFor(submissionId);
+      await accept(link.token);
+      const anon = anonClient();
+
+      // Not through the function...
+      const viaFunction = await anon.rpc("record_delivery_download", {
+        delivery_token: link.token,
+        target_asset: frames[0].assetId,
+      });
+      expect(viaFunction.error?.code).toBe("42501");
+
+      // ...and not through the table, which anon holds no privilege on.
+      const viaTable = await anon.from("delivery_access_events").insert({
+        organization_id: ORG_A,
+        delivery_id: link.id,
+        kind: "downloaded",
+        asset_id: frames[0].assetId,
+      });
+      expect(viaTable.error).toBeTruthy();
+
+      // Nor can it read the record back.
+      const read = await anon
+        .from("delivery_access_events")
+        .select("id")
+        .eq("delivery_id", link.id);
+      expect(read.data ?? []).toHaveLength(0);
+
+      const downloads = (await eventsFor(link.id)).filter((event) => event.kind === "downloaded");
+      expect(downloads).toHaveLength(0);
+    });
+
+    it("leaves the safe-output functions open, returning nothing private", async () => {
+      const { submissionId, frames } = await approved("SAFEOUT", { frames: 1 });
+      const link = await linkFor(submissionId);
+      const anon = anonClient();
+
+      const opened = await anon.rpc("open_delivery", { delivery_token: link.token });
+      expect(opened.error).toBeNull();
+      const listed = await anon.rpc("delivery_assets", { delivery_token: link.token });
+      expect(listed.error).toBeNull();
+      const agreed = await anon.rpc("accept_delivery", {
+        delivery_token: link.token,
+        accepted_by_name: "Dana Whitfield",
+      });
+      expect(agreed.error).toBeNull();
+
+      const rendered = JSON.stringify([opened.data, listed.data, agreed.data]);
+      for (const secret of [
+        frames[0].deliveryKey!,
+        frames[0].originalKey,
+        link.token,
+        "object_key",
+        "storage_bucket",
+        "preview_key",
+        "ip_address",
+        "user_agent",
+        "organization_id",
+        "delivery_id",
+      ]) {
+        expect(rendered, `safe output must not carry ${secret}`).not.toContain(secret);
+      }
+    });
+  },
+);
+
+// ---------------------------------------------------------------------------
+// One preview: reviewed, frozen, served
+// ---------------------------------------------------------------------------
+
+describeIf("review, approval, and recipient agree on the preview", () => {
+  it("freezes the preview the review screen selects, whatever order the rows arrive in", async () => {
+    const editor = await clientFor("editor");
+    const dispatcher = await clientFor("dispatcher");
+    const service = serviceClient();
+    const { shootId, frames } = await readyShoot("MULTIPREVIEW", {
+      frames: 1,
+      withPreview: true,
+    });
+    const [frame] = frames;
+
+    // A second preview of the same frame, older than the one the fixture made
+    // and inserted afterwards, so insertion order and created_at disagree.
+    const olderKey = `${ORG_A}/${shootId}/MULTIPREVIEW_0_older_preview.jpg`;
+    const { data: older, error: olderError } = await service
+      .from("asset_versions")
+      .insert({
+        organization_id: ORG_A,
+        asset_id: frame.assetId,
+        version_kind: "preview",
+        storage_bucket: "derivatives",
+        object_key: olderKey,
+        sha256: await digest(`older-preview-${shootId}`),
+        bytes: 110,
+        mime_type: "image/jpeg",
+        created_by: OWNER,
+        created_at: new Date(Date.now() - 3_600_000).toISOString(),
+      })
+      .select("id, sha256")
+      .single();
+    expect(olderError).toBeNull();
+
+    // What the review screen renders: the shared rule over the loaded versions.
+    const [asset] = await listAssets(ORG_A, { shootId }, dispatcher);
+    const reviewed = reviewPreviewVersion(asset.versions);
+    expect(reviewed?.id).toBe(older!.id);
+    expect(reviewed?.objectKey).toBe(olderKey);
+
+    const { id: packageId } = await createPackageFromSelection({
+      client: editor,
+      organizationId: ORG_A,
+      actorId: EDITOR,
+      shootId,
+      buyerId: BACKGRID,
+      name: "Multi-preview package",
+      deliveryMethod: "SFTP",
+      proposedTerms: "Terms.",
+    });
+    const { submissionId } = await approvePackageAndCreateSubmission({
+      client: dispatcher,
+      organizationId: ORG_A,
+      actorId: DISPATCHER,
+      packageId,
+    });
+
+    // What approval froze: the same version, the same digest.
+    const [row] = await snapshotRows(submissionId);
+    expect(row.preview_asset_version_id).toBe(reviewed!.id);
+    expect(row.preview_object_key_snapshot).toBe(reviewed!.objectKey);
+    expect(row.preview_sha256_snapshot).toBe(reviewed!.sha256);
+    expect(row.preview_sha256_snapshot).toBe(older!.sha256);
+
+    // What the recipient is served: the same object again.
+    const link = await linkFor(submissionId);
+    const served = await service.rpc("delivery_preview", {
+      delivery_token: link.token,
+      target_asset: frame.assetId,
+    });
+    expect(served.data![0].object_key).toBe(reviewed!.objectKey);
+    expect(served.data![0].sha256).toBe(reviewed!.sha256);
+    expect(served.data![0].snapshot_id).toBe(row.id);
+
+    // A preview and a delivery derivative made afterwards change neither the
+    // preview nor the download.
+    const laterPreview = await laterVersion(frame.assetId, shootId, "preview", "MULTIPREVIEW");
+    const laterDelivery = await laterVersion(frame.assetId, shootId, "delivery", "MULTIPREVIEW");
+    const servedAgain = await service.rpc("delivery_preview", {
+      delivery_token: link.token,
+      target_asset: frame.assetId,
+    });
+    expect(servedAgain.data).toEqual(served.data);
+    expect(servedAgain.data![0].object_key).not.toBe(laterPreview.key);
+
+    await accept(link.token);
+    const download = await service.rpc("authorize_delivery_download", {
+      delivery_token: link.token,
+      target_asset: frame.assetId,
+    });
+    expect(download.data![0].object_key).toBe(frame.deliveryKey);
+    expect(download.data![0].object_key).not.toBe(laterDelivery.key);
+
+    // The review screen's rule still names the frozen preview afterwards, so
+    // a reviewer reopening the package sees what was approved.
+    const [reloaded] = await listAssets(ORG_A, { shootId }, dispatcher);
+    expect(reviewPreviewVersion(reloaded.versions)?.id).toBe(row.preview_asset_version_id);
+  });
+
+  it("caches a marked preview per snapshot, so a second approval of the same frame never reuses it", async () => {
+    const editor = await clientFor("editor");
+    const dispatcher = await clientFor("dispatcher");
+    const service = serviceClient();
+    const {
+      submissionId: first,
+      frames,
+      shootId,
+    } = await approved("CACHEKEY", {
+      frames: 1,
+      withPreview: true,
+    });
+    const [frame] = frames;
+
+    // The frame is corrected and re-approved in a new package: a new preview
+    // is what the photographer wants the next recipient to see.
+    const revised = await laterVersion(frame.assetId, shootId, "preview", "CACHEKEY");
+    // The rule freezes the earliest preview, so the revision has to be the
+    // earliest: the first preview is what the first approval froze, and its
+    // row cannot be removed -- so this test makes the revision older instead.
+    await service
+      .from("asset_versions")
+      .update({ created_at: new Date(Date.now() - 7_200_000).toISOString() })
+      .eq("id", revised.id)
+      .then((result) => {
+        // asset_versions is append-only; an update is refused. That is the
+        // point: the frozen preview cannot be re-pointed by editing versions.
+        expect(result.error).toBeTruthy();
+      });
+
+    const { id: packageId } = await createPackageFromSelection({
+      client: editor,
+      organizationId: ORG_A,
+      actorId: EDITOR,
+      shootId,
+      buyerId: BACKGRID,
+      name: "Second approval",
+      deliveryMethod: "SFTP",
+      proposedTerms: "Terms.",
+    });
+    const { submissionId: second } = await approvePackageAndCreateSubmission({
+      client: dispatcher,
+      organizationId: ORG_A,
+      actorId: DISPATCHER,
+      packageId,
+    });
+
+    const [firstRow] = await snapshotRows(first);
+    const [secondRow] = await snapshotRows(second);
+    expect(secondRow.id).not.toBe(firstRow.id);
+
+    const token = "T".repeat(43);
+    const firstKey = markedPreviewKey({
+      token,
+      snapshotId: firstRow.id,
+      sha256: firstRow.preview_sha256_snapshot,
+    });
+    const secondKey = markedPreviewKey({
+      token,
+      snapshotId: secondRow.id,
+      sha256: secondRow.preview_sha256_snapshot,
+    });
+    expect(firstKey).not.toBe(secondKey);
+
+    // ...and through the functions the routes actually call.
+    const firstLink = await linkFor(first, "First desk");
+    const secondLink = await linkFor(second, "Second desk");
+    const [a, b] = await Promise.all([
+      service.rpc("delivery_preview", {
+        delivery_token: firstLink.token,
+        target_asset: frame.assetId,
+      }),
+      service.rpc("delivery_preview", {
+        delivery_token: secondLink.token,
+        target_asset: frame.assetId,
+      }),
+    ]);
+    expect(a.data![0].snapshot_id).toBe(firstRow.id);
+    expect(b.data![0].snapshot_id).toBe(secondRow.id);
+    expect(
+      markedPreviewKey({
+        token: firstLink.token,
+        snapshotId: a.data![0].snapshot_id,
+        sha256: a.data![0].sha256,
+      }),
+    ).not.toBe(
+      markedPreviewKey({
+        token: secondLink.token,
+        snapshotId: b.data![0].snapshot_id,
+        sha256: b.data![0].sha256,
+      }),
+    );
   });
 });

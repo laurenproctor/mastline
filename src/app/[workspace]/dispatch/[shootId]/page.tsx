@@ -12,6 +12,7 @@ import { DISPATCH_STAGES, dispatchStage } from "@/lib/dispatch-lifecycle";
 import { reviewDispatch } from "@/lib/dispatch-rules";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset } from "@/lib/metadata-rules";
+import { reviewPreviewVersion } from "@/lib/preview-selection";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
@@ -106,21 +107,28 @@ export default async function DispatchPage({
    * its metadata, its checks, and its manifest row, so a reviewer whose
    * previews did not load can still inspect what they are approving.
    */
-  const previewKeys = pkg.assets
-    .map(
-      (entry) =>
-        byId.get(entry.assetId)?.versions.find((version) => version.versionKind === "preview")
-          ?.objectKey,
-    )
+  /*
+   * Which preview: one rule, shared with approval. The reviewer must be
+   * looking at the same preview `approve_package()` will freeze, so the
+   * selection is `reviewPreviewVersion` -- the earliest preview by created_at,
+   * ties on id -- and not whichever preview the database happened to return
+   * first.
+   */
+  const previewByAsset = new Map(
+    pkg.assets.map((entry) => {
+      const asset = byId.get(entry.assetId);
+      return [entry.assetId, asset ? reviewPreviewVersion(asset.versions) : undefined] as const;
+    }),
+  );
+  const previewKeys = [...previewByAsset.values()]
+    .map((version) => version?.objectKey)
     .filter((key): key is string => Boolean(key));
   const previewUrls = await signedUrlsFor(await createClient(), "derivatives", previewKeys, 600);
 
   const frames: ReviewFrame[] = pkg.assets.map((entry) => {
     const asset = byId.get(entry.assetId);
     const version = asset?.versions.find((candidate) => candidate.id === entry.assetVersionId);
-    const previewKey = asset?.versions.find(
-      (candidate) => candidate.versionKind === "preview",
-    )?.objectKey;
+    const previewKey = previewByAsset.get(entry.assetId)?.objectKey;
     const report = asset ? reviewAsset(asset) : undefined;
 
     return {

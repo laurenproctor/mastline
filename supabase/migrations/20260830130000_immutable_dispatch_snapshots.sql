@@ -179,7 +179,7 @@ create index submission_assets_org_asset_preview_idx
 comment on table public.submission_assets is
   'The authoritative approved-delivery record: one row per approved frame, naming the exact version, storage object, and preview, and the editorial facts at approval. Append-only. What a recipient link shows and downloads.';
 comment on column public.submission_assets.snapshot_origin is
-  'approval: written by the approval transaction at the approval instant. legacy_backfill: written by migration 20260829153325 from the manifest, with metadata as it stood at migration time.';
+  'approval: written by the approval transaction at the approval instant. legacy_backfill: written by migration 20260830130000 from the manifest, with metadata as it stood at migration time.';
 comment on column public.submission_assets.preview_asset_version_id is
   'The preview derivative shown on the review screen at approval, if one existed. A preview made later never replaces it.';
 comment on column public.submission_assets.created_at is
@@ -865,8 +865,12 @@ grant execute on function public.delivery_assets(text) to anon, authenticated;
 
 -- The preview is rendered by the route from the exact frozen preview, or from
 -- the exact approved object when no preview was frozen and the object is an
--- image. This returns that object's identity to trusted server code, never to
--- a page, and the snapshot id and digest so the marked cache can never serve
+-- image. This returns that object's identity -- a private bucket and key -- so
+-- it is executable by the service role only: the preview route calls it with
+-- the admin client, and a browser holding the token cannot ask it where the
+-- file lives. The token, expiry, withdrawal, and snapshot checks stay inside
+-- the function; the service role bypassing RLS is not what protects it. It
+-- also returns the snapshot id and digest so the marked cache can never serve
 -- one approval's preview for another. Return type changes, so it is dropped
 -- and rebuilt.
 drop function if exists public.delivery_preview(text, uuid);
@@ -916,7 +920,9 @@ comment on function public.delivery_preview(text, uuid) is
   'The exact frozen object a marked preview is rendered from: the preview frozen at approval, else the approved object when it is an image. Never a later derivative.';
 
 revoke all on function public.delivery_preview(text, uuid) from public;
-grant execute on function public.delivery_preview(text, uuid) to anon, authenticated;
+revoke all on function public.delivery_preview(text, uuid) from anon;
+revoke all on function public.delivery_preview(text, uuid) from authenticated;
+grant execute on function public.delivery_preview(text, uuid) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- Downloading the exact approved object
@@ -1084,10 +1090,21 @@ $$;
 comment on function public.record_delivery_download(text, uuid, text, text) is
   'The append-only record of a download. Called by the route after signing succeeds; the response is released only if this returns a row.';
 
+-- Service role only, both of them. Authorisation returns a private object's
+-- location, and recording writes commercial evidence: a browser holding the
+-- token must not be able to learn the former or fabricate the latter by
+-- calling PostgREST directly. The frame route calls both with the admin
+-- client, and only records once it holds a signed response. Every token,
+-- expiry, withdrawal, acceptance, submission, and snapshot check stays inside
+-- the gate; the service role bypassing RLS is not the control here.
 revoke all on function public.authorize_delivery_download(text, uuid, text, text) from public;
+revoke all on function public.authorize_delivery_download(text, uuid, text, text) from anon;
+revoke all on function public.authorize_delivery_download(text, uuid, text, text) from authenticated;
+grant execute on function public.authorize_delivery_download(text, uuid, text, text) to service_role;
 revoke all on function public.record_delivery_download(text, uuid, text, text) from public;
-grant execute on function public.authorize_delivery_download(text, uuid, text, text) to anon, authenticated;
-grant execute on function public.record_delivery_download(text, uuid, text, text) to anon, authenticated;
+revoke all on function public.record_delivery_download(text, uuid, text, text) from anon;
+revoke all on function public.record_delivery_download(text, uuid, text, text) from authenticated;
+grant execute on function public.record_delivery_download(text, uuid, text, text) to service_role;
 
 -- ---------------------------------------------------------------------------
 -- Existing submissions

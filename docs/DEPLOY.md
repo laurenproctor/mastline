@@ -40,7 +40,7 @@ remote is whatever `supabase migration list --linked` says, and this file has
 been wrong about that before. The last six -- recipient delivery links,
 approval-time immutability, delivery view analytics, the open lifecycle, the
 News Radar canonical signal, and the approved-frame snapshot
-(`20260829153325_immutable_dispatch_snapshots`) -- have been applied and
+(`20260830130000_immutable_dispatch_snapshots`) -- have been applied and
 exercised locally only.
 
 `supabase migration list --linked` is the check that matters here, and it is
@@ -76,7 +76,7 @@ Changing one requires a redeploy, not just a restart.
 
 ### Deploying the approved-frame snapshot
 
-Migration `20260829153325_immutable_dispatch_snapshots.sql` is additive and
+Migration `20260830130000_immutable_dispatch_snapshots.sql` is additive and
 must land **before** the application code that depends on it: the code calls
 `approve_package()`, `authorize_delivery_download()`, and the new
 `delivery_assets()` and `delivery_preview()` shapes, none of which exist on the
@@ -87,27 +87,25 @@ grants restored), so the previous application code stops working the moment
 it applies; deploy the two within one maintenance window. Nothing here has
 been run against the hosted project.
 
-**Its version sorts before the last one already applied.** The file was
-created with `supabase migration new`, which stamps the current time, and the
-News Radar migration carries a version (`20260830120000`) later than that.
-The CLI therefore refuses a plain `migration up` / `db push` with "Found local
-migration files to be inserted before the last migration on remote database"
-and asks for `--include-all`. That flag applies every local migration missing
-from the remote history, which is exactly one file here. It has been rehearsed
-locally: a 31-migration database taken to 32 with
-`supabase migration up --local --include-all`, and a fresh database built with
-all 32. Either accept the flag below, or rename the file to a version later
-than `20260830120000` before merging -- the content is the same, and the
-choice is a repository-convention decision rather than a schema one.
+**Its version is `20260830130000`, deliberately later than the News Radar
+migration's `20260830120000`.** `supabase migration new` stamps the current
+time, and the migrations already on `main` carry hand-chosen versions later
+than that, so a CLI-stamped file would sort before the last applied version
+and the CLI would refuse a plain `migration up` / `db push` until told
+`--include-all`. The file was renamed so that ordinary ordering holds: a
+31-migration database takes it with plain `supabase migration up --local`,
+and `supabase db push --dry-run` lists it as the one pending migration. The
+same rule applies to every migration that follows -- a new version must sort
+after `20260830130000`, whatever the clock says.
 
 1. **Verify parity.** `supabase migration list --linked` must show 31 applied
-   on both sides and only `20260829153325` pending. Do not trust the history
+   on both sides and only `20260830130000` pending. Do not trust the history
    table alone: probe a column the last migration added, e.g.
    `curl "$URL/rest/v1/news_signals?select=id&limit=1"` with the service key,
    and confirm it is not `42703`.
-2. **Apply the migration.** `supabase db push --include-all` (see above). The
-   migration prints `submission_assets backfill: N submissions seen, F frames
-   written, U manifest entries unresolved`.
+2. **Apply the migration.** `supabase db push`. The migration prints
+   `submission_assets backfill: N submissions seen, F frames written, U
+   manifest entries unresolved`.
 3. **Verify the backfill.** With the service key:
    `select * from public.submission_snapshot_gaps_admin()` lists one row per
    unresolved manifest entry and must match U from step 2 (expected: none),

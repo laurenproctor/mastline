@@ -103,10 +103,23 @@ source, base64url, and never derived from anything about the submission.
 Knowing one link tells you nothing about another.
 
 **The recipient reaches nothing through row level security.** They have no
-session, so there is nothing for RLS to decide. Everything arrives through three
+session, so there is nothing for RLS to decide. Everything arrives through
 `security definer` functions keyed on the token, and the narrowness is the
 safety: no function accepts an organization id, and none returns an original, a
 source note, a price, or a buyer's details.
+
+**Only the safe-output functions are executable by the anonymous role.**
+`open_delivery`, `delivery_assets`, `accept_delivery`, and the two analytics
+heartbeats return nothing but what the page renders: no bucket, no object key,
+no token, no address, no user agent. The three that answer with a private
+object's location or write commercial evidence -- `delivery_preview`,
+`authorize_delivery_download`, and `record_delivery_download` -- are
+executable by the service role only. The preview and frame routes call them
+with the admin client, in server code, and a browser holding the token that
+calls them through PostgREST gets permission denied: it cannot learn where a
+file lives and it cannot fabricate a download. Every token, expiry,
+withdrawal, acceptance, and snapshot check still runs inside the function; the
+service role bypassing RLS is not what protects these paths.
 
 **A frame must belong to the package.** Without that check the token would open
 every asset in the workspace. Asking for one that does not is refused and
@@ -115,9 +128,10 @@ recorded.
 **Downloads are authorised, signed, recorded, and then released -- in that
 order.** `authorize_delivery_download` checks the token, the expiry, the
 withdrawal, the acceptance, and that the frame is in this submission's
-snapshot, records any refusal, and returns the frozen object. The route signs
-exactly that object with the service role -- the caller is anonymous and has,
-rightly, no rights of their own on a private bucket. Only once it holds a
+snapshot, records any refusal, and returns the frozen object to the route --
+and only to the route, since nothing but the service role may call it. The
+route signs exactly that object with the service role -- the caller is
+anonymous and has, rightly, no rights of their own on a private bucket. Only once it holds a
 signed response does it call `record_delivery_download`, which re-validates
 and writes the append-only `downloaded` event; the redirect is released only
 if that returns a row. A signing failure writes no download event, and a
@@ -316,7 +330,7 @@ terms they saw at the time.
 
 ## Legacy links after the snapshot migration
 
-Links created before migration `20260829153325` keep working where the
+Links created before migration `20260830130000` keep working where the
 version frozen in the submission's manifest could be validated: those
 submissions were backfilled with `snapshot_origin = 'legacy_backfill'`, and
 their editorial fields are the metadata as it stood at migration time, which

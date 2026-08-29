@@ -3,7 +3,7 @@ import { isDeliveryToken } from "@/lib/delivery";
 import { watermarkPreview } from "@/lib/images/watermark.server";
 import { isRecordId } from "@/lib/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { markedPreviewKey } from "@/lib/preview-selection";
 
 /**
  * A preview, marked for the desk it was sent to.
@@ -37,8 +37,15 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("delivery_preview", {
+  /*
+   * `delivery_preview` answers with a private bucket and object key, so it is
+   * executable by the service role only and is called here, in trusted server
+   * code, never from a browser. The token is still the credential: the
+   * function checks it, the expiry, the withdrawal, and that the frame is in
+   * this submission's snapshot before it says anything.
+   */
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("delivery_preview", {
     delivery_token: token,
     target_asset: assetId,
   });
@@ -47,15 +54,17 @@ export async function GET(
   // Unknown, withdrawn, expired, or not in this package: the same answer for
   // all of them, as everywhere else on this surface.
   if (error || !row) return new NextResponse("Not found", { status: 404 });
-
-  const admin = createAdminClient();
   /*
    * The cache is keyed on the snapshot row and the digest of the exact object
    * it was rendered from, not on the asset alone. Two approvals of the same
    * frame -- or a legacy row and a later one -- can name different objects,
    * and a marked preview of one must never be served for the other.
    */
-  const markedKey = `watermarked/${token.slice(0, 24)}/${row.snapshot_id}-${String(row.sha256).slice(0, 16)}.jpg`;
+  const markedKey = markedPreviewKey({
+    token,
+    snapshotId: String(row.snapshot_id),
+    sha256: String(row.sha256),
+  });
 
   const cached = await admin.storage.from("derivatives").download(markedKey);
   if (cached.data) {
