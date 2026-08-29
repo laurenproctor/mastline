@@ -8,11 +8,16 @@ import { listAssets } from "@/lib/data/assets";
 import { listLicenses, listPayments } from "@/lib/data/money";
 import { getPackage } from "@/lib/data/packages";
 import { getShoot } from "@/lib/data/shoots";
-import { getSubmission } from "@/lib/data/submissions";
+import {
+  getSubmission,
+  listSubmissionAssets,
+  unresolvedManifestEntries,
+} from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
+import { formatBytes } from "@/lib/subscription";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DeliveryPanel } from "../_components/delivery-panel";
@@ -50,14 +55,22 @@ export default async function SubmissionPage({
   const submission = await getSubmission(organizationId, submissionId);
   if (!submission) notFound();
 
-  const [pkg, buyers, activity, licenses, payments, attempts] = await Promise.all([
+  const [pkg, buyers, activity, licenses, payments, attempts, frames] = await Promise.all([
     getPackage(organizationId, submission.packageId),
     listWorkspaceBuyers(organizationId),
     listActivity(organizationId, { entityId: submissionId }),
     listLicenses(organizationId),
     listPayments(organizationId),
     listDeliveryAttempts(organizationId, submissionId),
+    // What a recipient link renders and downloads: the approved frames, not
+    // the live assets.
+    listSubmissionAssets(organizationId, submissionId),
   ]);
+  const frameByAsset = new Map(frames.map((frame) => [frame.assetId, frame] as const));
+  const backfilled = frames.some((frame) => frame.origin === "legacy_backfill");
+  // Manifest entries the backfill could not freeze. Empty for every submission
+  // approved through the transaction; named, never substituted, otherwise.
+  const unresolved = unresolvedManifestEntries(submission.manifest, frames);
 
   // The link a picture desk opens, and what they did with it.
   const deliveries = await listDeliveries(organizationId, submissionId);
@@ -177,7 +190,10 @@ export default async function SubmissionPage({
         const seen = perAsset.get(entry.assetId);
         return {
           assetId: entry.assetId,
-          filename: byId.get(entry.assetId)?.canonicalFilename ?? entry.assetId.slice(0, 8),
+          filename:
+            frameByAsset.get(entry.assetId)?.filename ??
+            byId.get(entry.assetId)?.canonicalFilename ??
+            entry.assetId.slice(0, 8),
           viewed: Boolean(seen && seen.activeVisibleMs > 0),
           viewCount: seen?.viewCount ?? 0,
           activeVisibleMs: seen?.activeVisibleMs ?? 0,
@@ -330,50 +346,135 @@ export default async function SubmissionPage({
             </Panel>
 
             <Panel
-              action={<span className="muted">{submission.manifest.length} versions</span>}
-              title="Manifest"
+              action={
+                <span className="muted">
+                  {frames.length} of {submission.manifest.length}{" "}
+                  {submission.manifest.length === 1 ? "frame" : "frames"} frozen
+                </span>
+              }
+              title="Approved frames"
             >
-              <TableScroll label="Manifest">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Frame</th>
-                      <th scope="col">Version sent</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submission.manifest.map((entry) => {
-                      const asset = byId.get(entry.assetId);
-                      const version = asset?.versions.find(
-                        (candidate) => candidate.id === entry.assetVersionId,
-                      );
-                      return (
-                        <tr key={entry.assetId}>
+              {/*
+               * The approved record, not the live asset. What is listed here is
+               * what a recipient link shows and downloads: the exact version and
+               * object, and the editorial facts as they stood at approval. A
+               * caption edited on the asset afterwards does not appear here and
+               * does not reach the recipient. Nothing here names an object key.
+               */}
+              {(backfilled || unresolved.length > 0) && (
+                <div className="panel-body" role="status">
+                  {backfilled && (
+                    <p className="section-note">
+                      <strong>Reconstructed record.</strong> This submission was approved before the
+                      approved-frame record existed. The versions and files below are the ones its
+                      manifest froze at approval; the captions, people, and credits are as they
+                      stood when the record was reconstructed, not provably as they were at
+                      approval.
+                    </p>
+                  )}
+                  {unresolved.length > 0 && (
+                    <p className="section-note">
+                      <strong>
+                        {unresolved.length === 1
+                          ? "One frame in the manifest could not be frozen"
+                          : `${unresolved.length} frames in the manifest could not be frozen`}
+                        .
+                      </strong>{" "}
+                      The version {unresolved.length === 1 ? "it names" : "they name"} no longer
+                      exists or does not belong to the asset, so no substitute was chosen and
+                      recipient links cannot show or download{" "}
+                      {unresolved.length === 1 ? "that frame" : "those frames"}. To deliver{" "}
+                      {unresolved.length === 1 ? "it" : "them"}, approve a new package.
+                    </p>
+                  )}
+                </div>
+              )}
+              {frames.length === 0 && unresolved.length === 0 ? (
+                <p className="panel-body section-note" role="status">
+                  This submission has no frames on record, so a recipient link on it shows no frames
+                  and downloads nothing.
+                </p>
+              ) : (
+                <TableScroll label="Approved frames">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Frame</th>
+                        <th scope="col">Approved caption</th>
+                        <th scope="col">Approved file</th>
+                        <th scope="col">Frozen</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {frames.map((frame) => (
+                        <tr data-approved-frame={frame.assetId} key={frame.assetId}>
+                          <td>{frame.position + 1}</td>
+                          <td>
+                            <Link className="text-link" href={routes.asset(frame.assetId)}>
+                              {frame.filename}
+                            </Link>
+                            {frame.creditLine && <small>{frame.creditLine}</small>}
+                          </td>
+                          <td>
+                            {frame.headline && <strong>{frame.headline}</strong>}
+                            {frame.caption ? (
+                              <span className="approved-caption">{frame.caption}</span>
+                            ) : (
+                              <span className="muted">No caption at approval</span>
+                            )}
+                            {frame.people.length > 0 && (
+                              <small>People: {frame.people.join(", ")}</small>
+                            )}
+                          </td>
+                          <td>
+                            <strong>{humanizeStatus(frame.versionKind)}</strong>
+                            <small>
+                              {frame.mimeType}
+                              {frame.width && frame.height
+                                ? ` · ${frame.width}×${frame.height}`
+                                : ""}
+                              {` · ${formatBytes(frame.bytes)}`}
+                            </small>
+                            <small>SHA-256 {frame.sha256.slice(0, 12)}…</small>
+                            <small>
+                              {frame.previewVersionId
+                                ? "Preview frozen with it"
+                                : "Preview rendered from this file"}
+                            </small>
+                          </td>
+                          <td>
+                            <Badge tone={frame.origin === "approval" ? "good" : "warn"}>
+                              {frame.origin === "approval" ? "At approval" : "Reconstructed"}
+                            </Badge>
+                            <small>{formatDateTime(frame.createdAt)}</small>
+                          </td>
+                        </tr>
+                      ))}
+                      {unresolved.map((entry) => (
+                        <tr data-unresolved-frame={entry.assetId} key={`gap-${entry.assetId}`}>
                           <td>{entry.position + 1}</td>
                           <td>
                             <Link className="text-link" href={routes.asset(entry.assetId)}>
-                              {asset?.canonicalFilename ?? entry.assetId.slice(0, 8)}
+                              {byId.get(entry.assetId)?.canonicalFilename ??
+                                entry.assetId.slice(0, 8)}
                             </Link>
                           </td>
+                          <td className="muted">—</td>
+                          <td className="muted">Version no longer readable</td>
                           <td>
-                            {version ? (
-                              <>
-                                <strong>{humanizeStatus(version.versionKind)}</strong>
-                                <small>SHA-256 {version.sha256.slice(0, 12)}…</small>
-                              </>
-                            ) : (
-                              <span className="muted">Version record no longer readable</span>
-                            )}
+                            <Badge tone="danger">Not deliverable</Badge>
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </TableScroll>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
+              )}
               <p className="section-note panel-body">
-                This manifest is frozen. Editing what was sent is refused by the database.
+                Frozen at approval. Editing the asset afterwards changes neither this record nor
+                what a recipient sees or downloads; to send something different, approve a new
+                package.
               </p>
             </Panel>
           </div>

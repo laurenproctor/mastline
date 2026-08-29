@@ -288,9 +288,14 @@ test.describe("the dispatch screen after approval", () => {
     );
 
     await expect(page.getByText("This package has been sent")).toHaveCount(0);
+    // The seeded package was opened by a recipient, and the screen says that
+    // and nothing more.
     await expect(
-      page.getByRole("heading", { name: /A delivery link for this package/ }),
+      page.getByRole("heading", { name: /A recipient has opened a link to this package/ }),
     ).toBeVisible();
+    // The lifecycle strip is read from the record: an opened package is no
+    // longer under review, and it is not yet an outcome.
+    await expect(page.locator('[aria-current="step"]')).toHaveText(/Shared \/ awaiting outcome/);
   });
 });
 

@@ -156,6 +156,13 @@ insert into public.submissions (id, organization_id, package_id, buyer_id, statu
    '{"desk":"New York picture desk"}', 'Standard agency distribution; non-exclusive; photographer retains copyright.', 'Editorial use only. No commercial use.',
    '{"assets":[{"assetId":"a0000000-0000-0000-0000-0000000000d1","assetVersionId":"a0000000-0000-0000-0000-0000000000e2","position":0}],"asset_count":1}', 'SFTP', 'BG-0819-441', '2026-08-19T18:52:00Z', '2026-08-19T18:53:00Z', '2026-08-22T14:00:00Z', '11111111-1111-1111-1111-111111111111');
 
+-- The seeded submission is inserted the way a pre-snapshot submission was, so
+-- it receives its approved-frame record the way a production one does: from
+-- the version frozen in its manifest, with metadata as it stands now, marked
+-- `legacy_backfill`. The seed runs after every migration, so the migration's
+-- own backfill never sees this row.
+select * from private.backfill_submission_assets();
+
 -- One Mastline-generated license (30% share applies) and one external (no share).
 insert into public.licenses (id, organization_id, submission_id, buyer_id, status, licensee_name, media, territory, starts_at, ends_at, origin, sale_base_minor, sales_engine_share_minor, photographer_share_minor, created_by) values
   ('a0000000-0000-0000-0000-00000000b001', 'aaaaaaaa-0000-0000-0000-000000000001', null, 'a0000000-0000-0000-0000-0000000000b4', 'active', 'The City Paper', 'US editorial, web and print', 'United States', '2026-08-20T00:00:00Z', '2026-09-19T00:00:00Z', 'mastline_sales_engine', 64000, 19200, 44800, '11111111-1111-1111-1111-111111111111'),

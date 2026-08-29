@@ -37,6 +37,12 @@ export interface InspectorAsset {
   /** What that draft was made from. Shown, never hidden. */
   readonly captionBasis?: string;
   readonly captionConfidence?: number;
+  /**
+   * How many approved submissions carry this frame. An edit here changes the
+   * asset for future packages and none of those submissions: what a recipient
+   * sees and downloads is frozen at approval.
+   */
+  readonly approvedSubmissionCount?: number;
 }
 
 /**
@@ -274,6 +280,14 @@ function InspectorForm({
           : "Earlier versions are kept on every edit."}{" "}
         Editing never destroys what was there before.
       </p>
+      {(asset.approvedSubmissionCount ?? 0) > 0 && (
+        <p className="section-note" role="note">
+          This frame is in {asset.approvedSubmissionCount}{" "}
+          {asset.approvedSubmissionCount === 1 ? "approved submission" : "approved submissions"}.
+          Saving here changes the asset for future packages only; what those recipients see and
+          download stays exactly as approved. To send a correction, approve a new package.
+        </p>
+      )}
     </form>
   );
 }
