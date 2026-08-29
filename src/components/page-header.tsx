@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ActionLink } from "./button";
 
 /**
  * A link-shaped action for the header. Given as data rather than markup so a
@@ -57,14 +57,12 @@ export function PageHeader({
       {hasActions && (
         <div className="ml-page-header__actions">
           {secondaryActions.map((action) => (
-            <Link className="ml-button ml-button--secondary" href={action.href} key={action.href}>
+            <ActionLink href={action.href} key={action.href} variant="secondary">
               {action.label}
-            </Link>
+            </ActionLink>
           ))}
           {primaryAction && (
-            <Link className="ml-button" href={primaryAction.href}>
-              {primaryAction.label}
-            </Link>
+            <ActionLink href={primaryAction.href}>{primaryAction.label}</ActionLink>
           )}
         </div>
       )}

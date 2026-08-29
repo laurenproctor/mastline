@@ -35,21 +35,27 @@
   object-fit: contain;
 }
 
+/* A Field and a Button; the sheet draws both. min-width:0 lets a long
+   workspace name shorten inside the select instead of widening the rail. */
 .ml-app-shell .workspace-switcher {
   display: grid;
+  min-width: 0;
+  /* minmax(0, …): a grid item's min-width is otherwise its content, and a
+     select's content is its longest option, which is what widened the rail. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--ml-space-2);
   margin-top: var(--ml-space-4);
   padding-inline: var(--ml-space-2);
 }
-.ml-app-shell .workspace-switcher select {
-  width: 100%;
+.ml-app-shell .workspace-switcher :where(.ml-field, .ml-select, .ml-button) {
+  min-width: 0;
+}
+.ml-app-shell .workspace-switcher .ml-select {
   min-height: var(--ml-control-md);
-  padding: 0 var(--ml-space-3);
-  border: 1px solid var(--ml-border-strong);
-  border-radius: var(--ml-radius-xs);
-  background: var(--ml-surface);
-  color: var(--ml-ink);
   font-size: var(--ml-text-md);
+}
+.ml-app-shell .workspace-switcher .ml-button {
+  width: 100%;
 }
 
 /* The sheet sizes the icon column at 20px; the icons are drawn at 18. */
@@ -110,8 +116,24 @@
     width: 20px;
     height: 20px;
   }
+  /* The rail is 72px: the select keeps its name for a screen reader, loses
+     it on screen, and the button becomes the whole row. */
   .ml-app-shell .workspace-switcher {
     padding-inline: 0;
+  }
+  .ml-app-shell .workspace-switcher .ml-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ml-app-shell .workspace-switcher .ml-select,
+  .ml-app-shell .workspace-switcher .ml-button {
+    padding-inline: var(--ml-space-1);
   }
   .ml-app-shell .signout {
     width: 100%;
@@ -162,6 +184,17 @@
   .ml-app-shell .workspace-switcher {
     margin-top: 0;
     padding: 0 0 var(--ml-space-3);
+  }
+  .ml-app-shell .workspace-switcher .ml-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+  .ml-app-shell .workspace-switcher .ml-select {
+    padding-inline: var(--ml-space-3);
   }
   .ml-app-shell .ml-sidebar__nav {
     grid-template-columns: repeat(4, minmax(0, 1fr));

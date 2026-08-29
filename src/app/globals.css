@@ -852,6 +852,18 @@ button {
 .inspector .field label {
   color: #b8b8b4;
 }
+/* The same three rules for a Field that has moved to the design system. */
+.inspector .ml-field {
+  margin-bottom: 12px;
+}
+.inspector .ml-field :where(.ml-input, .ml-textarea, .ml-select) {
+  background: #232426;
+  color: white;
+  border-color: #6a6b6e;
+}
+.inspector .ml-field .ml-label {
+  color: #b8b8b4;
+}
 .dark-toolbar {
   padding: 12px;
   display: flex;
@@ -2512,7 +2524,8 @@ button {
   background: #fff;
   min-width: 240px;
 }
-.allocate-form .field {
+.allocate-form .field,
+.allocate-form .ml-field {
   gap: 4px;
 }
 
@@ -2538,7 +2551,8 @@ button {
   align-items: flex-end;
   margin-bottom: 8px;
 }
-.archive-search .field {
+.archive-search .field,
+.archive-search .ml-field {
   flex: 1;
 }
 .asset-card-image {
@@ -2631,12 +2645,14 @@ a.badge:hover {
 }
 
 /* A file input should not look like a text field. */
-.field input[type="file"] {
+.field input[type="file"],
+.ml-field .ml-input[type="file"] {
   padding: 9px;
   background: #fff;
   font-size: var(--fs-body);
 }
-.field input[type="file"]::file-selector-button {
+.field input[type="file"]::file-selector-button,
+.ml-field .ml-input[type="file"]::file-selector-button {
   border: 1px solid var(--ink);
   background: transparent;
   font: inherit;
@@ -3648,6 +3664,7 @@ img.avatar {
   }
 }
 
-.story-form .field textarea {
+.story-form .field textarea,
+.story-form .ml-field .ml-textarea {
   min-height: 84px;
 }

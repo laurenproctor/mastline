@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { FilterLink } from "@/components/filter-chip";
 import { Badge, Field, PageHeader, PhotoTile } from "@/components/primitives";
 import {
   ARCHIVE_PAGE_SIZE,
@@ -107,14 +108,13 @@ export default async function ArchivePage({
           </h2>
           <div className="actions">
             {FILTERS.map((entry) => (
-              <Link
-                aria-current={filter === entry.value ? "true" : undefined}
-                className={`badge ${filter === entry.value ? "blue" : "neutral"}`}
+              <FilterLink
+                current={filter === entry.value}
                 href={linkTo(routes, query, entry.value, 1)}
                 key={entry.value}
               >
                 {entry.label}
-              </Link>
+              </FilterLink>
             ))}
           </div>
         </div>

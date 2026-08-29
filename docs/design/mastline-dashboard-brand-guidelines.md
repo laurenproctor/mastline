@@ -321,6 +321,44 @@ Mastline copy is direct, concrete, and respectful of professional judgment.
 - Provide alt text based on the workflow purpose of an image; decorative duplicates use empty alt text.
 - Do not claim WCAG compliance without testing contrast, keyboard flows, zoom/reflow, screen readers, and error recovery in the implementation.
 
+## Control implementation guidance
+
+The reusable controls live in `src/components/`: `button.tsx` (Button, ActionLink, TextLink, IconButton, PendingButton), `badge.tsx`, `field.tsx`, `tabs.tsx`, and `filter-chip.tsx`. `primitives.tsx` re-exports Badge, Field, and PendingButton, so older imports keep working.
+
+### Button or link
+
+- Something that changes state on this page is a `Button` and renders `<button>`. It defaults to `type="button"`; a form's submit says `type="submit"` explicitly.
+- Something that takes the reader to a URL is an `ActionLink` (button-shaped) or a `TextLink` (inline) and renders a Next `<Link>`. Do not dress a link as a disabled button: a link that is not available is not rendered.
+- `IconButton` is a square `Button` whose `label` is its accessible name; the icon is decorative.
+
+### Action hierarchy
+
+- One dark primary per screen: the action that advances the workflow. `PageHeader` accepts exactly one `primaryAction`.
+- Supporting actions are `secondary` (outlined); dismiss, back, and utility actions are `quiet`; `highlight` is reserved for Mastline intelligence confirmations; `danger` for destructive actions.
+- Sizes: `sm` for rows and toolbars, the default for forms and headers, `lg` for a single dominant call to action. Coarse pointers get 44px regardless.
+
+### Badge tones
+
+Badges take a semantic tone — `neutral`, `success`, `warning`, `danger`, `info`, `highlight` — written to `data-tone`. The legacy names (`good`, `warn`, `blue`) still compile and map to `success`, `warning`, `info`. The word inside the badge is the state; the tone reinforces it and never replaces it.
+
+### Fields
+
+`Field` wraps a native `<input>`, `<select>`, or `<textarea>` — never a scripted replacement. `name` is required and derives the id; pass `idSuffix` when one form is rendered more than once on a page. `hint` and `error` are bound by `aria-describedby`; an error also sets `aria-invalid` and is announced. Controls are 16px so iOS does not zoom on focus.
+
+### Route tabs and interactive tabs
+
+`Tabs` and `TabLink` are for destinations: each tab is a link and the current one carries `aria-current="page"`. They never use `role="tab"`. Interactive in-page tabs — `role="tablist"`, `role="tab"`, `aria-selected`, arrow keys, and a `tabpanel` each tab controls — are a separate component that will be added with the first complete consumer; a tab row without panels must not claim the roles.
+
+### Toggle chips and filter links
+
+- `FilterChip` is a toggle `<button>` with `aria-pressed`; the page owns the state.
+- `FilterLink` is a link to the same page with a different query string; the server filters and the applied one carries `aria-current="true"`.
+- Neither uses `aria-selected`. Do not add a chip that does not filter anything.
+
+### Accessibility state
+
+Style real state: `aria-current`, `aria-pressed`, `aria-invalid`, `data-tone`, `data-invalid`, and `:disabled`. A disabled control stays readable. Every control keeps the visible focus ring, and touch targets are at least 44px on coarse pointers.
+
 ## CSS implementation contract
 
 1. Import `mastline-dashboard-design-system.css` once in the authenticated application layout.

@@ -754,11 +754,15 @@
   color: var(--ml-ink);
 }
 
+/* Route tabs are links and say where you are with aria-current; interactive
+   tabs say it with aria-selected. Both are the active tab. */
+.ml-tab[aria-current="page"],
 .ml-tab[aria-selected="true"],
 .ml-tab.is-active {
   color: var(--ml-ink);
 }
 
+.ml-tab[aria-current="page"]::after,
 .ml-tab[aria-selected="true"]::after,
 .ml-tab.is-active::after {
   opacity: 1;
@@ -800,6 +804,7 @@
 
 .ml-filter-chip[aria-pressed="true"],
 .ml-filter-chip[aria-selected="true"],
+.ml-filter-chip[aria-current],
 .ml-filter-chip.is-active {
   border-color: var(--ml-ink);
   background: var(--ml-ink);
@@ -969,6 +974,11 @@
   gap: var(--ml-space-2);
 }
 
+/* Spans a two-column form grid. */
+.ml-field--full {
+  grid-column: 1 / -1;
+}
+
 .ml-label {
   color: var(--ml-ink);
   font-size: var(--ml-text-sm);
@@ -989,7 +999,9 @@
   border-radius: var(--ml-radius-xs);
   background: var(--ml-surface-raised);
   color: var(--ml-ink);
-  font-size: var(--ml-text-md);
+  /* 16px is not a taste decision: Safari on iOS zooms the whole page in when
+     a control smaller than that takes focus, and leaves it zoomed. */
+  font-size: var(--ml-text-lg);
   transition:
     border-color var(--ml-duration-fast) ease,
     box-shadow var(--ml-duration-fast) ease;
@@ -1559,6 +1571,18 @@
   }
   .ml-callout > :last-child {
     grid-column: 2;
+  }
+}
+
+/* A finger needs 44px whatever the control's resting size. */
+@media (pointer: coarse) {
+  .ml-button,
+  .ml-filter-chip,
+  .ml-icon-button {
+    min-height: var(--ml-control-lg);
+  }
+  .ml-icon-button {
+    min-width: var(--ml-control-lg);
   }
 }
 
