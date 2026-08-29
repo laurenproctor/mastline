@@ -10,12 +10,30 @@ describe("Metric", () => {
         <Metric label="Median dispatch" value="30 min" />
       </MetricGroup>,
     );
-    const group = document.querySelector("dl.ml-metric-group") as HTMLElement;
-    expect(group).toHaveAttribute("aria-label", "This period");
+    const group = screen.getByRole("group", { name: "This period" });
     expect(group).toHaveClass("ml-metric-group");
-    const terms = group.querySelectorAll("dt.ml-metric__label");
-    expect(Array.from(terms).map((t) => t.textContent)).toEqual(["Received", "Median dispatch"]);
-    expect(group.querySelectorAll("dd.ml-metric__body")).toHaveLength(2);
+    const lists = group.querySelectorAll("dl.ml-metric");
+    expect(lists).toHaveLength(2);
+    for (const list of lists) {
+      expect(list.querySelectorAll(":scope > dt.ml-metric__label")).toHaveLength(1);
+      expect(list.querySelectorAll(":scope > dd.ml-metric__body")).toHaveLength(1);
+    }
+    expect(Array.from(group.querySelectorAll("dt")).map((t) => t.textContent)).toEqual([
+      "Received",
+      "Median dispatch",
+    ]);
+  });
+
+  it("is valid markup on its own, outside any group", () => {
+    const { container } = render(<Metric label="Received" value="$2,788" />);
+    const list = container.firstElementChild as HTMLElement;
+    expect(list.tagName).toBe("DL");
+    expect(list.querySelector("dt")).toHaveTextContent("Received");
+    expect(list.querySelector("dd")).toHaveTextContent("$2,788");
+    // No dt or dd is ever a direct child of anything but a dl.
+    for (const cell of container.querySelectorAll("dt, dd")) {
+      expect(cell.parentElement?.tagName).toBe("DL");
+    }
   });
 
   it.each([

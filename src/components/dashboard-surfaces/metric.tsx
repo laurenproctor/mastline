@@ -8,6 +8,11 @@ export type MetricTrend = { direction: "up" | "down" | "flat"; label: ReactNode 
  * A single named figure: label over value, with an optional line of context
  * and an optional trend or status.
  *
+ * Each figure is its own description list -- one term, one value -- so the
+ * markup is valid wherever a Metric is rendered, in a MetricGroup or alone.
+ * (dt and dd are only valid inside a dl, and a component that emitted them
+ * bare would be one import away from invalid HTML.)
+ *
  * The value arrives already formatted. Money, percentages, and counts are
  * formatted by the code that knows the currency and the rounding rule
  * (formatMoney and friends), never here; this component only draws what it
@@ -32,7 +37,7 @@ export function Metric({
   className?: string;
 }) {
   return (
-    <div className={classes("ml-metric", className)}>
+    <dl className={classes("ml-metric", className)}>
       <dt className="ml-metric__label">{label}</dt>
       <dd className="ml-metric__body">
         <strong className="ml-metric__value">{value}</strong>
@@ -50,14 +55,13 @@ export function Metric({
           </span>
         )}
       </dd>
-    </div>
+    </dl>
   );
 }
 
 /**
- * The row of figures at the top of a screen. A description list, because
- * each figure is a term and its value, which is what a screen reader reads
- * it as.
+ * The row of figures at the top of a screen: a named group of Metrics, each
+ * its own list, drawn as one ruled strip.
  */
 export function MetricGroup({
   label,
@@ -70,8 +74,8 @@ export function MetricGroup({
   children: ReactNode;
 }) {
   return (
-    <dl aria-label={label} className={classes("ml-metric-group", className)}>
+    <div aria-label={label} className={classes("ml-metric-group", className)} role="group">
       {children}
-    </dl>
+    </div>
   );
 }

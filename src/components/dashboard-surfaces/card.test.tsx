@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import Link from "next/link";
 import { describe, expect, it } from "vitest";
-import { Button } from "@/components/button";
+import { Button, TextLink } from "@/components/button";
+
+const MinifiedButton = Button;
 import { Card, CardLink, PriorityCard, SURFACE_TONES, StatCard } from "./index";
 
 describe("Card", () => {
@@ -48,6 +50,10 @@ describe("CardLink", () => {
     ["a native anchor", () => <a href="https://example.test/x">Open</a>],
     ["a Next Link", () => <Link href="/x">Open</Link>],
     ["a design-system Button", () => <Button>Open</Button>],
+    ["a design-system TextLink", () => <TextLink href="/x">Open</TextLink>],
+    // The same Button under a different name: the check is by reference, so
+    // a minified production build cannot defeat it.
+    ["a renamed Button", () => <MinifiedButton>Open</MinifiedButton>],
     [
       "a control nested deeper",
       () => (

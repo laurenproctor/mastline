@@ -233,6 +233,7 @@
   display: grid;
   min-width: 0;
   gap: var(--ml-space-2);
+  margin: 0;
   padding: var(--ml-space-4) var(--ml-space-5);
   background: var(--ml-surface);
 }

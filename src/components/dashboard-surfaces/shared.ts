@@ -1,4 +1,7 @@
 import { Children, isValidElement, type ReactNode } from "react";
+import { ActionLink, Button, IconButton, PendingButton, TextLink } from "@/components/button";
+import { FilterChip, FilterLink } from "@/components/filter-chip";
+import { TabLink } from "@/components/tabs";
 
 /**
  * What the surface primitives have in common.
@@ -35,35 +38,43 @@ export function classes(...names: Array<string | false | null | undefined>): str
  */
 const INTERACTIVE_TAGS = new Set(["a", "button", "input", "select", "textarea", "details"]);
 
+/**
+ * The design system's own controls, compared by reference. Never by name: a
+ * production build minifies function names, so a check on `type.name` would
+ * pass in development and silently stop working in the build that ships.
+ */
+const INTERACTIVE_COMPONENTS: ReadonlySet<unknown> = new Set<unknown>([
+  Button,
+  IconButton,
+  PendingButton,
+  ActionLink,
+  TextLink,
+  TabLink,
+  FilterChip,
+  FilterLink,
+]);
+
 function elementIsInteractive(type: unknown, props: Record<string, unknown>): boolean {
   if (typeof type === "string") {
     if (INTERACTIVE_TAGS.has(type)) return true;
     return typeof props.tabIndex === "number" && props.tabIndex >= 0;
   }
-  // A component that carries an href is a link however it is named -- a Next
-  // Link, an ActionLink, a TextLink, a TabLink.
-  if (typeof type === "function" || (typeof type === "object" && type !== null)) {
-    if (typeof props.href === "string") return true;
-    const name =
-      (type as { displayName?: string; name?: string }).displayName ??
-      (type as { name?: string }).name;
-    return (
-      name === "Button" ||
-      name === "IconButton" ||
-      name === "PendingButton" ||
-      name === "FilterChip"
-    );
-  }
-  return false;
+  if (INTERACTIVE_COMPONENTS.has(type)) return true;
+  // Any component handed an href is a link however it is named: a Next Link,
+  // or one of the application's own.
+  return typeof props.href === "string";
 }
 
 /**
  * Throw if `node` contains an interactive control, at any depth of the
  * element tree that is visible from here.
  *
- * Visible means the props of the elements passed in: a child component's own
- * output is not rendered yet and cannot be inspected, so this is a guard
- * against the obvious mistake -- a Button inside a CardLink -- not a proof.
+ * Visible means the elements passed in and their `children` props. What a
+ * child component renders is not known until it renders, so a control hidden
+ * inside some other component's output is not seen. This guard catches the
+ * obvious mistake -- a Button, a Link, or a raw anchor handed to a CardLink
+ * -- and the contract it enforces is the caller's responsibility beyond
+ * that: nothing interactive, at any depth, inside a linked surface.
  */
 export function assertNoInteractiveChildren(node: ReactNode, where: string): void {
   Children.forEach(node, (child) => {

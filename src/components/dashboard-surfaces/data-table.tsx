@@ -10,6 +10,13 @@ import { classes } from "./shared";
  * inside their own region, which is focusable and named so a keyboard can
  * reach it and a reader knows what it is. Nothing here is an ARIA grid: a
  * table that is read, not edited, keeps the table semantics.
+ *
+ * The region is always a tab stop, overflowing or not: whether a table
+ * overflows depends on the viewport and cannot be known on the server, and
+ * a stop that appears only sometimes is worse than one that is always there.
+ * It costs one Tab on a narrow table; on a wide one it is the only way a
+ * keyboard reaches the columns off to the right. (primitives.tsx's
+ * TableScroll makes the same choice.)
  */
 export function DataTable({
   caption,
