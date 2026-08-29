@@ -754,11 +754,15 @@
   color: var(--ml-ink);
 }
 
+/* Route tabs are links and say where you are with aria-current; interactive
+   tabs say it with aria-selected. Both are the active tab. */
+.ml-tab[aria-current="page"],
 .ml-tab[aria-selected="true"],
 .ml-tab.is-active {
   color: var(--ml-ink);
 }
 
+.ml-tab[aria-current="page"]::after,
 .ml-tab[aria-selected="true"]::after,
 .ml-tab.is-active::after {
   opacity: 1;
