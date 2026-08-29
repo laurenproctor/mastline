@@ -14,6 +14,7 @@ import { workspaceContext } from "@/lib/session-context";
 import { createClient } from "@/lib/supabase/server";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { ApprovePanel } from "../_components/approve-panel";
+import { Tabs, TabLink } from "@/components/tabs";
 import styles from "../_components/dispatch-review.module.css";
 import { PackageDetails } from "../_components/package-details";
 import { PackageGallery, type ReviewFrame } from "../_components/package-gallery";
@@ -204,19 +205,18 @@ export default async function DispatchPage({
         </header>
 
         {packages.length > 1 && (
-          <nav aria-label="Packages on this shoot" className={styles.packageTabs}>
+          <Tabs className={styles.packageTabs} label="Packages on this shoot">
             {packages.map((candidate) => (
-              <Link
-                aria-current={candidate.id === pkg.id ? "page" : undefined}
-                className={`${styles.packageTab} ${candidate.id === pkg.id ? styles.packageTabOn : ""}`}
+              <TabLink
+                current={candidate.id === pkg.id}
                 href={routes.dispatch({ shootId, packageId: candidate.id })}
                 key={candidate.id}
               >
                 {candidate.name}
-                <small>{humanizeStatus(candidate.status)}</small>
-              </Link>
+                <small className="ml-meta">{humanizeStatus(candidate.status)}</small>
+              </TabLink>
             ))}
-          </nav>
+          </Tabs>
         )}
 
         <div className={styles.body}>
