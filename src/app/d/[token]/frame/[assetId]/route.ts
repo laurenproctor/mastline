@@ -1,21 +1,26 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { callerAddress, callerAgent, isDeliveryToken } from "@/lib/delivery";
+import { serveDeliveryDownload } from "@/lib/delivery-download";
 import { isRecordId } from "@/lib/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 /**
- * Taking a copy.
+ * Taking a copy of the exact frame that was approved.
  *
- * The record is written before the file is handed over, by the same function
- * that decides whether to hand it over at all -- so there is no path that
- * downloads without logging. A refusal is recorded too, which is how an
- * expired link being tried three times is visible rather than silent.
+ * Four steps, each gating the next -- see src/lib/delivery-download.ts:
  *
- * The response is a redirect to a short-lived signed URL rather than the bytes,
- * so a large frame does not pass through the application, and the URL that does
- * reach the recipient stops working shortly afterwards.
+ *   1. `authorize_delivery_download` checks the token, the expiry, the
+ *      withdrawal, the acceptance, and that this frame is in the submission's
+ *      approved snapshot. It records any refusal and returns the frozen object.
+ *   2. The frozen object is signed, with the service role: the caller is
+ *      anonymous and has, correctly, no rights of their own on a private bucket.
+ *   3. `record_delivery_download` re-validates and writes the `downloaded`
+ *      event. A record that could not be written releases no file.
+ *   4. The recipient is redirected to the short-lived signed URL.
+ *
+ * Every failure is the same neutral answer. Nothing in a response, a log line,
+ * or an error names a bucket, an object key, or the token.
  */
 export async function GET(
   _request: Request,
@@ -27,33 +32,64 @@ export async function GET(
   }
 
   const requestHeaders = await headers();
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("record_delivery_download", {
+  /*
+   * Both database calls run with the service role: authorisation answers with
+   * a private object's location, and recording writes commercial evidence, so
+   * neither is executable by the anonymous role a browser holds. The token is
+   * still the credential -- the functions check it, the expiry, the
+   * withdrawal, the acceptance, and the snapshot before answering -- and this
+   * route is the only caller.
+   */
+  const admin = createAdminClient();
+  const caller = {
     delivery_token: token,
     target_asset: assetId,
     caller_ip: callerAddress(requestHeaders),
     caller_agent: callerAgent(requestHeaders),
+  };
+
+  const outcome = await serveDeliveryDownload({
+    authorize: async () => {
+      const { data, error } = await admin.rpc("authorize_delivery_download", caller);
+      if (error) return null;
+      const row = (data ?? [])[0] as
+        { object_key: string; storage_bucket: string; filename: string } | undefined;
+      if (!row) return null;
+      return {
+        objectKey: row.object_key,
+        storageBucket: row.storage_bucket,
+        filename: row.filename,
+      };
+    },
+    sign: async (target) => {
+      const { data, error } = await admin.storage
+        .from(target.storageBucket)
+        .createSignedUrl(target.objectKey, 300, { download: target.filename });
+      if (error || !data) return null;
+      return { url: data.signedUrl };
+    },
+    record: async () => {
+      const { data, error } = await admin.rpc("record_delivery_download", caller);
+      if (error) return false;
+      return (data ?? []).length > 0;
+    },
   });
 
-  if (error) return new NextResponse("Not found", { status: 404 });
-
-  const row = (data ?? [])[0];
-  if (!row) {
-    // Unknown, withdrawn, expired, or not part of this package: the same answer
-    // for all of them.
+  if (outcome.kind === "refused") {
+    // Unknown, withdrawn, expired, unaccepted, or not part of this submission:
+    // the same answer for all of them.
     return new NextResponse("This link is not open", { status: 404 });
   }
 
-  // The function above is the authorisation: it checked the token, the expiry,
-  // the withdrawal, and that this frame belongs to this package, and it wrote
-  // the record. Signing is the trusted step that follows, so it runs with the
-  // service role -- the caller is anonymous and has, correctly, no rights of
-  // their own on a private bucket.
-  const { data: signed, error: signError } = await createAdminClient()
-    .storage.from(row.storage_bucket)
-    .createSignedUrl(row.object_key, 300, { download: row.filename });
+  if (outcome.kind === "unavailable") {
+    // Authorised, but the approved object could not be signed or the download
+    // could not be recorded. Nothing is substituted and nothing is released.
+    // Logged for the operator without the object's location.
+    console.error(
+      `delivery download: frame ${assetId} was authorised but not released (${outcome.reason})`,
+    );
+    return new NextResponse("Not found", { status: 404 });
+  }
 
-  if (signError || !signed) return new NextResponse("Not found", { status: 404 });
-  return NextResponse.redirect(signed.signedUrl, { status: 303 });
+  return NextResponse.redirect(outcome.url, { status: 303 });
 }

@@ -96,6 +96,37 @@ Item numbers below are permanent. Resolved items keep their number so older note
   moves nothing; **Mark as shared** is what records a send; the first valid open
   is what records a delivery. Copying a link to the clipboard writes nothing at
   all. Settled 2026-08-28.
+- **The recipient reads the approval record, not the live asset.** Approval
+  froze the package and the manifest, but every recipient function then walked
+  to the *current* asset row for the caption and picked the *currently
+  preferred* derivative for previews and downloads -- so a caption edit or a
+  new derivative after approval changed what the desk received while the
+  manifest sat unchanged, proving nothing. `submission_assets` is now the
+  authoritative approved-delivery record (one immutable row per frame with the
+  exact version, object, and editorial facts at approval), written inside the
+  same transaction as the approval by `approve_package()`, and it is the only
+  thing `open_delivery`, `delivery_assets`, `delivery_preview`, and the
+  download functions read. The manifest stays as a summary. Downloads are
+  authorised, signed, recorded, and only then released, so a signing failure
+  never leaves a `downloaded` event behind. Editing an asset after approval is
+  still allowed for future packages and the inspector says it reaches no
+  approved submission; changing what a recipient receives means withdrawing
+  the link and approving a new package. There is no administrator path that
+  rewrites approved recipient content. The preview the reviewer was shown is
+  frozen alongside the approved file, so a preview derivative made later is
+  never shown in its place; where none existed the preview is rendered from
+  the approved object or not at all. Submissions from before the record were
+  backfilled from their manifests, frame by frame, with metadata as it stood
+  at migration time and are marked `legacy_backfill` rather than passed off
+  as the original approval; a manifest entry that no longer resolves gets no
+  substitute and is named as not deliverable. Settled 2026-08-29.
+- **The dispatch screen's lifecycle stage is derived, not fixed.** It read
+  "Review & approve" for every package, approved or sold. It now reads
+  Build package → Review & approve → Create recipient link → Shared / awaiting
+  outcome → Outcome recorded from the package status, the submission, and the
+  recipient links, with the existing vocabulary: approval is not sent, a link
+  created is not shared (the screen says a link exists and has not been marked
+  shared), and an outcome is one that was recorded.
 - The package snapshot freezes at **approval**, not at `sent_at`. Keying
   immutability on a send that now happens later would have left the record
   editable for the whole window between approving and sharing — exactly the

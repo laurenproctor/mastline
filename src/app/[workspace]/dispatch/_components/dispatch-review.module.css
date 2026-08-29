@@ -586,41 +586,9 @@
    must not look like the subject of the screen, so it is a row of quiet
    chips rather than the panel-sized cards it used to be. */
 
+/* The tab row itself is .ml-tabs; only its place in the layout lives here. */
 .packageTabs {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.packageTab {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--line);
-  border-radius: 3px;
-  padding: 8px 12px;
-  min-height: 44px;
-  font-size: 13px;
-  color: var(--muted);
-  text-decoration: none;
-  background: var(--surface);
-}
-
-.packageTab:hover {
-  color: var(--ink);
-}
-
-.packageTab small {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.8;
-}
-
-.packageTabOn {
-  color: var(--ink);
-  border-color: var(--ink);
+  margin-bottom: 16px;
 }
 
 /* --- What has to change --------------------------------------------------

@@ -200,7 +200,7 @@ test.describe("status is never colour alone", () => {
     await signIn(page);
     for (const route of [at("/work"), at("/money"), at("/submissions"), at("/shoots")]) {
       await page.goto(route);
-      const badges = page.locator(".badge");
+      const badges = page.locator(".ml-badge");
       const count = await badges.count();
       for (let index = 0; index < count; index += 1) {
         const text = (await badges.nth(index).innerText()).trim();
@@ -1093,7 +1093,7 @@ test.describe("sending a package to a picture desk", () => {
       // the submission has been sent to.
       await made.getByRole("button", { name: "Withdraw this link" }).click();
       await expect(
-        page.locator(".delivery-link").filter({ hasText: recipient }).locator(".badge"),
+        page.locator(".delivery-link").filter({ hasText: recipient }).locator(".ml-badge"),
       ).toHaveText("Withdrawn");
 
       const after = await page.request.get(`${path}/preview/${SEEDED_ASSET}`);
@@ -1122,7 +1122,7 @@ test.describe("sending a package to a picture desk", () => {
     // Scoped to this link's own badge: the activity feed also says "withdrawn",
     // and the submission may carry links from other cases.
     await expect(
-      page.locator(".delivery-link").filter({ hasText: recipient }).locator(".badge"),
+      page.locator(".delivery-link").filter({ hasText: recipient }).locator(".ml-badge"),
     ).toHaveText("Withdrawn");
 
     const desk = await browser.newContext();
