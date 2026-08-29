@@ -403,6 +403,13 @@
   min-width: 0;
 }
 
+.ml-page-header__description {
+  max-width: 62ch;
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-md);
+  line-height: 1.55;
+}
+
 .ml-page-header__actions {
   display: flex;
   flex: 0 0 auto;
@@ -1395,9 +1402,20 @@
     justify-items: center;
     padding-inline: 0;
   }
+  /* Out of sight, not out of the accessibility tree: display:none here left
+     every rail destination announcing itself as an unnamed link. */
   .ml-nav-item__label,
-  .ml-nav-item__count,
   .ml-workspace-identity__copy {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .ml-nav-item__count {
     display: none;
   }
   .ml-workspace-identity {
@@ -1411,11 +1429,17 @@
 }
 
 @media (max-width: 760px) {
-  .ml-app-shell {
+  /*
+   * The bottom bar is opt-in. The application is still choosing between two
+   * phone navigations (see NAV_PROTOTYPE_COOKIE in app-shell.tsx), so the
+   * shell asks for this treatment with .ml-app-shell--bottom-nav rather than
+   * receiving it for carrying .ml-app-shell at all.
+   */
+  .ml-app-shell--bottom-nav {
     display: block;
   }
 
-  .ml-sidebar {
+  .ml-app-shell--bottom-nav .ml-sidebar {
     position: fixed;
     z-index: 70;
     top: auto;
@@ -1431,19 +1455,19 @@
     padding: var(--ml-space-2);
   }
 
-  .ml-sidebar__brand,
-  .ml-sidebar__footer {
+  .ml-app-shell--bottom-nav .ml-sidebar__brand,
+  .ml-app-shell--bottom-nav .ml-sidebar__footer {
     display: none;
   }
 
-  .ml-sidebar__nav {
+  .ml-app-shell--bottom-nav .ml-sidebar__nav {
     display: flex;
     min-width: max-content;
     gap: var(--ml-space-1);
     margin-top: 0;
   }
 
-  .ml-nav-item {
+  .ml-app-shell--bottom-nav .ml-nav-item {
     display: flex;
     min-width: 58px;
     flex-direction: column;
@@ -1452,12 +1476,18 @@
     font-size: var(--ml-text-2xs);
   }
 
-  .ml-nav-item__label {
+  .ml-app-shell--bottom-nav .ml-nav-item__label {
+    position: static;
     display: block;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
   }
 
-  .ml-nav-item[aria-current="page"]::before,
-  .ml-nav-item.is-active::before {
+  .ml-app-shell--bottom-nav .ml-nav-item[aria-current="page"]::before,
+  .ml-app-shell--bottom-nav .ml-nav-item.is-active::before {
     inset: -1px -1px auto;
     width: auto;
     height: 2px;

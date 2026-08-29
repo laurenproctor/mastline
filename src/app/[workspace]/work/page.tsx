@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel, Progress } from "@/components/primitives";
+import { PageHeader } from "@/components/page-header";
+import { Badge, Metric, Panel, Progress } from "@/components/primitives";
 import { listActivity } from "@/lib/data/activity";
 import { listAssets } from "@/lib/data/assets";
 import { listShoots } from "@/lib/data/shoots";
@@ -63,14 +64,17 @@ export default async function WorkQueuePage({
     <AppShell active="Work" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
-          action={can(session.activeWorkspace.role, "shoot.write") ? "Create shoot" : undefined}
           description={
             queue.length === 0
               ? "Nothing needs attention. Every shoot, submission, and payment is up to date."
               : `${queue.length} ${queue.length === 1 ? "item needs" : "items need"} action. The next best move is visible.`
           }
           eyebrow={formatLongDate(now.toISOString())}
-          href={routes.newShoot()}
+          primaryAction={
+            can(session.activeWorkspace.role, "shoot.write")
+              ? { label: "Create shoot", href: routes.newShoot() }
+              : undefined
+          }
           title="Work queue"
         />
 
