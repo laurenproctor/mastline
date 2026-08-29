@@ -2,10 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { listAssets } from "@/lib/data/assets";
+import { listDeliveries } from "@/lib/data/delivery-links";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { listPackages } from "@/lib/data/packages";
 import { getShoot } from "@/lib/data/shoots";
+import { listSubmissions } from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
+import { DISPATCH_STAGES, dispatchStage } from "@/lib/dispatch-lifecycle";
 import { reviewDispatch } from "@/lib/dispatch-rules";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset } from "@/lib/metadata-rules";
@@ -30,10 +33,6 @@ const SETTLED = new Set(["approved", "sending", "delivered", "recalled"]);
 
 /** Approved, and therefore frozen. Not the same as sent, which happens later. */
 const APPROVED = new Set(["approved", "sending", "delivered"]);
-
-/** The three things that happen to a package, in the order they happen. */
-const STAGES = ["Build package", "Review & approve", "Create recipient link"] as const;
-const CURRENT_STAGE = 1;
 
 export default async function DispatchPage({
   params,
@@ -68,12 +67,23 @@ export default async function DispatchPage({
     packages.find((candidate) => !SETTLED.has(candidate.status)) ??
     packages[0];
 
-  const [assets, buyers] = await Promise.all([
+  const [assets, buyers, submissions] = await Promise.all([
     listAssets(organizationId, { shootId }),
     listWorkspaceBuyers(organizationId),
+    listSubmissions(organizationId),
   ]);
   const buyer = buyers.find((candidate) => candidate.id === pkg.buyerId) ?? null;
   const byId = new Map(assets.map((asset) => [asset.id, asset]));
+
+  /*
+   * The stage strip reads the record. Approval opens exactly one submission
+   * for a package; whether a link exists on it, and whether that link was
+   * shared or opened, is what moves the package past "Create recipient link".
+   */
+  const submission = submissions.find((candidate) => candidate.packageId === pkg.id) ?? null;
+  const links = submission ? await listDeliveries(organizationId, submission.id) : [];
+  const unsharedLinks = links.filter((link) => !link.sharedAt && !link.revokedAt).length;
+  const lifecycle = dispatchStage({ packageStatus: pkg.status, submission });
 
   const review = reviewDispatch({ pkg, assets, buyer });
   const approved = APPROVED.has(pkg.status);
@@ -179,13 +189,15 @@ export default async function DispatchPage({
           {/*
             An ordered list, because the stages are ordered. The current one is
             marked with aria-current so it is announced rather than merely
-            drawn, and the words say what each stage does -- approval is not
-            "send", and the third stage is where a recipient first appears.
+            drawn, and it is derived from the record rather than fixed: an
+            approved package no longer sits under "Review & approve". The
+            words say what each stage does -- approval is not "send", a link is
+            not "shared", and an outcome is one that was recorded.
           */}
           <ol aria-label="Package lifecycle" className={styles.stages}>
-            {STAGES.map((stage, index) => {
-              const done = index < CURRENT_STAGE;
-              const current = index === CURRENT_STAGE;
+            {DISPATCH_STAGES.map((stage, index) => {
+              const done = index < lifecycle.index;
+              const current = index === lifecycle.index;
               return (
                 <li
                   aria-current={current ? "step" : undefined}
@@ -201,6 +213,15 @@ export default async function DispatchPage({
               );
             })}
           </ol>
+          {lifecycle.stage === "Create recipient link" && unsharedLinks > 0 && (
+            <p className={styles.subject}>
+              {unsharedLinks === 1
+                ? "A recipient link exists"
+                : `${unsharedLinks} recipient links exist`}{" "}
+              and {unsharedLinks === 1 ? "has" : "have"} not been marked as shared. Nothing has left
+              Mastline.
+            </p>
+          )}
         </header>
 
         {packages.length > 1 && (
@@ -431,7 +452,10 @@ export default async function DispatchPage({
                       ? " Nothing has been sent: the next step is a recipient link."
                       : ""}
                   </p>
-                  <Link className="button small" href={routes.submissions()}>
+                  <Link
+                    className="button small"
+                    href={submission ? routes.submission(submission.id) : routes.submissions()}
+                  >
                     Open the submission
                   </Link>
                 </div>

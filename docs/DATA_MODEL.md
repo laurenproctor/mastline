@@ -28,6 +28,7 @@ The asset is the canonical center, but it is not isolated:
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
 | packages | Selected asset versions and a buyer/delivery profile |
 | submissions | Immutable-from-creation record of what was approved, and what became of it |
+| submission_assets | **The authoritative approved-delivery record.** One row per approved frame: the exact version and storage object, and the editorial facts at approval. Append-only; written only by the approval transaction and once by the backfill |
 | submission_deliveries | One recipient-specific link: token, protected recipient fields, attribution snapshot, share and withdrawal |
 | delivery_access_events | Append-only evidence: opened, accepted, downloaded, refused |
 | delivery_acceptances | A recipient agreeing to the terms as they were shown |
@@ -172,3 +173,72 @@ Nothing is backfilled and no history is invented.
   every one of them reports **"the link was opened, but detailed viewing time
   was unavailable"** rather than zero engagement. That is the honest reading: no
   measurement was taken, which is not the same as nobody looking.
+
+## The approved-frame record
+
+`submission_assets` is what a recipient link renders and downloads. Nothing on
+the recipient surface reads a live asset, the current package membership, or
+whichever derivative is preferred today.
+
+- One row per approved frame, unique on `(submission_id, position)` and
+  `(submission_id, asset_id)`.
+- Three composite foreign keys keep every row inside one workspace:
+  `(organization_id, submission_id)` → submissions,
+  `(organization_id, asset_id)` → assets, and
+  `(organization_id, asset_id, asset_version_id)` → asset_versions, so a version
+  of another asset or another organization is refused by Postgres whatever the
+  application does.
+- `storage_bucket_snapshot`, `object_key_snapshot`, `sha256_snapshot`, and
+  `mime_type_snapshot` name the exact stored object. A `before insert` trigger
+  checks them against the version row, so a snapshot cannot name a valid
+  version and a different file.
+- `filename_snapshot`, `headline_snapshot`, `caption_snapshot`,
+  `people_snapshot` (from `assets.subjects`, the operator-entered "People"),
+  `credit_line_snapshot`, and `captured_at_snapshot` are the editorial facts
+  at approval.
+- `snapshot_origin` is `approval` for rows the approval transaction wrote and
+  `legacy_backfill` for rows migration `20260831090000` reconstructed. See
+  the legacy note below.
+- Immutable: the same append-only trigger the caption history and the activity
+  log use refuses updates and deletes except under the purge flag.
+- RLS enabled and forced. Members read their workspace's rows through
+  `submission_assets_select`; there is no insert, update, or delete policy and
+  `authenticated` holds only `select`. `service_role` holds `select, insert,
+  delete` for trusted server code and fixtures; the triggers still apply to it.
+  `anon` holds nothing. A recipient reaches these rows only through the
+  delivery functions.
+
+### Approval is one transaction
+
+`public.approve_package(target_package, recipient_label, follow_up_at)` is
+`security definer` with an empty search path, executable by `authenticated`
+only, and decides inside itself what the policies would have decided: the
+caller must be a member of the package's workspace (otherwise "could not be
+found", the same answer a stranger gets) and hold `owner` or `dispatcher`. It
+then, in one transaction: locks the package `for update`; locks and reads the
+membership once; verifies every version belongs to its asset in this
+workspace and no frame is restricted or tombstoned; marks the package
+`approved`; inserts the submission with `delivery_manifest` built from that
+same read; inserts one `submission_assets` row per frame from that same read;
+and writes the `package.approved` event. Any failure unwinds all of it. The
+`package_assets` trigger takes a share lock on the parent package, so a
+membership change cannot slip in behind an approval in flight.
+
+`delivery_manifest` remains as a summary and compatibility record.
+`public.submission_snapshot_drift_admin()` (service role) lists any submission
+whose manifest and snapshot disagree on asset ids, version ids, positions, or
+count; it must always be empty.
+
+### Legacy submissions
+
+Submissions approved before the record existed were backfilled by the
+migration from the version ids frozen in their manifests, using each
+version's real bucket, key, and digest, and the editorial metadata **as it
+stood at migration time**. That metadata is not provably what a recipient saw
+at the original approval, which is why those rows carry
+`snapshot_origin = 'legacy_backfill'` and the submission screen says so. A
+manifest entry that did not resolve to a version of its own asset in its own
+workspace fails closed: nothing is written for that submission, no substitute
+is chosen, and `public.submission_snapshot_gaps_admin()` (service role) lists
+it. A recipient link on such a submission shows no frames and downloads
+nothing.

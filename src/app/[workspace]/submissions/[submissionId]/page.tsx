@@ -8,7 +8,7 @@ import { listAssets } from "@/lib/data/assets";
 import { listLicenses, listPayments } from "@/lib/data/money";
 import { getPackage } from "@/lib/data/packages";
 import { getShoot } from "@/lib/data/shoots";
-import { getSubmission } from "@/lib/data/submissions";
+import { getSubmission, listSubmissionAssets } from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -50,14 +50,19 @@ export default async function SubmissionPage({
   const submission = await getSubmission(organizationId, submissionId);
   if (!submission) notFound();
 
-  const [pkg, buyers, activity, licenses, payments, attempts] = await Promise.all([
+  const [pkg, buyers, activity, licenses, payments, attempts, frames] = await Promise.all([
     getPackage(organizationId, submission.packageId),
     listWorkspaceBuyers(organizationId),
     listActivity(organizationId, { entityId: submissionId }),
     listLicenses(organizationId),
     listPayments(organizationId),
     listDeliveryAttempts(organizationId, submissionId),
+    // What a recipient link renders and downloads: the approved frames, not
+    // the live assets.
+    listSubmissionAssets(organizationId, submissionId),
   ]);
+  const frameByAsset = new Map(frames.map((frame) => [frame.assetId, frame] as const));
+  const backfilled = frames.some((frame) => frame.origin === "legacy_backfill");
 
   // The link a picture desk opens, and what they did with it.
   const deliveries = await listDeliveries(organizationId, submissionId);
@@ -177,7 +182,10 @@ export default async function SubmissionPage({
         const seen = perAsset.get(entry.assetId);
         return {
           assetId: entry.assetId,
-          filename: byId.get(entry.assetId)?.canonicalFilename ?? entry.assetId.slice(0, 8),
+          filename:
+            frameByAsset.get(entry.assetId)?.filename ??
+            byId.get(entry.assetId)?.canonicalFilename ??
+            entry.assetId.slice(0, 8),
           viewed: Boolean(seen && seen.activeVisibleMs > 0),
           viewCount: seen?.viewCount ?? 0,
           activeVisibleMs: seen?.activeVisibleMs ?? 0,
@@ -330,50 +338,72 @@ export default async function SubmissionPage({
             </Panel>
 
             <Panel
-              action={<span className="muted">{submission.manifest.length} versions</span>}
-              title="Manifest"
+              action={
+                <span className="muted">
+                  {frames.length > 0 ? frames.length : submission.manifest.length}{" "}
+                  {(frames.length > 0 ? frames.length : submission.manifest.length) === 1
+                    ? "frame"
+                    : "frames"}
+                </span>
+              }
+              title="Approved frames"
             >
-              <TableScroll label="Manifest">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Frame</th>
-                      <th scope="col">Version sent</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submission.manifest.map((entry) => {
-                      const asset = byId.get(entry.assetId);
-                      const version = asset?.versions.find(
-                        (candidate) => candidate.id === entry.assetVersionId,
-                      );
-                      return (
-                        <tr key={entry.assetId}>
-                          <td>{entry.position + 1}</td>
+              {/*
+               * The approved record, not the live asset. What is listed here is
+               * what a recipient link shows and downloads: the exact version,
+               * and the caption as it stood at approval. A caption edited on
+               * the asset afterwards does not appear here and does not reach
+               * the recipient.
+               */}
+              {frames.length === 0 ? (
+                <p className="panel-body section-note" role="status">
+                  No approved-frame record exists for this submission, so a recipient link on it
+                  shows no frames and downloads nothing. It was approved before the record existed
+                  and its manifest could not be resolved to stored versions. Prepare and approve a
+                  new package to deliver these frames.
+                </p>
+              ) : (
+                <TableScroll label="Approved frames">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Frame</th>
+                        <th scope="col">Approved caption</th>
+                        <th scope="col">Version</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {frames.map((frame) => (
+                        <tr data-approved-frame={frame.assetId} key={frame.assetId}>
+                          <td>{frame.position + 1}</td>
                           <td>
-                            <Link className="text-link" href={routes.asset(entry.assetId)}>
-                              {asset?.canonicalFilename ?? entry.assetId.slice(0, 8)}
+                            <Link className="text-link" href={routes.asset(frame.assetId)}>
+                              {frame.filename}
                             </Link>
                           </td>
                           <td>
-                            {version ? (
-                              <>
-                                <strong>{humanizeStatus(version.versionKind)}</strong>
-                                <small>SHA-256 {version.sha256.slice(0, 12)}…</small>
-                              </>
+                            {frame.headline && <strong>{frame.headline}</strong>}
+                            {frame.caption ? (
+                              <span className="approved-caption">{frame.caption}</span>
                             ) : (
-                              <span className="muted">Version record no longer readable</span>
+                              <span className="muted">No caption at approval</span>
                             )}
                           </td>
+                          <td>
+                            <strong>{humanizeStatus(frame.storageBucket)}</strong>
+                            <small>SHA-256 {frame.sha256.slice(0, 12)}…</small>
+                          </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </TableScroll>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
+              )}
               <p className="section-note panel-body">
-                This manifest is frozen. Editing what was sent is refused by the database.
+                {backfilled
+                  ? "This record was reconstructed when the approved-frame record was introduced: the versions are the ones frozen at approval, but the captions are as they stood at that migration, not provably as they were at approval. New approvals record both at the moment of approval."
+                  : "Frozen at approval. Editing the asset afterwards changes neither this record nor what a recipient sees or downloads; to send something different, approve a new package."}
               </p>
             </Panel>
           </div>

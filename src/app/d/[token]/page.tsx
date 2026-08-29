@@ -101,10 +101,11 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
       <section className="delivery-frames">
         {delivery.assets.map((asset) => (
           <article className="delivery-frame" data-asset-id={asset.assetId} key={asset.assetId}>
-            {asset.previewKey ? (
+            {asset.hasPreview ? (
               /* Served through the route so the only version a recipient can
-                 reach carries their name. A signed URL here would hand over the
-                 clean file. next/image would proxy and cache something that is
+                 reach carries their name, rendered from the exact object that
+                 was approved. A signed URL here would hand over the clean
+                 file. next/image would proxy and cache something that is
                  deliberately neither public nor durable. */
               // eslint-disable-next-line @next/next/no-img-element
               <img
