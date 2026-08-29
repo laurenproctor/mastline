@@ -1273,6 +1273,21 @@ describeIf("submissions approved before the snapshot existed", () => {
       .eq("id", pkg!.id);
 
     /*
+     * The backfill reports counts for the whole database, and other suites
+     * leave legacy-shaped submissions behind (direct inserts whose assets were
+     * later purged): those resolve nothing and are counted as unresolved on
+     * every call, forever. Take that baseline first, so the exact counts
+     * asserted below are the DELTA this submission produces, not a claim about
+     * whichever file happened to run before this one.
+     */
+    const baselineRun = await service.rpc("backfill_submission_assets_admin");
+    expect(baselineRun.error).toBeNull();
+    const baseline = (baselineRun.data ?? [])[0] as {
+      frames_written: number;
+      frames_unresolved: number;
+    };
+
+    /*
      * The shape of a legacy submission: a manifest and nothing else. One entry
      * names a real version of its asset; the other names a version that does
      * not exist -- purged, or never valid -- although the asset itself has a
@@ -1314,8 +1329,10 @@ describeIf("submissions approved before the snapshot existed", () => {
       frames_written: number;
       frames_unresolved: number;
     };
+    // Exactly one frame written and exactly one more unresolved than before:
+    // the resolvable entry and the dead one, and nothing else.
     expect(counts.frames_written).toBe(1);
-    expect(counts.frames_unresolved).toBe(1);
+    expect(counts.frames_unresolved).toBe(baseline.frames_unresolved + 1);
 
     // The frame that resolved is frozen from its manifest version, honestly
     // marked; the one that did not has no row and no stand-in.
