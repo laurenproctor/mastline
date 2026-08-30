@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
   SEEDED,
@@ -19,6 +20,27 @@ import {
  * are real links that keep the address honest, that nothing on the surface
  * leaks a delivery credential, and that a reader is offered nothing to write.
  */
+
+const OWNER = "11111111-1111-1111-1111-111111111111";
+
+/** Playwright does not load .env.local, and the nine-figure fixture needs the service key. */
+function localEnv(name: string): string | undefined {
+  try {
+    return readFileSync(".env.local", "utf8")
+      .match(new RegExp(`^${name}=(.*)$`, "m"))?.[1]
+      ?.trim()
+      .replace(/^"|"$/g, "");
+  } catch {
+    return undefined;
+  }
+}
+
+function service(): { url: string; key: string } {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot arrange the payment fixture.");
+  return { url, key };
+}
 
 test.beforeEach(async ({ context }) => {
   await refuseCookies(context);
@@ -146,6 +168,68 @@ test("an empty workspace renders its calm states", async ({ page }, testInfo) =>
     await expect(page.getByRole("region", { name: "Recent activity" })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
+    await purgeWorkspace(workspace.id);
+  }
+});
+
+test("a nine-figure sum stays one intact figure on a phone", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile", "the narrow layout is the point");
+  const workspace = await createThrowawayWorkspace(SEEDED.owner, "nine-figures");
+  const { url, key } = service();
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
+  const inserted = await fetch(`${url}/rest/v1/payments`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      organization_id: workspace.id,
+      status: "received",
+      source: "manual",
+      gross_minor: 123456789012,
+      net_minor: 123456789012,
+      currency: "USD",
+      received_at: new Date().toISOString(),
+      created_by: OWNER,
+    }),
+  });
+  if (!inserted.ok) throw new Error(`Could not arrange a payment: ${await inserted.text()}`);
+  const [payment] = (await inserted.json()) as { id: string }[];
+
+  try {
+    await signIn(page);
+    await page.goto(at("/work", workspace.slug));
+
+    const value = page
+      .getByRole("group", { name: "This period" })
+      .locator(".ml-metric__value")
+      .first();
+    await expect(value).toHaveText("$1,234,567,890.12");
+
+    // One line, nothing hidden inside its own box, nothing past the viewport.
+    const facts = await value.evaluate((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return {
+        lines: range.getClientRects().length,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+        right: element.getBoundingClientRect().right,
+        viewport: document.documentElement.clientWidth,
+      };
+    });
+    expect(facts.lines, "the figure broke across lines").toBe(1);
+    expect(facts.scrollWidth).toBeLessThanOrEqual(facts.clientWidth + 1);
+    expect(facts.right).toBeLessThanOrEqual(facts.viewport);
+    expect(await hasHorizontalOverflow(page)).toBe(false);
+  } finally {
+    await fetch(`${url}/rest/v1/payments?id=eq.${payment.id}`, {
+      method: "DELETE",
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
     await purgeWorkspace(workspace.id);
   }
 });
