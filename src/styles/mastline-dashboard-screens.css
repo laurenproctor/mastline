@@ -28,3 +28,38 @@
 .money-reference {
   white-space: nowrap;
 }
+
+/*
+ * WORK QUEUE (Stage 5B)
+ * Screen-scoped names only; every surface below is a Stage 4A primitive.
+ */
+
+/* The filter row sits between the panel's header and its list. */
+.ml-work-queue-filters {
+  padding: var(--ml-space-3) var(--ml-space-5);
+  border-bottom: 1px solid var(--ml-border);
+}
+
+/* The count beside a filter label reads as a figure, not part of the word. */
+.ml-work-queue-filters__count {
+  margin-left: var(--ml-space-2);
+  color: var(--ml-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row states its detail, then on its own line the basis it was ranked on. */
+.ml-work-queue-basis {
+  display: block;
+  color: var(--ml-text-muted);
+}
+
+/* The header figures, then one quiet link out to the Money screen. */
+.ml-work-queue-pulse__foot {
+  margin-top: var(--ml-space-3);
+}
+
+/* A long shoot title or address wraps inside its card rather than widening the rail. */
+.ml-work-queue-shoot {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
