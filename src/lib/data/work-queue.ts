@@ -328,6 +328,7 @@ export async function getWorkQueueDashboard(
       id: shoot.id,
       title: shoot.title,
       status: shoot.status,
+      locationName: shoot.locationName,
       totalAssets: totals.total,
       selectedCount: totals.selected,
       metadataPercent: selection.completionPercent,

@@ -134,6 +134,7 @@ export interface ActiveShootSummary {
   readonly id: string;
   readonly title: string;
   readonly status: ShootStatus;
+  readonly locationName?: string;
   readonly totalAssets: number;
   readonly selectedCount: number;
   /** Required-metadata completion across the selection, 0-100. */
