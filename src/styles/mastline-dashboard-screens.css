@@ -1,0 +1,30 @@
+/*
+ * MASTLINE DASHBOARD SCREENS
+ * Stage 4B -- the few rules a migrated screen needs that no primitive owns.
+ * Same lane as the surfaces sheet: ml- classes plus screen-scoped names,
+ * tokens only, no bare elements, no !important.
+ */
+
+/*
+ * A source URL is one unbroken token; it wraps rather than widening the rail.
+ * The text link is sized to its own max-content so an ordinary label never
+ * breaks; a URL must, so this one link takes the width it is given. The rule
+ * names both classes and wins by specificity, never by import order.
+ */
+.ml-text-link.rights-source-url {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The link out of the "Received by source" panel sits under the bars. */
+.money-sources-foot {
+  margin-top: var(--ml-space-4);
+}
+
+/* A payment reference is an identifier; it never breaks at a hyphen. */
+.money-reference {
+  white-space: nowrap;
+}

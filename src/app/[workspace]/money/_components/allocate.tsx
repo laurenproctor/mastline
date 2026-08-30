@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Field } from "@/components/primitives";
+import { Button } from "@/components/button";
+import { Field } from "@/components/field";
 import { type MoneyActionState, allocatePaymentAction } from "../actions";
 
 const INITIAL: MoneyActionState = {};
@@ -30,20 +31,20 @@ export function AllocateForm({
 
   if (!open) {
     return (
-      <button className="button small" onClick={() => setOpen(true)} type="button">
+      <Button onClick={() => setOpen(true)} size="sm" variant="secondary">
         Match
-      </button>
+      </Button>
     );
   }
 
   return (
-    <form action={formAction} className="allocate-form">
+    <form action={formAction} className="allocate-form ml-stack">
       <input name="paymentId" type="hidden" value={paymentId} />
-      <p className="section-note">
+      <p className="ml-caption">
         {reference} · ${remainingMajor.toFixed(2)} unattributed
       </p>
 
-      <Field control="select" label="Attribute to a license" name="licenseId">
+      <Field control="select" idSuffix={paymentId} label="Attribute to a license" name="licenseId">
         <option value="">Not a license</option>
         {licenses.map((license) => (
           <option key={license.id} value={license.id}>
@@ -51,7 +52,7 @@ export function AllocateForm({
           </option>
         ))}
       </Field>
-      <Field control="select" label="Or a submission" name="submissionId">
+      <Field control="select" idSuffix={paymentId} label="Or a submission" name="submissionId">
         <option value="">Not a submission</option>
         {submissions.map((submission) => (
           <option key={submission.id} value={submission.id}>
@@ -61,6 +62,7 @@ export function AllocateForm({
       </Field>
       <Field
         defaultValue={remainingMajor.toFixed(2)}
+        idSuffix={paymentId}
         inputMode="decimal"
         label="Amount"
         name="amount"
@@ -78,13 +80,13 @@ export function AllocateForm({
         </p>
       )}
 
-      <div className="actions">
-        <button className="button small blue" disabled={pending} type="submit">
+      <div className="ml-cluster">
+        <Button disabled={pending} size="sm" type="submit">
           {pending ? "Attributing…" : "Attribute"}
-        </button>
-        <button className="button small" onClick={() => setOpen(false)} type="button">
+        </Button>
+        <Button onClick={() => setOpen(false)} size="sm" variant="secondary">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
