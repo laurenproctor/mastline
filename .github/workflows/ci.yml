@@ -60,6 +60,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # The marked-preview function must ship sharp's binary AND the libvips
+      # shared library it links against; tracing finds the first and not the
+      # second, and next.config.ts adds it back. Only a Linux x64 build can
+      # prove it, which is why this lives here and not in the unit suite.
+      - name: Check the preview function trace
+        run: REQUIRE_LINUX_SHARP=1 node scripts/check-preview-trace.mjs
+
       # Last, not first. It is the cheapest check and would normally lead, but
       # it is currently red on 73 files that predate this workflow, and a red
       # first step skips every step after it -- which would leave types, lint,

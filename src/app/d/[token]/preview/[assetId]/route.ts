@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isDeliveryToken } from "@/lib/delivery";
-import { watermarkPreview } from "@/lib/images/watermark.server";
 import { isRecordId } from "@/lib/validation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { markedPreviewKey } from "@/lib/preview-selection";
@@ -22,20 +21,44 @@ import { markedPreviewKey } from "@/lib/preview-selection";
  * be shared between links, but a desk refreshing the page should not re-render
  * it every time. The cached copy lives beside the original in the private
  * bucket and is served through here as well -- never linked to directly.
+ *
+ * The image library is loaded late, and only on the one path that renders a
+ * new mark. It is a native module, and on a serverless host a native module
+ * can fail to load for reasons that have nothing to do with the request in
+ * hand -- a shared library left out of the function, an architecture
+ * mismatch. When that happens it must not take the token check, the
+ * authorization, or the cached copies down with it: every refusal on this
+ * surface is still the same neutral 404, and a preview that cannot be marked
+ * is simply not served.
  */
 export const dynamic = "force-dynamic";
 
 /** Long enough that a scroll costs nothing; short enough to stay a preview. */
 const CACHE_SECONDS = 900;
 
+/** Every refusal, whatever the reason, reads the same. */
+function notFound() {
+  return new NextResponse("Not found", { status: 404 });
+}
+
+/**
+ * The marking implementation, resolved only when it is needed.
+ *
+ * A dynamic import, so the module -- and the native library behind it -- is
+ * not touched at module initialization, by the build's page-data pass, or by
+ * any request that is refused or served from the cache.
+ */
+async function loadWatermark() {
+  const { watermarkPreview } = await import("@/lib/images/watermark.server");
+  return watermarkPreview;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ token: string; assetId: string }> },
 ) {
   const { token, assetId } = await params;
-  if (!isDeliveryToken(token) || !isRecordId(assetId)) {
-    return new NextResponse("Not found", { status: 404 });
-  }
+  if (!isDeliveryToken(token) || !isRecordId(assetId)) return notFound();
 
   /*
    * `delivery_preview` answers with a private bucket and object key, so it is
@@ -53,7 +76,8 @@ export async function GET(
   const row = (data ?? [])[0];
   // Unknown, withdrawn, expired, or not in this package: the same answer for
   // all of them, as everywhere else on this surface.
-  if (error || !row) return new NextResponse("Not found", { status: 404 });
+  if (error || !row) return notFound();
+
   /*
    * The cache is keyed on the snapshot row and the digest of the exact object
    * it was rendered from, not on the asset alone. Two approvals of the same
@@ -83,8 +107,22 @@ export async function GET(
    */
   const source = await admin.storage.from(row.storage_bucket).download(row.object_key);
   if (source.error || !source.data) {
-    console.error(`delivery preview: the approved object for frame ${assetId} could not be read`);
-    return new NextResponse("Not found", { status: 404 });
+    console.error(`delivery preview: source_unreadable for frame ${assetId}`);
+    return notFound();
+  }
+
+  /*
+   * Only now is the image library needed. If it cannot be loaded, the clean
+   * source is not handed over in its place; the operator log names the frame
+   * and the class of failure, never the token, the bucket, the key, or the
+   * library's own message, which can name file paths.
+   */
+  let watermarkPreview: Awaited<ReturnType<typeof loadWatermark>>;
+  try {
+    watermarkPreview = await loadWatermark();
+  } catch {
+    console.error(`delivery preview: watermark_runtime_unavailable for frame ${assetId}`);
+    return notFound();
   }
 
   let marked: { body: Buffer; contentType: string };
@@ -103,8 +141,8 @@ export async function GET(
   } catch {
     // A preview that cannot be marked is not served unmarked. The page shows
     // its "no preview" state instead, which is the honest outcome.
-    console.error(`delivery preview: the approved object for frame ${assetId} could not be marked`);
-    return new NextResponse("Not found", { status: 404 });
+    console.error(`delivery preview: watermark_failed for frame ${assetId}`);
+    return notFound();
   }
 
   // Best effort: failing to cache costs a re-render, not a response.
