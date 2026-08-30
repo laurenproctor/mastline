@@ -86,6 +86,80 @@ describe("DataTable", () => {
     expect(empty).toHaveClass("ml-data-table__empty-cell");
   });
 
+  it("names the region from a React-node caption when no label is given", () => {
+    render(
+      <DataTable
+        caption={
+          <span>
+            Rights matches <em>(3)</em>
+          </span>
+        }
+      >
+        <TableBody>
+          <TableRow>
+            <TableCell>x</TableCell>
+          </TableRow>
+        </TableBody>
+      </DataTable>,
+    );
+    const region = screen.getByRole("region", { name: "Rights matches (3)" });
+    const caption = region.querySelector("caption") as HTMLElement;
+    expect(caption.id).not.toBe("");
+    expect(region).toHaveAttribute("aria-labelledby", caption.id);
+    expect(region).not.toHaveAttribute("aria-label");
+    // The table itself is still named by its native caption.
+    expect(screen.getByRole("table", { name: "Rights matches (3)" })).toBeInTheDocument();
+  });
+
+  it("lets an explicit label override the caption for the region, not for the table", () => {
+    render(
+      <DataTable caption="Payments" label="Payments this period, scrollable">
+        <TableBody>
+          <TableRow>
+            <TableCell>x</TableCell>
+          </TableRow>
+        </TableBody>
+      </DataTable>,
+    );
+    const region = screen.getByRole("region", { name: "Payments this period, scrollable" });
+    expect(region).toHaveAttribute("aria-label", "Payments this period, scrollable");
+    expect(region).not.toHaveAttribute("aria-labelledby");
+    expect(screen.getByRole("table", { name: "Payments" })).toBeInTheDocument();
+  });
+
+  it("gives every table on a page its own caption id", () => {
+    render(
+      <>
+        <DataTable caption="First">
+          <TableBody>
+            <TableRow>
+              <TableCell>a</TableCell>
+            </TableRow>
+          </TableBody>
+        </DataTable>
+        <DataTable caption="Second">
+          <TableBody>
+            <TableRow>
+              <TableCell>b</TableCell>
+            </TableRow>
+          </TableBody>
+        </DataTable>
+      </>,
+    );
+    const ids = Array.from(document.querySelectorAll("caption")).map((c) => c.id);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).not.toBe("");
+    expect(new Set(ids).size).toBe(2);
+    expect(screen.getByRole("region", { name: "First" })).toHaveAttribute(
+      "aria-labelledby",
+      ids[0],
+    );
+    expect(screen.getByRole("region", { name: "Second" })).toHaveAttribute(
+      "aria-labelledby",
+      ids[1],
+    );
+  });
+
   it("can hide the caption visually while keeping it for readers, and take an explicit region label", () => {
     render(
       <DataTable caption={<span>Matches</span>} captionHidden compact label="Rights matches">

@@ -1,5 +1,5 @@
 import "@/styles/mastline-dashboard-surfaces.css";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { type ComponentPropsWithoutRef, type ReactNode, useId } from "react";
 import { classes } from "./shared";
 
 /**
@@ -30,16 +30,21 @@ export function DataTable({
   caption: ReactNode;
   /** Keep the caption for readers but off the screen when a heading already says it. */
   captionHidden?: boolean;
-  /** Names the scroll region. Defaults to the caption when that is a string. */
+  /** Names the scroll region outright. Without it, the region is named by the caption. */
   label?: string;
   compact?: boolean;
   className?: string;
   children: ReactNode;
 }) {
-  const regionLabel = label ?? (typeof caption === "string" ? caption : undefined);
+  // The region is named by the caption unless the caller names it outright.
+  // The caption gets a generated id so any caption -- a string, a node, a
+  // visually hidden one -- can name the region, and two tables on one page
+  // cannot share it.
+  const captionId = useId();
   return (
     <div
-      aria-label={regionLabel}
+      aria-label={label}
+      aria-labelledby={label === undefined ? captionId : undefined}
       className={classes(
         "ml-table-wrap",
         "ml-data-table",
@@ -52,6 +57,7 @@ export function DataTable({
       <table className="ml-table">
         <caption
           className={classes("ml-data-table__caption", captionHidden && "ml-visually-hidden")}
+          id={captionId}
         >
           {caption}
         </caption>
