@@ -173,15 +173,9 @@ export function ShootBriefPanel({
         </>
       )}
 
-      <div className="actions">
-        <button className="button" disabled type="button">
-          Create shoot from this story
-        </button>
-      </div>
       <p className="section-note">
-        The handoff to a new shoot is not wired in this phase. When it is, it will carry the
-        confirmed facts of this brief — never a suggestion — onto the Create Shoot screen, where
-        creating the shoot stays a deliberate action.
+        Turning this brief into a draft shoot happens below: the facts are confirmed one by one,
+        suggestions stay labelled as suggestions, and creating the shoot stays a deliberate action.
       </p>
     </div>
   );
