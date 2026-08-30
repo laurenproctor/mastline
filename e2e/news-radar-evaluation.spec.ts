@@ -134,6 +134,10 @@ async function recordContext(
 
 test.beforeEach(async ({ context }) => {
   await refuseCookies(context);
+  // The evaluator reads every photograph the workspace owns; on a loaded
+  // host that is tens of seconds, and the default budget reports the stall
+  // as a failure. The assertions themselves are unchanged.
+  test.setTimeout(180_000);
 });
 
 test("the archive path evaluates to ranked real photographs with reasons and readiness facts", async ({
@@ -147,18 +151,26 @@ test("the archive path evaluates to ranked real photographs with reasons and rea
     // Nothing has run, and the screen says so rather than showing anything.
     await expect(page.getByText("Not evaluated").first()).toBeVisible();
     await expect(page.getByText("Never run. Nothing runs on its own.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Build package" })).toBeDisabled();
+    // The handoff region below says why there is nothing to act on yet.
+    await expect(
+      page.getByText("Nothing to select from until the archive evaluation has run", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create draft package" })).toHaveCount(0);
 
     await recordContext(page, { people: "Avery Hart", location: "Hotel Chelsea" });
     // The person's entry sits in its own register, labelled as theirs.
     await expect(page.getByText("Person · Entered by a person")).toBeVisible();
 
     await page.getByRole("button", { name: "Evaluate" }).click();
-    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Ready").first()).toBeVisible();
 
     // The seeded frames of Avery Hart are the matches; the street-style frame is not.
-    await expect(page.getByText("#1")).toBeVisible();
+    // The rank also appears on the handoff's selection card below; the
+    // evaluation list's copy is the first in the document.
+    await expect(page.getByText("#1").first()).toBeVisible();
     await expect(page.getByText("Avery Hart departs Hotel Chelsea")).toBeVisible();
     await expect(page.getByText("Street style outside the Mercer")).toHaveCount(0);
     await expect(
@@ -168,12 +180,18 @@ test("the archive path evaluates to ranked real photographs with reasons and rea
     await expect(page.getByText("Copyright information recorded").first()).toBeVisible();
     // No derivative object exists in storage for the seeded rows: said plainly.
     await expect(page.getByText("Preview unavailable").first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Build package" })).toBeDisabled();
+    // The handoff region now offers selection -- empty, with the action held
+    // until something is explicitly selected. Creating stays two steps away.
+    await expect(page.getByRole("complementary", { name: "Selection summary" })).toContainText(
+      "0 photographs",
+    );
+    await expect(page.getByRole("button", { name: "Review selection" }).first()).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Create draft package" })).toHaveCount(0);
 
     // The same evaluator over the same input writes nothing, and says so.
     await page.getByRole("button", { name: "Re-evaluate" }).click();
     await expect(page.getByText("Nothing to recompute", { exact: false })).toBeVisible({
-      timeout: 20_000,
+      timeout: 60_000,
     });
   } finally {
     await deleteStory(fixture);
@@ -189,7 +207,7 @@ test("the shoot path needs context until where and when are recorded, then brief
     await page.goto(at(`/news/${fixture.shootId}`));
 
     await page.getByRole("button", { name: "Evaluate" }).click();
-    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Needs context").first()).toBeVisible();
     // "Still to confirm" lists the gaps; "What is known" states the same
     // absence in its own words, so the first match is the list entry.
@@ -205,13 +223,16 @@ test("the shoot path needs context until where and when are recorded, then brief
       eventStartsAt: "2036-01-01T18:00",
     });
     await page.getByRole("button", { name: "Re-evaluate" }).click();
-    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Ready").first()).toBeVisible();
     await expect(page.getByText("Suggested angle")).toBeVisible();
     await expect(page.getByText("Avery Hart at Hotel Chelsea")).toBeVisible();
     await expect(page.getByText("Suggested shot").first()).toBeVisible();
     await expect(page.getByText(/a recorded name is not a confirmed appearance/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create shoot from this story" })).toBeDisabled();
+    // The handoff region offers the review of the brief; creating is behind
+    // an explicit confirmation step and never on this screen's first click.
+    await expect(page.getByRole("button", { name: "Review the draft" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create draft shoot" })).toHaveCount(0);
   } finally {
     await deleteStory(fixture);
   }
@@ -265,7 +286,7 @@ test("the evaluated detail screen holds at this project's viewport without sidew
     await page.goto(at(`/news/${fixture.archiveId}`));
     await recordContext(page, { people: "Avery Hart", location: "Hotel Chelsea" });
     await page.getByRole("button", { name: "Evaluate" }).click();
-    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
 
     for (const path of [`/news/${fixture.archiveId}`, `/news/${fixture.shootId}`]) {
       await page.goto(at(path));

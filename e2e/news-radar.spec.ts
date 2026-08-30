@@ -313,9 +313,15 @@ test("the detail screen states its suggestion, its window, and what is not built
     await expect(page.getByText("66% · suggested")).toBeVisible();
     await expect(page.getByText("Arranged by the browser suite.")).toBeVisible();
     await expect(page.getByText(/\d+ days? left/).first()).toBeVisible();
-    // The match region says nothing has run, and its handoff action is inert.
+    // The match region says nothing has run, and the handoff region says why
+    // there is nothing to act on yet.
     await expect(page.getByText("Never run. Nothing runs on its own.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Build package" })).toBeDisabled();
+    await expect(
+      page.getByText("Nothing to select from until the archive evaluation has run", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create draft package" })).toHaveCount(0);
   } finally {
     await deleteStory(fixture);
   }
