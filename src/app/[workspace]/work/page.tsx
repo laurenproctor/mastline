@@ -1,44 +1,51 @@
-import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { TextLink } from "@/components/button";
+import { Metric, MetricGroup } from "@/components/dashboard-surfaces";
 import { PageHeader } from "@/components/page-header";
-import { Badge, Metric, Panel, Progress } from "@/components/primitives";
-import { listActivity } from "@/lib/data/activity";
-import { listAssets } from "@/lib/data/assets";
-import { listShoots } from "@/lib/data/shoots";
-import { getWorkPulse, getWorkQueue } from "@/lib/data/work-queue";
-import { formatElapsed, formatLongDate } from "@/lib/format";
-import { reviewSelection } from "@/lib/metadata-rules";
+import "@/styles/mastline-dashboard-screens.css";
+import { type WorkQueueFilter, filterWorkQueue, isWorkQueueFilter } from "@/lib/data/work-queue";
+import { loadWorkQueuePage } from "@/lib/data/work-queue-page";
+import { formatLongDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
+import { WorkActiveShoots } from "./_components/work-active-shoots";
+import { WorkAttentionQueue } from "./_components/work-attention-queue";
+import { WorkNextUp } from "./_components/work-next-up";
+import { WorkRecentActivity } from "./_components/work-recent-activity";
 
-const KIND_TONE = {
-  Shoot: "warn",
-  Dispatch: "blue",
-  Submission: "blue",
-  Money: "warn",
-} as const;
+/**
+ * The Work Queue: which existing action moves work closest to dispatch, an
+ * outcome, or a payment. Everything on it is a view of recorded state -- the
+ * deterministic ranking in the data layer decides the order, and the screen
+ * repeats its reasons rather than inventing its own.
+ *
+ * One load: the eight-call dashboard and the one-call activity feed.
+ */
 
-const ACTIVE_STATUSES = new Set([
-  "draft",
-  "scheduled",
-  "active",
-  "ingesting",
-  "preparing",
-  "ready",
-]);
+type SearchParams = Record<string, string | string[] | undefined>;
+
+/** The request's query, as it arrived, so a filter link can keep the rest. */
+function toSearchParams(query: SearchParams): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue;
+    for (const entry of Array.isArray(value) ? value : [value]) params.append(key, entry);
+  }
+  return params;
+}
 
 export default async function WorkQueuePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspace: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const { workspace: requestedWorkspace } = await params;
+  const query = await searchParams;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
-  // Links are built from the address the workspace holds now, never from the
-  // one the request happened to arrive on.
-  const routes = workspaceRoutes(canonicalSlug);
   /*
    * Everything below builds on the address the workspace holds NOW, not the one
    * the request arrived on. A request may land on a retired address, and a link
@@ -46,176 +53,83 @@ export default async function WorkQueuePage({
    * redirect; a slug that was never resolved at all would be a value the
    * browser supplied, sitting in a destination.
    */
+  const routes = workspaceRoutes(canonicalSlug);
   const workspaceSlug = canonicalSlug;
   const now = new Date();
 
-  const [queue, pulse, shoots, activity] = await Promise.all([
-    getWorkQueue(organizationId, routes),
-    getWorkPulse(organizationId),
-    listShoots(organizationId),
-    listActivity(organizationId, { limit: 6 }),
-  ]);
+  // An unknown value in the query is somebody's typo, not an error page.
+  const requestedFilter = typeof query.queue === "string" ? query.queue : undefined;
+  const filter: WorkQueueFilter = isWorkQueueFilter(requestedFilter) ? requestedFilter : "all";
+  const writable = can(session.activeWorkspace.role, "shoot.write");
 
-  const onDeck = shoots.find((shoot) => ACTIVE_STATUSES.has(shoot.status)) ?? null;
-  const onDeckAssets = onDeck ? await listAssets(organizationId, { shootId: onDeck.id }) : [];
-  const onDeckReport = reviewSelection(onDeckAssets.filter((asset) => asset.selected));
+  const { dashboard, activity } = await loadWorkQueuePage(organizationId, routes);
+  const rows = filterWorkQueue(dashboard.queue, filter);
+  const { counts, pulse } = dashboard;
 
   return (
     <AppShell active="Work" workspace={workspaceSlug}>
       <div className="page">
         <PageHeader
           description={
-            queue.length === 0
+            counts.all === 0
               ? "Nothing needs attention. Every shoot, submission, and payment is up to date."
-              : `${queue.length} ${queue.length === 1 ? "item needs" : "items need"} action. The next best move is visible.`
+              : `${counts.all} ${counts.all === 1 ? "item needs" : "items need"} action. The next best move is visible.`
           }
           eyebrow={formatLongDate(now.toISOString())}
-          primaryAction={
-            can(session.activeWorkspace.role, "shoot.write")
-              ? { label: "Create shoot", href: routes.newShoot() }
-              : undefined
-          }
+          primaryAction={writable ? { label: "Create shoot", href: routes.newShoot() } : undefined}
           title="Work queue"
         />
 
-        <div className="metrics">
-          <Metric
-            detail="Net that arrived"
-            label="Received"
-            tone="good"
-            value={formatMoney(pulse.netReceived)}
-          />
-          <Metric
-            detail={`${pulse.overdueCount} overdue`}
-            label="Outstanding"
-            tone={pulse.overdueCount > 0 ? "danger" : undefined}
-            value={formatMoney(pulse.outstanding)}
-          />
-          <Metric
-            detail="Shoot start to first dispatch"
-            label="Median dispatch"
-            value={pulse.medianDispatchMinutes > 0 ? `${pulse.medianDispatchMinutes} min` : "—"}
-          />
-          <Metric
-            detail="Statement value not attributed"
-            label="Unmatched"
-            value={formatMoney(pulse.unmatched)}
-          />
-        </div>
+        <WorkNextUp item={dashboard.nextUp} now={now} />
 
-        <div className="panel-grid">
-          <div className="stack">
-            <Panel
-              action={<span className="muted">Now · {queue.length}</span>}
-              title="Needs attention"
-            >
-              {queue.length === 0 ? (
-                <div className="panel-body">
-                  <p className="section-note">
-                    Nothing is blocked. Import a shoot, or record an outcome when a buyer replies.
-                  </p>
-                </div>
-              ) : (
-                <ul className="list">
-                  {queue.map((item) => (
-                    <li className={`list-row${item.urgent ? " danger" : ""}`} key={item.id}>
-                      <Badge tone={KIND_TONE[item.kind]}>{item.kind}</Badge>
-                      <div>
-                        <h3>{item.title}</h3>
-                        <p>
-                          {item.detail} · <span className="muted">{item.rankingBasis}</span>
-                        </p>
-                      </div>
-                      <span className="age">
-                        {item.urgent
-                          ? "Urgent"
-                          : item.occurredAt
-                            ? formatElapsed(item.occurredAt, now)
-                            : "—"}
-                      </span>
-                      <Link className="row-action" href={item.href}>
-                        {item.actionLabel} <span aria-hidden="true">→</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
+        <section aria-labelledby="work-pulse" className="ml-work-queue-pulse">
+          <h2 className="ml-visually-hidden" id="work-pulse">
+            This period
+          </h2>
+          <MetricGroup label="This period">
+            <Metric
+              detail="Net that arrived"
+              label="Received"
+              tone="success"
+              value={formatMoney(pulse.netReceived)}
+            />
+            <Metric
+              detail={`${pulse.overdueCount} overdue`}
+              label="Outstanding"
+              tone={pulse.overdueCount > 0 ? "danger" : "neutral"}
+              value={formatMoney(pulse.outstanding)}
+            />
+            <Metric
+              detail="Shoot start to first dispatch"
+              label="Median dispatch"
+              value={pulse.medianDispatchMinutes > 0 ? `${pulse.medianDispatchMinutes} min` : "—"}
+            />
+            <Metric
+              detail="Statement value not attributed"
+              label="Unmatched"
+              value={formatMoney(pulse.unmatched)}
+            />
+          </MetricGroup>
+          <p className="ml-caption ml-work-queue-pulse__foot">
+            <TextLink href={routes.money()}>View money</TextLink>
+          </p>
+        </section>
 
-            <Panel
-              action={
-                <Link className="text-link" href={routes.archive()}>
-                  View archive
-                </Link>
-              }
-              title="Recent activity"
-            >
-              {activity.length === 0 ? (
-                <div className="panel-body">
-                  <p className="section-note">Nothing recorded yet.</p>
-                </div>
-              ) : (
-                <ul className="list activity">
-                  {activity.map((event) => (
-                    <li className="list-row" key={event.id}>
-                      <Badge tone="neutral">{event.entityType}</Badge>
-                      <div>
-                        <h3>{event.summary}</h3>
-                      </div>
-                      <span className="age">{formatElapsed(event.createdAt, now)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
+        <div className="ml-dashboard-grid">
+          <div className="ml-stack">
+            <WorkAttentionQueue
+              basePath={routes.work()}
+              counts={counts}
+              filter={filter}
+              now={now}
+              params={toSearchParams(query)}
+              rows={rows}
+            />
+            <WorkRecentActivity events={activity} now={now} routes={routes} />
           </div>
-
-          <Panel title="On deck">
-            {onDeck ? (
-              <div className="side-card">
-                <Badge tone="warn">{onDeck.status}</Badge>
-                <h3>{onDeck.title}</h3>
-                <p>
-                  {onDeckAssets.length} files · {onDeckReport.total} selected
-                  {onDeck.locationName ? ` · ${onDeck.locationName}` : ""}
-                </p>
-                <Progress label="Ready to dispatch" value={onDeckReport.completionPercent} />
-                <div className="spacer" />
-                <Link className="button small" href={routes.shoot(onDeck.id)}>
-                  Open shoot
-                </Link>
-              </div>
-            ) : (
-              <div className="side-card">
-                <h3>No shoot in progress</h3>
-                <p>Create a shoot from a brief, before there are any files.</p>
-                <Link className="button small" href={routes.newShoot()}>
-                  Create shoot
-                </Link>
-              </div>
-            )}
-
-            <div className="side-card">
-              <h3>This period</h3>
-              <dl className="pulse-list">
-                <div>
-                  <dt>Received</dt>
-                  <dd>{formatMoney(pulse.netReceived)}</dd>
-                </div>
-                <div>
-                  <dt>Outstanding</dt>
-                  <dd>{formatMoney(pulse.outstanding)}</dd>
-                </div>
-                <div>
-                  <dt>Unmatched</dt>
-                  <dd>{formatMoney(pulse.unmatched)}</dd>
-                </div>
-              </dl>
-              <Link className="text-link" href={routes.money()}>
-                View money <span aria-hidden="true">→</span>
-              </Link>
-            </div>
-          </Panel>
+          <div className="ml-stack">
+            <WorkActiveShoots routes={routes} shoots={dashboard.activeShoots} writable={writable} />
+          </div>
         </div>
       </div>
     </AppShell>
