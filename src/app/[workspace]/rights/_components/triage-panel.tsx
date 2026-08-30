@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/primitives";
+import { Badge } from "@/components/badge";
+import { Button } from "@/components/button";
+import { Field } from "@/components/field";
 // A type-only import: `@/lib/data/rights` is server-only, and the erased form
 // carries none of it into the client bundle. Every value this component needs
 // from that module -- the note limits, the blocked-license wording -- arrives as
@@ -77,68 +79,58 @@ function Decision({
     if (confirming) noteRef.current?.focus();
   }, [confirming]);
 
-  const noteId = `rights-note-${status}`;
   const errorId = `rights-error-${status}`;
-  const hintId = noteHint ? `rights-hint-${status}` : undefined;
 
   if (twoStep && !confirming) {
     return (
-      <div className="side-card">
-        <h3>{heading}</h3>
-        <p>{description}</p>
+      <div className="ml-card ml-stack">
+        <h3 className="ml-subtitle">{heading}</h3>
+        <p className="ml-body">{description}</p>
         {state.error && (
           <p className="auth-error" id={errorId} role="alert">
             {state.error}
           </p>
         )}
-        <div className="actions">
-          <button className="button" onClick={() => setConfirming(true)} type="button">
+        <div className="ml-cluster">
+          <Button onClick={() => setConfirming(true)} variant="secondary">
             {startLabel}
-          </button>
+          </Button>
         </div>
-        <p className="section-note">Nothing is recorded until you confirm.</p>
+        <p className="ml-caption">Nothing is recorded until you confirm.</p>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className={twoStep ? "side-card confirm-card" : "side-card"}>
+    <form
+      action={formAction}
+      className={twoStep ? "ml-card ml-stack confirm-card" : "ml-card ml-stack"}
+    >
       <input name="matchId" type="hidden" value={matchId} />
       <input name="status" type="hidden" value={status} />
       <input name="expectedUpdatedAt" type="hidden" value={expectedUpdatedAt} />
       {twoStep && <input name="confirmed" type="hidden" value="yes" />}
 
       {twoStep && <Badge tone="warn">Confirm</Badge>}
-      <h3>{twoStep ? (confirmHeading ?? heading) : heading}</h3>
-      <p>{description}</p>
+      <h3 className="ml-subtitle">{twoStep ? (confirmHeading ?? heading) : heading}</h3>
+      <p className="ml-body">{description}</p>
 
       {noteLabel && (
-        <div className="field">
-          <label htmlFor={noteId}>
-            {noteLabel}
-            {noteRequired && (
-              <span aria-hidden="true" className="required-mark">
-                *
-              </span>
-            )}
-          </label>
-          <textarea
-            aria-describedby={
-              [state.error ? errorId : undefined, hintId].filter(Boolean).join(" ") || undefined
-            }
+        <div className="field-note">
+          <Field
+            aria-describedby={state.error ? errorId : undefined}
             aria-invalid={state.error ? true : undefined}
-            id={noteId}
+            control="textarea"
+            hint={noteHint}
+            idSuffix={status}
+            label={noteLabel}
             maxLength={noteMax}
             name="note"
-            ref={noteRef}
+            // The Field's ref is typed for its default input; a textarea is the
+            // control here, so the same ref is handed over as that element.
+            ref={noteRef as unknown as React.Ref<HTMLInputElement>}
             required={noteRequired}
-            rows={3}
           />
-          {noteHint && (
-            <small className="section-note" id={hintId}>
-              {noteHint}
-            </small>
-          )}
         </div>
       )}
 
@@ -148,19 +140,14 @@ function Decision({
         </p>
       )}
 
-      <div className="actions">
-        <button className={emphasis ? "button blue" : "button"} disabled={pending} type="submit">
+      <div className="ml-cluster">
+        <Button disabled={pending} type="submit" variant={emphasis ? "primary" : "secondary"}>
           {pending ? pendingLabel : (confirmLabel ?? startLabel)}
-        </button>
+        </Button>
         {twoStep && (
-          <button
-            className="button"
-            disabled={pending}
-            onClick={() => setConfirming(false)}
-            type="button"
-          >
+          <Button disabled={pending} onClick={() => setConfirming(false)} variant="secondary">
             Go back
-          </button>
+          </Button>
         )}
       </div>
     </form>
@@ -204,15 +191,15 @@ export function ReviewNotice({ done }: { done: TriageStatus }) {
  */
 function LicensedBlocked({ message }: { message: string }) {
   return (
-    <div className="side-card">
-      <h3>Mark licensed</h3>
-      <p>{message}</p>
-      <div className="actions">
-        <button className="button" disabled type="button">
+    <div className="ml-card ml-stack">
+      <h3 className="ml-subtitle">Mark licensed</h3>
+      <p className="ml-body">{message}</p>
+      <div className="ml-cluster">
+        <Button disabled variant="secondary">
           Mark licensed
-        </button>
+        </Button>
       </div>
-      <p className="section-note">
+      <p className="ml-caption">
         The license check on this match did not find a linked license in your records, so calling
         this use licensed would be an assertion Mastline cannot support. Linking a license to a
         match is not built yet, so this control stays blocked until it is.
@@ -239,9 +226,9 @@ export function TriagePanel({
 
   if (allowed.length === 0) {
     return (
-      <div className="side-card">
-        <h3>This decision is recorded</h3>
-        <p>
+      <div className="ml-card ml-stack">
+        <h3 className="ml-subtitle">This decision is recorded</h3>
+        <p className="ml-body">
           A match that has been marked licensed, ignored, or resolved is not reopened in place. The
           record stands as it was decided; a new observation of the same use starts a new match.
         </p>
@@ -277,7 +264,7 @@ export function TriagePanel({
       )}
 
       {allowed.includes("monitoring") && (
-        <p className="section-note">
+        <p className="ml-caption">
           Monitoring is a note to your own team. This sprint starts no crawler, schedule, or
           automatic re-check, and Mastline will not observe this page again on its own.
         </p>
