@@ -90,3 +90,63 @@ export async function countArchive(organizationId: Id, client?: SupabaseClient):
     .neq("status", "tombstoned");
   return count ?? 0;
 }
+
+/**
+ * The figures the archive's insights rail shows.
+ *
+ * Every one of them is a fact the archive already holds, read through the same
+ * search function the grid uses so the counts and the filters can never
+ * disagree. Nothing is estimated: a total that would need an aggregate the
+ * data API refuses (`PGRST123`) is left out rather than approximated.
+ */
+export interface ArchiveInsights {
+  /** Live assets in the workspace: everything not tombstoned. */
+  readonly totalAssets: number;
+  /** Assets with a payment allocation recorded against them. */
+  readonly earningAssets: number;
+  /** Assets with no recorded sale, whether or not they have been sent. */
+  readonly unsoldAssets: number;
+  readonly oldestCapturedAt?: string;
+  readonly latestCapturedAt?: string;
+}
+
+async function captureBoundary(
+  supabase: SupabaseClient,
+  organizationId: Id,
+  end: "oldest" | "latest",
+): Promise<string | undefined> {
+  // (organization_id, captured_at) is indexed where status <> 'tombstoned', so
+  // either end is an index read rather than a scan.
+  const { data } = await supabase
+    .from("assets")
+    .select("captured_at")
+    .eq("organization_id", organizationId)
+    .neq("status", "tombstoned")
+    .not("captured_at", "is", null)
+    .order("captured_at", { ascending: end === "oldest" })
+    .limit(1)
+    .maybeSingle();
+  return (data?.captured_at as string | null | undefined) ?? undefined;
+}
+
+export async function archiveInsights(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<ArchiveInsights> {
+  const supabase = client ?? (await createClient());
+  const [totalAssets, earning, unsold, oldestCapturedAt, latestCapturedAt] = await Promise.all([
+    countArchive(organizationId, supabase),
+    searchArchive(organizationId, { filter: "earning", pageSize: 1 }, supabase),
+    searchArchive(organizationId, { filter: "unsold", pageSize: 1 }, supabase),
+    captureBoundary(supabase, organizationId, "oldest"),
+    captureBoundary(supabase, organizationId, "latest"),
+  ]);
+
+  return {
+    totalAssets,
+    earningAssets: earning.total,
+    unsoldAssets: unsold.total,
+    oldestCapturedAt,
+    latestCapturedAt,
+  };
+}

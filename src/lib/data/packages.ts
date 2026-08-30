@@ -253,9 +253,13 @@ export async function updatePackage(input: {
     .eq("id", packageId)
     .maybeSingle();
 
-  // Once a package has shipped, its terms are part of the commercial record.
-  if (current && ["sending", "delivered"].includes(current.status as string)) {
-    throw new Error("This package has already been dispatched and can no longer be edited.");
+  // Once a package is approved, its terms, name, and note are part of the
+  // commercial record and the database refuses to change them. Saying so here
+  // gives the operator a sentence rather than a constraint violation.
+  if (current && ["approved", "sending", "delivered"].includes(current.status as string)) {
+    throw new Error(
+      "This package has been approved and can no longer be edited. Prepare a new package to send something different.",
+    );
   }
 
   const { error } = await supabase
