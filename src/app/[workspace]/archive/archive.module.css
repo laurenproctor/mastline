@@ -1,0 +1,794 @@
+/*
+ * The Archive, styled locally.
+ *
+ * Everything the archive draws lives here rather than in globals.css, which
+ * several open branches are editing at once. The sheet reads the application's
+ * own tokens -- ink, paper, line, blue, green -- so it stays in the design
+ * language, and every rule is scoped by the module so nothing here can reach
+ * another screen. The direction is the same as the rest of Mastline: paper and
+ * ink, hairline rules, photographs first, colour only where it means something.
+ */
+
+.archive {
+  display: grid;
+  gap: 16px;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Search: the way in ----------------------------------------------------- */
+
+.search {
+  display: grid;
+  gap: 8px;
+}
+.searchRow {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.searchField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.searchIcon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.searchInput {
+  width: 100%;
+  min-height: 54px;
+  padding: 10px 56px 10px 46px;
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  /* Every form control is 16px: smaller and iOS Safari zooms the page. */
+  font-size: var(--fs-lead);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.searchInput::placeholder {
+  color: var(--muted);
+}
+.searchInput::-webkit-search-decoration,
+.searchInput::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.searchInput:focus-visible {
+  border-color: var(--ink);
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.kbd {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+/* Nested under the row so it outranks the global .button at any bundle order. */
+.searchRow .searchButton {
+  min-height: 54px;
+  padding: 0 24px;
+}
+.searchHint {
+  margin: 0;
+  font-size: var(--fs-note);
+  color: var(--muted);
+}
+
+/* --- Toolbar: commercial state, sort, view ---------------------------------- */
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 20px;
+  flex-wrap: wrap;
+}
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.segment {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-right: 1px solid var(--line);
+  color: var(--ink);
+  font-size: var(--fs-note);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.segment:last-child {
+  border-right: 0;
+}
+.segment:hover {
+  background: var(--paper-2);
+}
+.segment[aria-current] {
+  background: var(--ink);
+  color: white;
+}
+.segment:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+}
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-left: auto;
+}
+.sort {
+  margin: 0;
+  font-size: var(--fs-note);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.sort strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.viewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-height: 38px;
+  color: var(--muted);
+}
+.viewButton + .viewButton {
+  border-left: 1px solid var(--line);
+}
+.viewButton:hover {
+  color: var(--ink);
+}
+.viewButton[aria-current] {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+.viewButton:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+}
+
+/* --- Results row: what narrows the results, and how many there are ---------- */
+
+.resultsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--fs-note);
+  font-weight: 600;
+  color: var(--ink);
+}
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+}
+.chipRemove:hover {
+  color: var(--ink);
+  background: var(--paper-2);
+}
+.chipRemove:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+.clearAll {
+  font-size: var(--fs-note);
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+}
+.clearAll:hover {
+  text-decoration-color: var(--ink);
+}
+.clearAll:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.count {
+  margin: 0 0 0 auto;
+  font-family: inherit;
+  font-size: var(--fs-note);
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --- Body: the grid, and the rail beside it --------------------------------- */
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 248px;
+  gap: 32px;
+  align-items: start;
+}
+.results {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+/* --- The grid: a contact sheet, not a card wall ----------------------------- */
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  gap: 18px 14px;
+}
+.grid > li {
+  min-width: 0;
+}
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  transition: border-color 120ms ease;
+}
+.card:hover,
+.card:focus-within {
+  border-color: var(--field-line);
+}
+.cardFigure {
+  position: relative;
+  display: block;
+  margin: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: #1c1c1a;
+}
+.cardImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cardPlaceholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #2b2b29, #4a4944 60%, #23231f);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-label);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.cardDate {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 6px;
+  border-radius: var(--radius);
+  background: rgba(17, 17, 15, 0.78);
+  color: white;
+  font-size: var(--fs-label);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.cardBody {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px 0;
+}
+.cardTitle {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+/*
+ * One link per card, stretched over the whole of it. The photograph and the
+ * commercial row are then clickable without a second anchor to the same place,
+ * and the tab order has one stop per photograph rather than two.
+ */
+.cardTitleLink {
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+.cardTitleLink::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.cardTitleLink:focus-visible::after {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.cardFilename {
+  font-family: ui-monospace, monospace;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+}
+.cardCaption {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardCommercial {
+  display: grid;
+  gap: 2px;
+  margin: 10px 12px 0;
+  margin-top: auto;
+  padding: 8px 0 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  min-width: 0;
+}
+/* The state and the money share a line; the second fact takes its own, so
+   "5 packages" is never cut to "5 packa…" at a narrow card width. */
+.cardState {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+}
+.cardState strong {
+  color: var(--ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cardDetail {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cardAmount {
+  color: var(--green);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cardCommercialEarned strong {
+  color: var(--green);
+}
+
+/* --- The list: the same records as a table of commercial facts -------------- */
+
+.list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+.list th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ink);
+  text-align: left;
+  font-size: var(--fs-label);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.list td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.list tr:hover td {
+  background: var(--surface);
+}
+.listThumbCell {
+  width: 72px;
+}
+.listThumb {
+  display: block;
+  width: 64px;
+  height: 48px;
+  object-fit: cover;
+  background: #1c1c1a;
+}
+.listThumbEmpty {
+  width: 64px;
+  height: 48px;
+  background: linear-gradient(160deg, #2b2b29, #4a4944 60%, #23231f);
+}
+.listTitle {
+  font-weight: 650;
+  color: inherit;
+}
+.listTitle:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.listTitle:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.listCaption {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  max-width: 48ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.earned {
+  color: var(--green);
+  font-weight: 700;
+}
+.quiet {
+  color: var(--muted);
+}
+
+/* --- Insights: the archive's own figures ------------------------------------ */
+
+.rail {
+  position: sticky;
+  top: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.railHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.railHead h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+.railScope {
+  font-size: var(--fs-label);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.railList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.railList > li {
+  border-bottom: 1px solid var(--line);
+}
+.railList > li:last-child {
+  border-bottom: 0;
+}
+.railRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  color: inherit;
+}
+a.railRow:hover .railLabel {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+a.railRow:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+}
+.railValue {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.railValue.earned {
+  color: var(--green);
+  font-weight: 400;
+}
+.railLabel {
+  font-size: var(--fs-note);
+  color: var(--muted);
+  text-align: right;
+}
+.railNote {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-micro);
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* --- Empty: nothing to show, and the two reasons why ------------------------- */
+
+.empty {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 56px 24px;
+  border: 1px dashed var(--field-line);
+  background: var(--surface);
+  text-align: center;
+}
+.emptyTitle {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+.empty p {
+  margin: 0;
+  max-width: 48ch;
+  color: var(--muted);
+}
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* --- Pages ------------------------------------------------------------------ */
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-note);
+  color: var(--muted);
+}
+.pagination p {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.pageLinks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pageLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pageLink:hover {
+  border-color: var(--field-line);
+}
+.pageLink[aria-current] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+.pageLink[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.pageLink:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.pageGap {
+  min-width: 24px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* --- Privacy line ----------------------------------------------------------- */
+
+.privacy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.privacy p {
+  margin: 0;
+  font-size: var(--fs-note);
+  color: var(--muted);
+}
+
+/* --- Narrower windows ------------------------------------------------------- */
+
+@media (max-width: 1100px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    position: static;
+  }
+  .railList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .railList > li {
+    border-right: 1px solid var(--line);
+  }
+  .railList > li:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .railRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .railLabel {
+    text-align: left;
+  }
+}
+
+@media (max-width: 680px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 10px;
+  }
+  .kbd {
+    display: none;
+  }
+  .searchInput {
+    padding-right: 12px;
+  }
+  .searchRow .searchButton {
+    padding: 0 16px;
+  }
+  .segmented {
+    width: 100%;
+  }
+  .segment {
+    flex: 1;
+    justify-content: center;
+    padding: 0 6px;
+    font-size: var(--fs-micro);
+  }
+  .toolbarRight {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+  .cardBody {
+    padding: 8px 10px 0;
+  }
+  .cardCommercial {
+    margin: 8px 10px 0;
+  }
+  .railList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pagination {
+    justify-content: center;
+  }
+}
+
+@media (pointer: coarse) {
+  .segment,
+  .viewButton,
+  .pageLink {
+    min-height: 44px;
+  }
+  .chipRemove {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}
