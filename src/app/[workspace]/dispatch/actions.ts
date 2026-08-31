@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   createPackageFromSelection,
   ensureDraftPackage,
@@ -11,6 +11,7 @@ import {
 import { approvePackageAndCreateSubmission, recordSubmissionOutcome } from "@/lib/data/submissions";
 import { getPackage } from "@/lib/data/packages";
 import { listAssets } from "@/lib/data/assets";
+import { getShoot } from "@/lib/data/shoots";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { reviewDispatch } from "@/lib/dispatch-rules";
 import { requireWorkspaceContext } from "@/lib/session-context";
@@ -91,6 +92,12 @@ export async function startDeliveryFlowAction(
     workspaceSlug,
     "package.write",
   );
+
+  // The shoot has to be this workspace's before a package is hung on it. A
+  // shoot id from anywhere else reads as "no such shoot", same as every other
+  // screen's answer.
+  const shoot = await getShoot(organizationId, shootId);
+  if (!shoot) notFound();
 
   const draft = await ensureDraftPackage({ organizationId, actorId, shootId });
 

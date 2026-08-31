@@ -60,7 +60,9 @@ describe("delivery flow stages", () => {
     });
     expect(stageReachable("photos", approved)).toBe(false);
     expect(stageReachable("details", approved)).toBe(false);
-    expect(stageReachable("recipient", approved)).toBe(false);
+    // Recipient stays open in its reduced form: a new link for another
+    // recipient on the same frozen package.
+    expect(stageReachable("recipient", approved)).toBe(true);
     expect(clampStage("photos", approved)).toBe("review");
     expect(currentStage(approved)).toBe("review");
   });

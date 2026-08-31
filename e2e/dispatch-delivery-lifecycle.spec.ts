@@ -318,20 +318,22 @@ test.describe("approving, then measuring what the desk actually looked at", () =
       await signIn(page, SEEDED.owner);
 
       // ---------------------------------------------------------------
-      // Approve the package
+      // Create the private delivery: approve + link, one confirmed act
       // ---------------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Every check passes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible();
 
-      await page.getByRole("button", { name: "Approve package" }).click();
+      await page.getByRole("button", { name: "Create private delivery" }).click();
       await expect(
-        page.getByText(/This freezes the selected frames, versions, buyer, terms/),
+        page.getByText(/frozen on the submission and cannot be edited afterwards/),
       ).toBeVisible();
-      await page.getByRole("button", { name: "Yes, approve this package" }).click();
+      await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
+      await expect(page.getByText("Private delivery created")).toBeVisible();
 
       // ---------------------------------------------------------------
       // Approved, and explicitly not sent
       // ---------------------------------------------------------------
+      await page.getByRole("link", { name: "View submission record" }).click();
       await page.waitForURL(/\/submissions\//);
       await expect(page.locator(".page-header")).toContainText(/nothing sent yet/i);
       await expect(page.locator(".page-header")).not.toContainText(/^Sent to/);

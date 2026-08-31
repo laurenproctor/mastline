@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/button";
 import { listAssets } from "@/lib/data/assets";
-import { listDeliveries } from "@/lib/data/delivery-links";
+import { listAccessEvents, listAcceptances, listDeliveries } from "@/lib/data/delivery-links";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { listPackages } from "@/lib/data/packages";
 import { getShoot } from "@/lib/data/shoots";
@@ -15,6 +16,12 @@ import {
   clampStage,
   isDeliveryFlowStage,
 } from "@/lib/delivery-flow";
+import {
+  DEFAULT_DELIVERY_WINDOW,
+  type DeliveryWindowDays,
+  deliveryUrl,
+  isDeliveryWindow,
+} from "@/lib/delivery";
 import { reviewDispatch } from "@/lib/dispatch-rules";
 import { formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset, reviewSelection } from "@/lib/metadata-rules";
@@ -25,12 +32,13 @@ import { createClient } from "@/lib/supabase/server";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import type { Asset } from "@/lib/domain";
 import { startDeliveryFlowAction } from "../actions";
-import { ApprovePanel } from "../_components/approve-panel";
 import { DetailsStage, type DetailFrame } from "../_components/details-stage";
 import { FlowShell } from "../_components/flow-shell";
-import { PackageDetails } from "../_components/package-details";
 import { PackageGallery, type ReviewFrame } from "../_components/package-gallery";
 import { PhotosStage, type SelectableFrame } from "../_components/photos-stage";
+import { RecipientStage } from "../_components/recipient-stage";
+import { ReviewRail, type ReviewAccess, type ReviewLink } from "../_components/review-rail";
+import { FollowUpForm } from "../_components/follow-up-form";
 import styles from "../_components/dispatch-review.module.css";
 
 /**
@@ -56,10 +64,23 @@ export default async function DispatchPage({
   searchParams,
 }: {
   params: Promise<{ workspace: string; shootId: string }>;
-  searchParams: Promise<{ package?: string; stage?: string }>;
+  searchParams: Promise<{
+    package?: string;
+    stage?: string;
+    /** Link options travelling between Recipient and Review & share. */
+    to?: string;
+    contact?: string;
+    expires?: string;
+    fullres?: string;
+    gate?: string;
+    note?: string;
+    /** The link the create act just made, so the created state names it. */
+    link?: string;
+  }>;
 }) {
   const { workspace: requestedWorkspace, shootId } = await params;
-  const { package: requestedPackage, stage: requestedStageRaw } = await searchParams;
+  const query = await searchParams;
+  const { package: requestedPackage, stage: requestedStageRaw } = query;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);
   /*
@@ -169,6 +190,35 @@ export default async function DispatchPage({
   const frameWord = frameCount === 1 ? "photograph" : "photographs";
   const context = `${shoot.title} · ${pkg.name} · ${frameCount} ${frameWord}`;
 
+  /*
+   * The per-link access options describe a link that may not exist yet, so
+   * between Recipient and Review & share they travel in the URL — clamped
+   * here on every read — and become columns only when the delivery is
+   * created. Once a link exists, the stored row is the truth and the query
+   * is ignored.
+   */
+  const requestedWindow = Number(query.expires ?? DEFAULT_DELIVERY_WINDOW);
+  const queryAccess: ReviewAccess = {
+    recipientLabel:
+      query.to?.slice(0, 120) || submission?.recipientLabel || buyer?.contactName || undefined,
+    contactReference: query.contact?.slice(0, 200) || undefined,
+    windowDays: (isDeliveryWindow(requestedWindow)
+      ? requestedWindow
+      : DEFAULT_DELIVERY_WINDOW) as DeliveryWindowDays,
+    deliveryNote: query.note?.slice(0, 500) || undefined,
+    allowFullResolution: query.fullres !== "0",
+    requireAcceptanceToView: query.gate === "1",
+  };
+
+  // The flow's link: live and unshared, newest first named by the create
+  // redirect, so a refresh renders the link that exists rather than a form
+  // that would make another.
+  const now = new Date();
+  const liveUnshared = links.filter(
+    (link) => !link.revokedAt && !link.sharedAt && new Date(link.expiresAt) > now,
+  );
+  const flowLink = liveUnshared.find((link) => link.id === query.link) ?? liveUnshared[0] ?? null;
+
   // ---------------------------------------------------------------- Photos --
   if (stage === "photos") {
     const selectable: SelectableFrame[] = assets
@@ -269,62 +319,47 @@ export default async function DispatchPage({
 
   // ------------------------------------------------------------- Recipient --
   if (stage === "recipient") {
-    const mayEdit = !approved && can(role, "package.write");
     return (
       <AppShell active="Submissions" workspace={workspaceSlug}>
         <FlowShell
           context={context}
           facts={facts}
-          lead="Decide who receives this private delivery and the terms it is offered under."
+          lead="Decide who receives this private delivery and what they can do with it."
           packageId={pkg.id}
           shootId={shootId}
           stage={stage}
           title="Choose recipient and access"
           workspaceSlug={workspaceSlug}
-          footer={
-            <>
-              <div className="ml-delivery-flow__back">
-                <Link className="ml-button ml-button--quiet" href={stageHref("details")}>
-                  Back to details
-                </Link>
-              </div>
-              <p className="ml-delivery-flow__standing">
-                {facts.recipientReady
-                  ? `${buyer?.name ?? "The recipient"} will receive a private, tracked link to ${frameCount} ${frameWord}.`
-                  : "Choose a potential buyer and record the terms to continue."}{" "}
-                Nothing has been created or sent yet.
-              </p>
-              <div className="ml-delivery-flow__advance">
-                {facts.recipientReady ? (
-                  <Link className="ml-button" href={stageHref("review")}>
-                    Review delivery
-                  </Link>
-                ) : (
-                  <Button aria-disabled="true" disabled>
-                    Review delivery
-                  </Button>
-                )}
-              </div>
-            </>
-          }
         >
-          <div className="ml-delivery-recipient">
-            <PackageDetails
-              workspaceSlug={workspaceSlug}
-              buyerId={pkg.buyerId}
-              buyers={buyers.map((candidate) => ({
-                id: candidate.id,
-                name: candidate.name,
-                deliveryProfile: candidate.deliveryProfile,
-              }))}
-              deliveryMethod={pkg.deliveryMethod}
-              editable={mayEdit}
-              packageId={pkg.id}
-              packageNote={pkg.packageNote}
-              proposedTerms={pkg.proposedTerms}
-              restrictions={pkg.restrictions}
-            />
-          </div>
+          <RecipientStage
+            backHref={approved ? stageHref("review") : stageHref("details")}
+            buyers={buyers.map((candidate) => ({
+              id: candidate.id,
+              name: candidate.name,
+              contactName: candidate.contactName,
+              defaultTerms: candidate.defaultTerms,
+              defaultRestrictions: candidate.defaultRestrictions,
+            }))}
+            editable={!approved && can(role, "package.write")}
+            frameCount={frameCount}
+            initial={{
+              buyerId: pkg.buyerId,
+              buyerName: buyer?.name,
+              proposedTerms: pkg.proposedTerms,
+              restrictions: pkg.restrictions,
+              recipientLabel: query.to?.slice(0, 120) || undefined,
+              contactReference: queryAccess.contactReference,
+              windowDays: queryAccess.windowDays,
+              deliveryNote: queryAccess.deliveryNote,
+              allowFullResolution: queryAccess.allowFullResolution,
+              requireAcceptanceToView: queryAccess.requireAcceptanceToView,
+            }}
+            packageFrozen={approved}
+            packageId={pkg.id}
+            reviewHrefBase={stageHref("review")}
+            shootId={shootId}
+            workspaceSlug={workspaceSlug}
+          />
         </FlowShell>
       </AppShell>
     );
@@ -368,15 +403,45 @@ export default async function DispatchPage({
       };
     });
 
+    /*
+     * The created state reads the link row, never the query: once the
+     * delivery exists, what it offers is what was stored. The delivery URL is
+     * built from the host this request arrived on, so a preview deployment's
+     * copied link points at that deployment.
+     */
+    const requestHeaders = await headers();
+    const proto = requestHeaders.get("x-forwarded-proto") ?? "http";
+    const host = requestHeaders.get("host") ?? "localhost";
+    const railLink: ReviewLink | null = flowLink
+      ? {
+          id: flowLink.id,
+          url: deliveryUrl(`${proto}://${host}`, flowLink.token),
+          expiresAt: flowLink.expiresAt,
+          sharedAt: flowLink.sharedAt,
+        }
+      : null;
+    const railAccess: ReviewAccess = flowLink
+      ? {
+          recipientLabel: flowLink.recipientLabel,
+          contactReference: flowLink.contactReference,
+          windowDays: queryAccess.windowDays,
+          deliveryNote: flowLink.deliveryNote,
+          allowFullResolution: flowLink.allowFullResolution,
+          requireAcceptanceToView: flowLink.requireAcceptanceToView,
+        }
+      : queryAccess;
+
     return (
       <AppShell active="Submissions" workspace={workspaceSlug}>
         <FlowShell
           context={`${context} · ${buyer?.name ?? "no potential buyer chosen"}`}
           facts={facts}
           lead={
-            approved
-              ? "This package is approved and frozen. The next step is the recipient link on the submission."
-              : "The final check before the package is approved and frozen. Nothing is sent by approving."
+            flowLink
+              ? "The tracked link is ready. It has not been shared."
+              : approved
+                ? "This package is approved and frozen. Creating the delivery makes the tracked recipient link."
+                : "The final check before Mastline creates the immutable package and the private recipient link."
           }
           packageId={pkg.id}
           shootId={shootId}
@@ -394,7 +459,7 @@ export default async function DispatchPage({
               workspaceSlug={workspaceSlug}
             />
 
-            <aside aria-label="Readiness and approval" className={styles.sidebar}>
+            <aside aria-label="Readiness and the delivery" className={styles.sidebar}>
               <div className={styles.decision}>
                 <div className={styles.readiness}>
                   <span
@@ -416,7 +481,12 @@ export default async function DispatchPage({
                 <dl className={styles.facts}>
                   <div className={styles.fact}>
                     <dt>Potential Buyer</dt>
-                    <dd>{buyer?.name ?? "Not chosen"}</dd>
+                    <dd>
+                      {buyer?.name ?? "Not chosen"}
+                      {railAccess.recipientLabel && (
+                        <span className={styles.factSub}>{railAccess.recipientLabel}</span>
+                      )}
+                    </dd>
                   </div>
                   <div className={styles.fact}>
                     <dt>Terms</dt>
@@ -427,25 +497,77 @@ export default async function DispatchPage({
                     <dd>{pkg.restrictions ?? "None recorded"}</dd>
                   </div>
                   <div className={styles.fact}>
-                    <dt>Photographs</dt>
+                    <dt>Link expires</dt>
                     <dd>
-                      {frameCount} {frameWord}
+                      {flowLink
+                        ? formatDateTime(flowLink.expiresAt)
+                        : `${railAccess.windowDays} days after it is created`}
                     </dd>
+                  </div>
+                  <div className={styles.fact}>
+                    <dt>Full-resolution</dt>
+                    <dd>
+                      {railAccess.allowFullResolution ? "Offered after acceptance" : "Not offered"}
+                    </dd>
+                  </div>
+                  <div className={styles.fact}>
+                    <dt>Viewing</dt>
+                    <dd>
+                      {railAccess.requireAcceptanceToView
+                        ? "Waits for acceptance"
+                        : "Open on arrival"}
+                    </dd>
+                  </div>
+                  <div className={styles.fact}>
+                    <dt>Recipient watermark</dt>
+                    <dd>On — previews carry the recipient&rsquo;s name</dd>
                   </div>
                 </dl>
 
-                {review.blocking.length > 0 && (
-                  <div className={styles.sideBlockers}>
-                    <h3>Before this can be approved</h3>
-                    <ul>
-                      {review.blocking.map((check) => (
-                        <li key={check.id}>
-                          <strong>{check.title}</strong>
-                          <span>{check.remedy ?? check.detail}</span>
-                        </li>
-                      ))}
-                    </ul>
+                {approved && (
+                  <p className={styles.note} data-lifecycle-detail>
+                    Approved{pkg.approvedAt ? ` on ${formatDateTime(pkg.approvedAt)}` : ""}.{" "}
+                    {facts.shared
+                      ? "The share and everything after it is recorded on the submission."
+                      : facts.linkCreated
+                        ? "A recipient link exists and has not been marked as shared. Nothing has left Mastline."
+                        : "Approved and frozen. No recipient link has been created yet."}
+                  </p>
+                )}
+
+                {maySend ? (
+                  <ReviewRail
+                    access={railAccess}
+                    approved={approved}
+                    blockingTitles={review.blocking.map((check) => check.title)}
+                    buyerName={buyer?.name ?? null}
+                    frameCount={frameCount}
+                    isApprovable={review.isApprovable}
+                    link={railLink}
+                    packageId={pkg.id}
+                    previewHref={submission ? routes.submissionPreview(submission.id) : undefined}
+                    restrictions={pkg.restrictions ?? null}
+                    shootId={shootId}
+                    submissionId={submission?.id}
+                    terms={pkg.proposedTerms ?? null}
+                    workspaceSlug={workspaceSlug}
+                  />
+                ) : (
+                  <div>
+                    <h3>Creating the delivery needs a dispatcher</h3>
+                    <p className={styles.note}>
+                      This role can prepare a package but not create the delivery. An owner or
+                      dispatcher performs the confirmed act; the link comes from that.
+                    </p>
                   </div>
+                )}
+
+                {submission && (
+                  <p className={styles.note}>
+                    <Link className="ml-text-link" href={routes.submission(submission.id)}>
+                      View submission record
+                    </Link>
+                  </p>
                 )}
 
                 <details className={styles.disclosure}>
@@ -487,56 +609,10 @@ export default async function DispatchPage({
                 </details>
 
                 <p className={styles.note}>
-                  Approval freezes the selected frames, versions, potential buyer, terms, and
-                  restrictions. <span className={styles.noteStrong}>Nothing is sent yet.</span>
+                  Creating the delivery freezes the frames, versions, potential buyer, terms, and
+                  restrictions, and makes one tracked link.{" "}
+                  <span className={styles.noteStrong}>Nothing is sent yet.</span>
                 </p>
-
-                {approved ? (
-                  <div>
-                    <h3>
-                      {pkg.status === "delivered"
-                        ? "A recipient has opened a link to this package"
-                        : pkg.status === "sending"
-                          ? "A recipient link for this package is marked shared"
-                          : "This package is approved and frozen"}
-                    </h3>
-                    <p className={styles.note} data-lifecycle-detail>
-                      Approved
-                      {pkg.approvedAt ? ` on ${formatDateTime(pkg.approvedAt)}` : ""}.{" "}
-                      {facts.shared
-                        ? "The share and everything after it is recorded on the submission."
-                        : facts.linkCreated
-                          ? "A recipient link exists and has not been marked as shared. Nothing has left Mastline."
-                          : "Approved and frozen. No recipient link has been created yet."}
-                    </p>
-                    <Link
-                      className="ml-button"
-                      href={submission ? routes.submission(submission.id) : routes.submissions()}
-                    >
-                      Open the submission
-                    </Link>
-                  </div>
-                ) : maySend ? (
-                  <ApprovePanel
-                    workspaceSlug={workspaceSlug}
-                    assetCount={frameCount}
-                    blockingTitles={review.blocking.map((check) => check.title)}
-                    buyerName={buyer?.name ?? null}
-                    defaultRecipient={buyer?.contactName ?? null}
-                    isApprovable={review.isApprovable}
-                    packageId={pkg.id}
-                    restrictions={pkg.restrictions ?? null}
-                    terms={pkg.proposedTerms ?? null}
-                  />
-                ) : (
-                  <div>
-                    <h3>Approval needs a dispatcher</h3>
-                    <p className={styles.note}>
-                      This role can prepare a package but not approve it. An owner or dispatcher
-                      approves the package; a recipient link comes after that.
-                    </p>
-                  </div>
-                )}
               </div>
             </aside>
           </div>
@@ -546,12 +622,72 @@ export default async function DispatchPage({
   }
 
   // ----------------------------------------------------------------- Shared --
+  /*
+   * The evidence timeline for the most recently shared link: shared, opened,
+   * terms accepted, downloaded — each row drawn only from a recorded fact,
+   * and a waiting row stays waiting until its evidence exists. "Share with
+   * another recipient" re-enters the recipient stage: the package is frozen,
+   * so the new delivery differs only in its link.
+   */
+  const sharedLink = links.find((link) => Boolean(link.sharedAt)) ?? null;
+  const [events, acceptances] = submission
+    ? await Promise.all([
+        listAccessEvents(
+          organizationId,
+          sharedLink ? [sharedLink.id] : links.map((link) => link.id),
+        ),
+        listAcceptances(organizationId, submission.id),
+      ])
+    : [[], []];
+  const chronological = [...events].reverse();
+  const openedAt =
+    chronological.find((event) => event.kind === "opened")?.occurredAt ?? submission?.deliveredAt;
+  const downloadedAt = chronological.find((event) => event.kind === "downloaded")?.occurredAt;
+  const acceptance = sharedLink
+    ? (acceptances.find((record) => record.deliveryId === sharedLink.id) ?? null)
+    : (acceptances[0] ?? null);
+  const sharedAt = sharedLink?.sharedAt ?? submission?.sentAt;
+
+  const timeline: readonly {
+    key: string;
+    label: string;
+    detail: string;
+    done: boolean;
+  }[] = [
+    {
+      key: "shared",
+      label: "Shared",
+      detail: sharedAt ? formatDateTime(sharedAt) : "Recorded as shared",
+      done: true,
+    },
+    {
+      key: "opened",
+      label: "Opened",
+      detail: openedAt ? formatDateTime(openedAt) : "Waiting",
+      done: Boolean(openedAt),
+    },
+    {
+      key: "accepted",
+      label: "Terms accepted",
+      detail: acceptance
+        ? `${acceptance.acceptedBy} · ${formatDateTime(acceptance.acceptedAt)}`
+        : "Waiting",
+      done: Boolean(acceptance),
+    },
+    {
+      key: "downloaded",
+      label: "Downloaded",
+      detail: downloadedAt ? formatDateTime(downloadedAt) : "Waiting",
+      done: Boolean(downloadedAt),
+    },
+  ];
+
   return (
     <AppShell active="Submissions" workspace={workspaceSlug}>
       <FlowShell
         context={context}
         facts={facts}
-        lead="A link for this delivery has been marked shared. The evidence of what the recipient does with it lives on the submission record."
+        lead="This page reflects the recorded evidence: each step below appears only once it actually happened."
         packageId={pkg.id}
         shootId={shootId}
         stage="shared"
@@ -559,25 +695,66 @@ export default async function DispatchPage({
         workspaceSlug={workspaceSlug}
       >
         <div className="ml-delivery-shared">
-          <h2 className="ml-section-title">
-            {pkg.status === "delivered"
-              ? "A recipient has opened a link to this package"
-              : "A recipient link is marked shared"}
-          </h2>
-          <p className="ml-body">
-            {submission?.sentAt
-              ? `Recorded as shared on ${formatDateTime(submission.sentAt)}.`
-              : "Recorded as shared."}
-            {submission?.deliveredAt
-              ? ` First opened on ${formatDateTime(submission.deliveredAt)}.`
-              : " Not opened yet."}
-          </p>
-          <Link
-            className="ml-button"
-            href={submission ? routes.submission(submission.id) : routes.submissions()}
-          >
-            View submission record
-          </Link>
+          <section aria-label="What has happened" className="ml-delivery-shared__summary">
+            <h2 className="ml-section-title">
+              {pkg.status === "delivered"
+                ? "A recipient has opened a link to this package"
+                : "A recipient link is marked shared"}
+            </h2>
+            <p className="ml-body">
+              {sharedLink?.recipientLabel ? `Shared with ${sharedLink.recipientLabel}. ` : ""}
+              {sharedAt ? `Recorded as shared on ${formatDateTime(sharedAt)}. ` : ""}
+              Mastline recorded the share; the link itself travelled outside Mastline.
+            </p>
+
+            <div className="ml-delivery-shared__actions">
+              <Link
+                className="ml-button"
+                href={submission ? routes.submission(submission.id) : routes.submissions()}
+              >
+                View submission record
+              </Link>
+              <Link className="ml-button ml-button--secondary" href={stageHref("recipient")}>
+                Share with another recipient
+              </Link>
+            </div>
+            <p className="ml-help">
+              Another recipient gets a separate tracked delivery to the same frozen package.
+            </p>
+
+            {submission && can(role, "submission.send") && (
+              <FollowUpForm
+                packageId={pkg.id}
+                shootId={shootId}
+                submissionId={submission.id}
+                followUpAt={submission.followUpAt}
+                workspaceSlug={workspaceSlug}
+              />
+            )}
+          </section>
+
+          <aside aria-label="Delivery activity" className="ml-delivery-shared__activity">
+            <h2 className="ml-section-title">Delivery activity</h2>
+            <p className="ml-help">
+              Evidence recorded as the recipient interacts with the delivery. Refresh to see the
+              latest.
+            </p>
+            <ol className="ml-delivery-timeline">
+              {timeline.map((row) => (
+                <li
+                  className="ml-delivery-timeline__row"
+                  data-state={row.done ? "done" : "waiting"}
+                  key={row.key}
+                >
+                  <span aria-hidden="true" className="ml-delivery-timeline__mark">
+                    {row.done ? "✓" : ""}
+                  </span>
+                  <span className="ml-delivery-timeline__label">{row.label}</span>
+                  <span className="ml-delivery-timeline__detail">{row.detail}</span>
+                </li>
+              ))}
+            </ol>
+          </aside>
         </div>
       </FlowShell>
     </AppShell>

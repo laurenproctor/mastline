@@ -45,15 +45,20 @@ test.describe("what was approved is what the recipient gets", () => {
       await signIn(page, SEEDED.owner);
 
       // ---------------------------------------------------------------
-      // 1–2. Open the prepared package and approve it
+      // 1–2. Open the prepared package and create the private delivery
       // ---------------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Every check passes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible();
       // Under review, and the strip says so from the record.
       await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
 
-      await page.getByRole("button", { name: "Approve package" }).click();
-      await page.getByRole("button", { name: "Yes, approve this package" }).click();
+      await page.getByRole("button", { name: "Create private delivery" }).click();
+      await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
+      // Created is not sent: the flow stays put and says exactly what exists.
+      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("It has not been shared.").first()).toBeVisible();
+
+      await page.getByRole("link", { name: "View submission record" }).click();
       await page.waitForURL(/\/submissions\//);
       const submissionId = page.url().split("/submissions/")[1].split(/[?#]/)[0];
 
@@ -82,12 +87,11 @@ test.describe("what was approved is what the recipient gets", () => {
       await expect(firstRow).toContainText("People: Avery Hart");
       await expect(page.locator("[data-unresolved-frame]")).toHaveCount(0);
 
-      // ...and the flow holds at Review & share: approved is not sent, and
-      // the screen says no link exists yet.
+      // ...and the flow holds at Review & share: a link exists, nothing left.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
       await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
       await expect(page.locator("[data-lifecycle-detail]")).toContainText(
-        "No recipient link has been created yet",
+        "A recipient link exists and has not been marked as shared. Nothing has left Mastline.",
       );
 
       // ---------------------------------------------------------------
@@ -112,14 +116,19 @@ test.describe("what was approved is what the recipient gets", () => {
       );
 
       // Neither the token nor a private object key appears on an authenticated
-      // overview page. The only place the token is rendered is the recipient
-      // URL on the submission itself, and the object key appears nowhere.
-      for (const overview of ["/submissions", "/work", `/dispatch/${fixture.shootId}`]) {
+      // overview page. The token is rendered in exactly two places -- the
+      // submission's own delivery panel, and the flow's created state, which
+      // is where the operator copies it -- and the object key appears nowhere.
+      for (const overview of ["/submissions", "/work"]) {
         await page.goto(at(overview));
         const html = await page.content();
         expect(html, `${overview} must not carry the delivery token`).not.toContain(token);
         expect(html, `${overview} must not carry an object key`).not.toContain(first.deliveryKey);
       }
+      await page.goto(at(`/dispatch/${fixture.shootId}`));
+      expect(await page.content(), "the flow must not carry an object key").not.toContain(
+        first.deliveryKey,
+      );
       await page.goto(at(`/submissions/${submissionId}`));
       expect(await page.content()).not.toContain(first.deliveryKey);
 

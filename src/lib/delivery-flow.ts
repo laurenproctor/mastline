@@ -67,13 +67,15 @@ export interface DeliveryFlowFacts {
  * Before approval the three working stages open in order: photos always,
  * details once there is a frame, recipient once the details are complete.
  * Review opens when the recipient facts are recorded. After approval the
- * working stages close — their content is frozen — and Shared opens only once
- * sharing has actually been recorded, because a confirmation screen for a
- * share nobody made would be the interface claiming a send.
+ * frames and the details close — their content is frozen — while Recipient
+ * stays open in a reduced form, because "Share with another recipient" is a
+ * new link on the same frozen package. Shared opens only once sharing has
+ * actually been recorded: a confirmation screen for a share nobody made
+ * would be the interface claiming a send.
  */
 export function stageReachable(stage: DeliveryFlowStage, facts: DeliveryFlowFacts): boolean {
   if (facts.approved) {
-    if (stage === "review") return true;
+    if (stage === "recipient" || stage === "review") return true;
     if (stage === "shared") return facts.shared;
     return false;
   }
