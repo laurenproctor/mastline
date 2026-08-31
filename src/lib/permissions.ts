@@ -13,6 +13,13 @@
 import type { AppRole } from "./domain";
 
 export const CAPABILITIES = [
+  // News Radar. Write covers entering and editing a story; review covers the
+  // lifecycle decisions on one -- watch, dismiss, act. Both map onto the same
+  // opportunities_write policy (owner and editor), and they are separate
+  // capabilities so the interface can say WHICH thing a role cannot do.
+  "opportunity.read",
+  "opportunity.write",
+  "opportunity.review",
   "shoot.read",
   "shoot.write",
   "shoot.status",
@@ -54,6 +61,7 @@ export const CAPABILITIES = [
 export type Capability = (typeof CAPABILITIES)[number];
 
 const READ_ONLY: readonly Capability[] = [
+  "opportunity.read",
   "shoot.read",
   "request.read",
   "asset.read",
@@ -68,6 +76,8 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
   owner: CAPABILITIES,
   editor: [
     ...READ_ONLY,
+    "opportunity.write",
+    "opportunity.review",
     "shoot.write",
     "shoot.status",
     "sensitive_note.read",

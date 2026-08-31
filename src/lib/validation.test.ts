@@ -113,7 +113,6 @@ describe("parseOnboarding: the workspace address", () => {
   });
 });
 
-
 /**
  * The photographs a Create shoot carries.
  *
@@ -324,9 +323,7 @@ describe("parseRequestIntake", () => {
   describe("the budget", () => {
     it("keeps silence and zero apart", () => {
       const silent = parseRequestIntake(form({ title: "x" }));
-      const zero = parseRequestIntake(
-        form({ title: "x", budgetDisclosed: "on", budgetMin: "0" }),
-      );
+      const zero = parseRequestIntake(form({ title: "x", budgetDisclosed: "on", budgetMin: "0" }));
 
       expect(silent.ok && silent.value.budgetMinMinor).toBeUndefined();
       // Zero is a figure a desk stated, not an absence, so it survives as 0.
@@ -396,7 +393,11 @@ describe("parseRequestIntake", () => {
 
   it("splits the comma-separated lists and drops the repeats", () => {
     const result = parseRequestIntake(
-      form({ title: "x", subjectNames: "Mara Vale, Julian Cross, Mara Vale", requestedFormats: "JPEG, RAW" }),
+      form({
+        title: "x",
+        subjectNames: "Mara Vale, Julian Cross, Mara Vale",
+        requestedFormats: "JPEG, RAW",
+      }),
     );
     expect(result.ok && result.value.subjectNames).toEqual(["Mara Vale", "Julian Cross"]);
     expect(result.ok && result.value.requestedFormats).toEqual(["JPEG", "RAW"]);

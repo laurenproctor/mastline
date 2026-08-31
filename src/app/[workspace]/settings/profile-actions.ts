@@ -42,10 +42,7 @@ export async function avatarUploadKeyAction(): Promise<{ key: string }> {
  * result is one orphaned object, which costs a few kilobytes; doing it the
  * other way round risks a profile pointing at something already deleted.
  */
-export async function setAvatarAction(
-  workspaceSlug: string,
-  key: string,
-): Promise<ProfileState> {
+export async function setAvatarAction(workspaceSlug: string, key: string): Promise<ProfileState> {
   const session = await requireSession();
 
   if (!key.startsWith(`${session.userId}/`)) {

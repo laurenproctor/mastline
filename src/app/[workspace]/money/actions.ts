@@ -46,7 +46,10 @@ export async function recordSaleAction(
     return { error: "Unknown licence origin." };
   }
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "license.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "license.write",
+  );
 
   let assetIds: string[] = [];
   let buyerId: string | undefined;
@@ -104,7 +107,10 @@ export async function recordPaymentAction(
     return { error: "Deductions, fees, and tax cannot exceed the gross amount." };
   }
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "payment.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "payment.write",
+  );
   const status = String(formData.get("status") ?? "received");
   const receivedAt = String(formData.get("receivedAt") ?? "");
 
@@ -146,7 +152,10 @@ export async function allocatePaymentAction(
     return { error: "Enter the amount to attribute." };
   }
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "payment.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "payment.write",
+  );
 
   try {
     await allocatePayment({

@@ -1,70 +1,217 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Asset, Id } from "../domain";
-import { type Money, money } from "../money";
+import type { Asset, DispatchPackage, Id, Shoot, ShootStatus, Submission } from "../domain";
+import { money } from "../money";
 import { getMoneySummary, listPayments } from "./money";
 import { listPackages } from "./packages";
 import { listRequests } from "./requests";
-import { listShoots } from "./shoots";
 import { createClient } from "../supabase/server";
 import { listSubmissions } from "./submissions";
+import { signedUrlsFor } from "./imports";
 import { reviewSelection } from "../metadata-rules";
-import { isPastDeadline, statusLabel } from "../requests";
 import type { WorkspaceRoutes } from "../workspace-routes";
+import {
+  type AccessEventRow,
+  type ActiveShootSummary,
+  type DeliveryRef,
+  OPEN_SHOOT_STATUSES,
+  type WorkPulse,
+  type WorkQueueDashboard,
+  type WorkQueueFacts,
+  type WorkQueueItem,
+  type WorkQueueShoot,
+  buildMoneySummary,
+  buildRecipientActivity,
+  buildWorkPulse,
+  buildWorkQueue,
+  medianDispatchMinutes,
+  workQueueCounts,
+} from "./work-queue-ranking";
 
 /**
- * The daily action queue.
- *
- * Priority combines workflow blockage, commercial impact, and age. The reason
- * travels with the item and is rendered, because a ranking nobody can question
- * is a ranking nobody can trust.
+ * The daily action queue and the dashboard built around it, read from the
+ * database in a fixed number of round trips. The ranking itself, the filter
+ * contract, and every other pure builder live in `work-queue-ranking.ts` and
+ * are re-exported here so callers keep one import.
  */
+export * from "./work-queue-ranking";
 
-export interface WorkQueueItem {
-  readonly id: string;
-  readonly kind: "Request" | "Shoot" | "Dispatch" | "Submission" | "Money";
-  readonly title: string;
-  readonly detail: string;
-  readonly occurredAt: string;
-  readonly urgent: boolean;
-  readonly actionLabel: string;
-  /**
-   * A complete, workspace-scoped destination.
-   *
-   * These used to be workspace-independent -- "/money", "/shoots/<id>" -- and
-   * were rendered straight into an href, which left the middleware to guess the
-   * workspace from the active-workspace cookie. The queue is the first screen
-   * of the day and every row on it is a link, so that is the widest surface the
-   * two-tab bug had.
-   *
-   * The alternative was to keep them relative and scope them where they are
-   * drawn. It was rejected: a relative value here is indistinguishable from a
-   * real path, so forgetting to scope one is silent, and a queue item is a
-   * record that may be read somewhere other than the page that built it. A
-   * destination that carries its own workspace cannot be rendered wrongly.
-   */
-  readonly href: string;
-  readonly rankingBasis: string;
+/** What the loader adds to the facts for the dashboard's other panels. */
+interface LoadedFacts extends WorkQueueFacts {
+  readonly deliveries: readonly DeliveryRef[];
+  /** Every non-tombstoned asset of an open shoot, counted, never listed. */
+  readonly assetTotalsByShoot: ReadonlyMap<string, { total: number; selected: number }>;
 }
 
-export interface WorkPulse {
-  readonly netReceived: Money;
-  readonly outstanding: Money;
-  readonly unmatched: Money;
-  readonly overdueCount: number;
-  readonly medianDispatchMinutes: number;
+/** Only the fields the completeness rules read; the rest are placeholders. */
+function toQueueAsset(row: Record<string, unknown>, organizationId: Id, shootId: string): Asset {
+  return {
+    id: row.id as string,
+    organizationId,
+    shootId,
+    status: row.status as Asset["status"],
+    canonicalFilename: "",
+    capturedAt: (row.captured_at as string | null) ?? undefined,
+    headline: (row.headline as string | null) ?? undefined,
+    caption: (row.caption as string | null) ?? undefined,
+    captionOrigin: row.caption_origin === "model" ? "model" : "human",
+    captionDraftedAt: (row.caption_drafted_at as string | null) ?? undefined,
+    captionReviewedAt: (row.caption_reviewed_at as string | null) ?? undefined,
+    captionAwaitsReview: (row.caption_awaits_review as boolean | null) ?? false,
+    subjects: Array.isArray(row.subjects) ? (row.subjects as string[]) : [],
+    locationName: (row.location_name as string | null) ?? undefined,
+    keywords: Array.isArray(row.keywords) ? (row.keywords as string[]) : [],
+    creditLine: (row.credit_line as string | null) ?? undefined,
+    copyrightNotice: (row.copyright_notice as string | null) ?? undefined,
+    usageRestrictions: (row.usage_restrictions as string | null) ?? undefined,
+    selected: Boolean(row.selected),
+    versions: [],
+    captionHistory: [],
+    lifetimeEarnings: money(0),
+  };
 }
 
 /**
- * Build the queue with a fixed number of queries.
+ * Everything the queue is built from, in a fixed number of round trips.
  *
- * This used to loop over every shoot asking for its assets and packages, which
- * meant roughly 3 + 4N round trips on the page an operator opens every morning.
- * Everything is now fetched once and grouped in memory: five queries, whatever
- * the size of the workspace.
+ * The page an operator opens every morning must not get slower as the
+ * workspace grows, so nothing here loops a query over records, and the count
+ * is the same however much work there is:
  *
- * The asset query is deliberately narrow. Completeness only needs the metadata
- * fields the rules read -- not versions, not earnings -- so it does not go
- * through listAssets.
+ * 1. shoots -- only the columns the ranking reads; the sensitive-note lookup
+ *    `listShoots` performs is not one of them
+ * 2. submissions
+ * 3. payments, with their allocations embedded
+ * 4-5. packages and their members
+ * 6. the assets of the OPEN shoots -- selected or not, so the active-shoot
+ *    totals come from the same rows and closed shoots, which the ranking
+ *    skips anyway, cost nothing however large the archive is. Skipped, never
+ *    added to, when no shoot is open.
+ * 7. delivery links, as id, submission, and recipient label -- never the
+ *    token: the queue needs to know a link exists and who it names, not the
+ *    credential itself
+ * 8. open buyer requests. Inbound demand joins the same queue rather than
+ *    getting one of its own: a picture desk waiting on an answer belongs
+ *    beside a package waiting on approval. Only the open statuses are
+ *    fetched -- a closed request is not work.
+ *
+ * The asset query waits for the shoot ids, so it is one round trip later
+ * rather than one round trip more.
+ */
+async function fetchWorkQueueFacts(
+  organizationId: Id,
+  supabase: SupabaseClient,
+): Promise<LoadedFacts> {
+  const shootQuery = supabase
+    .from("shoots")
+    .select("id, title, status, priority, starts_at, location_name, updated_at")
+    .eq("organization_id", organizationId)
+    .order("updated_at", { ascending: false });
+
+  const [shootRows, submissions, payments, packages, deliveryRows, requests] = await Promise.all([
+    shootQuery,
+    listSubmissions(organizationId, supabase),
+    listPayments(organizationId, supabase),
+    listPackages(organizationId, {}, supabase),
+    supabase
+      .from("submission_deliveries")
+      .select("id, submission_id, recipient_label")
+      .eq("organization_id", organizationId),
+    listRequests(
+      organizationId,
+      {
+        status: [
+          "new",
+          "needs_clarification",
+          "qualified",
+          "matching",
+          "coverage_planned",
+          "preparing_response",
+          "negotiating",
+        ],
+      },
+      supabase,
+    ),
+  ]);
+  if (shootRows.error) throw new Error(`Could not load shoots: ${shootRows.error.message}`);
+  if (deliveryRows.error)
+    throw new Error(`Could not load delivery links: ${deliveryRows.error.message}`);
+
+  const shoots: WorkQueueShoot[] = (shootRows.data ?? []).map((row) => ({
+    id: row.id as string,
+    title: row.title as string,
+    status: row.status as ShootStatus,
+    priority: row.priority as Shoot["priority"],
+    startsAt: (row.starts_at as string | null) ?? undefined,
+    locationName: (row.location_name as string | null) ?? undefined,
+    updatedAt: row.updated_at as string,
+  }));
+
+  const openShootIds = shoots
+    .filter((shoot) => OPEN_SHOOT_STATUSES.includes(shoot.status))
+    .map((shoot) => shoot.id);
+
+  const assetRows =
+    openShootIds.length > 0
+      ? await supabase
+          .from("assets")
+          .select(
+            "id, shoot_id, selected, status, caption, caption_awaits_review, caption_reviewed_at, caption_origin, caption_drafted_at, headline, credit_line, copyright_notice, captured_at, location_name, subjects, usage_restrictions, keywords",
+          )
+          .eq("organization_id", organizationId)
+          .in("shoot_id", openShootIds)
+          .neq("status", "tombstoned")
+      : { data: [] as Record<string, unknown>[], error: null };
+  if (assetRows.error) throw new Error(`Could not load assets: ${assetRows.error.message}`);
+
+  const selectedByShoot = new Map<string, Asset[]>();
+  const assetTotalsByShoot = new Map<string, { total: number; selected: number }>();
+  for (const row of assetRows.data ?? []) {
+    const shootId = row.shoot_id as string | null;
+    if (!shootId) continue;
+    const totals = assetTotalsByShoot.get(shootId) ?? { total: 0, selected: 0 };
+    totals.total += 1;
+    if (row.selected) {
+      totals.selected += 1;
+      selectedByShoot.set(shootId, [
+        ...(selectedByShoot.get(shootId) ?? []),
+        toQueueAsset(row, organizationId, shootId),
+      ]);
+    }
+    assetTotalsByShoot.set(shootId, totals);
+  }
+
+  const deliveries: DeliveryRef[] = (deliveryRows.data ?? []).map((row) => ({
+    id: row.id as string,
+    submissionId: row.submission_id as string,
+    recipientLabel: (row.recipient_label as string | null) ?? undefined,
+  }));
+
+  const deliveryCountBySubmission = new Map<string, number>();
+  for (const delivery of deliveries) {
+    deliveryCountBySubmission.set(
+      delivery.submissionId,
+      (deliveryCountBySubmission.get(delivery.submissionId) ?? 0) + 1,
+    );
+  }
+
+  return {
+    shoots,
+    selectedAssetsByShoot: selectedByShoot,
+    packages,
+    submissions,
+    deliveryCountBySubmission,
+    payments,
+    requests,
+    deliveries,
+    assetTotalsByShoot,
+    now: new Date(),
+  };
+}
+
+/**
+ * The ranked queue on its own: the shape the current page reads. It shares
+ * the fetch and the ranking with `getWorkQueueDashboard`, so the two can never
+ * disagree about what comes first.
  */
 export async function getWorkQueue(
   organizationId: Id,
@@ -77,226 +224,222 @@ export async function getWorkQueue(
   client?: SupabaseClient,
 ): Promise<readonly WorkQueueItem[]> {
   const supabase = client ?? (await createClient());
+  const facts = await fetchWorkQueueFacts(organizationId, supabase);
+  return buildWorkQueue(facts, routes);
+}
 
-  const [shoots, submissions, payments, packages, requests, assetRows] = await Promise.all([
-    listShoots(organizationId, supabase),
-    listSubmissions(organizationId, supabase),
-    listPayments(organizationId, supabase),
-    listPackages(organizationId, {}, supabase),
-    /*
-     * Inbound demand joins the same queue rather than getting one of its own.
-     * A photographer has one list of what to do next, and a picture desk
-     * waiting on an answer belongs on it beside a package waiting on approval.
-     * Only the open statuses are fetched: a closed request is not work.
-     */
-    listRequests(
-      organizationId,
-      { status: ["new", "needs_clarification", "qualified", "matching", "coverage_planned", "preparing_response", "negotiating"] },
-      supabase,
-    ),
+/** How many recorded access events to read for the activity panel. */
+const ACTIVITY_EVENT_WINDOW = 40;
+
+/** How many preview derivatives to consider across the active-shoot cards. */
+const PREVIEW_CANDIDATES = 48;
+
+/** How many active shoots the dashboard summarizes. */
+const ACTIVE_SHOOT_LIMIT = 2;
+
+export interface WorkQueueDashboardOptions {
+  /**
+   * Signed preview URLs per active shoot. Off by default: previews cost one
+   * more collection query and one storage signing call, and the screen that
+   * shows them has not been built yet. Whoever turns this on takes the ninth
+   * round trip knowingly.
+   */
+  readonly previewsPerShoot?: number;
+}
+
+/**
+ * Everything the Work Queue screen renders, in one fixed-cost load: nine
+ * round trips -- the eight queue facts plus the recorded access events --
+ * whatever the workspace holds. The header figures, the money strip, the
+ * active-shoot summaries, and the recipient rows are all computed from those
+ * same records; nothing is fetched twice. No original is ever read for this
+ * screen, and no delivery token leaves the data layer.
+ */
+export async function getWorkQueueDashboard(
+  organizationId: Id,
+  routes: WorkspaceRoutes,
+  client?: SupabaseClient,
+  options: WorkQueueDashboardOptions = {},
+): Promise<WorkQueueDashboard> {
+  const supabase = client ?? (await createClient());
+  const previewsPerShoot = Math.max(0, Math.floor(options.previewsPerShoot ?? 0));
+
+  const [facts, eventRows] = await Promise.all([
+    fetchWorkQueueFacts(organizationId, supabase),
     supabase
-      .from("assets")
-      .select(
-        "id, shoot_id, selected, caption, headline, credit_line, copyright_notice, captured_at, location_name, subjects, usage_restrictions, keywords, status",
-      )
+      .from("delivery_access_events")
+      .select("id, delivery_id, kind, occurred_at")
       .eq("organization_id", organizationId)
-      .eq("selected", true)
-      .neq("status", "tombstoned"),
+      .order("occurred_at", { ascending: false })
+      .limit(ACTIVITY_EVENT_WINDOW),
   ]);
+  if (eventRows.error)
+    throw new Error(`Could not load recipient activity: ${eventRows.error.message}`);
 
-  const selectedByShoot = new Map<string, Asset[]>();
-  for (const row of assetRows.data ?? []) {
-    const shootId = row.shoot_id as string | null;
-    if (!shootId) continue;
-    // Only the fields the completeness rules read; the rest are placeholders.
-    const asset: Asset = {
-      id: row.id as string,
-      organizationId,
-      shootId,
-      status: row.status as Asset["status"],
-      canonicalFilename: "",
-      capturedAt: (row.captured_at as string | null) ?? undefined,
-      headline: (row.headline as string | null) ?? undefined,
-      caption: (row.caption as string | null) ?? undefined,
-      subjects: Array.isArray(row.subjects) ? (row.subjects as string[]) : [],
-      locationName: (row.location_name as string | null) ?? undefined,
-      keywords: Array.isArray(row.keywords) ? (row.keywords as string[]) : [],
-      creditLine: (row.credit_line as string | null) ?? undefined,
-      copyrightNotice: (row.copyright_notice as string | null) ?? undefined,
-      usageRestrictions: (row.usage_restrictions as string | null) ?? undefined,
-      selected: Boolean(row.selected),
-      versions: [],
-      captionHistory: [],
-      lifetimeEarnings: money(0),
-    };
-    selectedByShoot.set(shootId, [...(selectedByShoot.get(shootId) ?? []), asset]);
+  const queue = buildWorkQueue(facts, routes);
+
+  // Shoots arrive most recently updated first, so these are the two with the
+  // latest activity.
+  const activeShootRecords = facts.shoots
+    .filter((shoot) => OPEN_SHOOT_STATUSES.includes(shoot.status))
+    .slice(0, ACTIVE_SHOOT_LIMIT);
+  const activeShootIds = activeShootRecords.map((shoot) => shoot.id);
+
+  const previewsByShoot =
+    previewsPerShoot > 0 && activeShootIds.length > 0
+      ? await loadPreviews(supabase, organizationId, activeShootIds, previewsPerShoot)
+      : new Map<string, string[]>();
+
+  const events: AccessEventRow[] = (eventRows.data ?? []).map((row) => ({
+    id: row.id as string,
+    deliveryId: row.delivery_id as string,
+    kind: row.kind as AccessEventRow["kind"],
+    occurredAt: row.occurred_at as string,
+  }));
+
+  const recipientActivity = buildRecipientActivity(
+    events,
+    facts.deliveries,
+    facts.submissions,
+    facts.packages,
+    routes,
+  );
+
+  const submissionsByPackage = new Map<string, Submission[]>();
+  for (const submission of facts.submissions) {
+    submissionsByPackage.set(submission.packageId, [
+      ...(submissionsByPackage.get(submission.packageId) ?? []),
+      submission,
+    ]);
   }
-
-  const packagesByShoot = new Map<string, typeof packages>();
-  for (const pkg of packages) {
+  const packagesByShoot = new Map<string, DispatchPackage[]>();
+  for (const pkg of facts.packages) {
     packagesByShoot.set(pkg.shootId, [...(packagesByShoot.get(pkg.shootId) ?? []), pkg]);
   }
 
-  const items: WorkQueueItem[] = [];
-  const now = new Date();
+  const activeShoots: ActiveShootSummary[] = activeShootRecords.map((shoot) => {
+    const totals = facts.assetTotalsByShoot.get(shoot.id) ?? { total: 0, selected: 0 };
+    const selection = reviewSelection(facts.selectedAssetsByShoot.get(shoot.id) ?? []);
+    const shootPackages = packagesByShoot.get(shoot.id) ?? [];
+    // listPackages orders newest first, so the first is the latest.
+    const latestPackage = shootPackages[0];
+    const shootSubmissions = shootPackages.flatMap((pkg) => submissionsByPackage.get(pkg.id) ?? []);
+    const unlinkedSubmission = shootSubmissions.find(
+      (submission) =>
+        submission.status === "queued" &&
+        (facts.deliveryCountBySubmission.get(submission.id) ?? 0) === 0,
+    );
+    const linkedCount = shootSubmissions.reduce(
+      (count, submission) => count + (facts.deliveryCountBySubmission.get(submission.id) ?? 0),
+      0,
+    );
 
-  /*
-   * Four things about a request put it on this list, and the reason travels
-   * with the item so the ranking can be argued with:
-   *
-   *   - the buyer's deadline has gone by
-   *   - it is due within a day
-   *   - nobody has looked at it yet
-   *   - it is waiting on an answer from the desk
-   *
-   * A request that is none of those is being worked and does not need chasing.
-   * "Past deadline" is derived here, at read time, and never written back as a
-   * status -- there is no scheduler, and a status that changes while nobody is
-   * watching is one nobody can trust.
-   */
-  for (const request of requests) {
-    const pastDeadline = isPastDeadline(request, now);
-    const dueSoon =
-      !pastDeadline &&
-      request.responseDeadline !== undefined &&
-      new Date(request.responseDeadline).getTime() - now.getTime() < 24 * 3_600_000;
+    const action = unlinkedSubmission
+      ? { label: "Create recipient link", href: routes.submission(unlinkedSubmission.id) }
+      : selection.total > 0 && selection.blocked > 0
+        ? { label: "Complete metadata", href: routes.shoot(shoot.id) }
+        : latestPackage && ["needs_review", "ready"].includes(latestPackage.status)
+          ? {
+              label: "Review package",
+              href: routes.dispatch({ shootId: shoot.id, packageId: latestPackage.id }),
+            }
+          : { label: "Open shoot", href: routes.shoot(shoot.id) };
 
-    let rankingBasis: string | null = null;
-    if (pastDeadline) rankingBasis = "The buyer's deadline has passed and nothing has been recorded";
-    else if (dueSoon) rankingBasis = "The buyer needs an answer within a day";
-    else if (request.status === "new") rankingBasis = "Nobody has qualified this request yet";
-    else if (request.status === "needs_clarification") {
-      rankingBasis = "Waiting on an answer from the buyer";
-    }
-    if (!rankingBasis) continue;
-
-    items.push({
-      id: `wq_request_${request.id}`,
-      kind: "Request",
-      title: `${request.reference}: ${request.title}`,
-      detail: [
-        request.buyerName ?? "Buyer not identified",
-        statusLabel(request.status),
-        pastDeadline ? "Past deadline" : null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      // The queue sorts urgent first, then newest first, so this is when the
-      // item became work -- not the deadline, which would order a week-old
-      // overdue request behind one that lapsed this morning.
-      occurredAt: request.createdAt,
-      urgent: pastDeadline || dueSoon,
-      actionLabel: pastDeadline ? "Answer" : "Open",
-      href: routes.request(request.id),
-      rankingBasis,
-    });
-  }
-
-  for (const shoot of shoots) {
-    if (["completed", "archived", "cancelled"].includes(shoot.status)) continue;
-
-    const selected = selectedByShoot.get(shoot.id) ?? [];
-    if (selected.length > 0) {
-      const report = reviewSelection(selected);
-      if (report.blocked > 0) {
-        items.push({
-          id: `wq_captions_${shoot.id}`,
-          kind: "Shoot",
-          title: `Finish metadata on ${shoot.title}`,
-          detail: `${report.ready} of ${report.total} frames ready`,
-          occurredAt: shoot.updatedAt,
-          urgent: shoot.priority === "urgent",
-          actionLabel: "Continue",
-          href: routes.shoot(shoot.id),
-          rankingBasis: "Blocks dispatch on a shoot that already has selects",
-        });
-      }
-    }
-
-    for (const pkg of packagesByShoot.get(shoot.id) ?? []) {
-      if (!["needs_review", "ready", "draft"].includes(pkg.status)) continue;
-      items.push({
-        id: `wq_dispatch_${pkg.id}`,
-        kind: "Dispatch",
-        title: `Review ${pkg.name}`,
-        detail: `${pkg.assets.length} assets awaiting approval`,
-        occurredAt: shoot.updatedAt,
-        urgent: false,
-        actionLabel: "Review",
-        href: routes.dispatch({ shootId: shoot.id, packageId: pkg.id }),
-        rankingBasis: "A prepared package earns nothing until it is sent",
-      });
-    }
-  }
-
-  // A failed delivery is the most urgent thing on the board, and produces
-  // exactly one item however many attempts have been made.
-  for (const submission of submissions) {
-    if (submission.status !== "failed") continue;
-    items.push({
-      id: `wq_failed_${submission.id}`,
-      kind: "Submission",
-      title: `Delivery failed: ${submission.reference}`,
-      detail: "The buyer's system rejected or never received this package",
-      occurredAt: submission.sentAt ?? "",
-      urgent: true,
-      actionLabel: "Retry",
-      href: routes.submission(submission.id),
-      rankingBasis: "An approved package has not reached the buyer",
-    });
-  }
-
-  for (const submission of submissions) {
-    if (!["sent", "delivered", "acknowledged"].includes(submission.status)) continue;
-    const overdue =
-      submission.followUpAt !== undefined && new Date(submission.followUpAt) < new Date();
-    items.push({
-      id: `wq_followup_${submission.id}`,
-      kind: "Submission",
-      title: `No outcome recorded for ${submission.reference}`,
-      detail: overdue ? "Follow-up date has passed" : "Awaiting a sale or no-sale",
-      occurredAt: submission.sentAt ?? "",
-      urgent: overdue,
-      actionLabel: "Record",
-      href: routes.submission(submission.id),
-      rankingBasis: overdue
-        ? "The agreed follow-up date has passed"
-        : "An unresolved submission is invisible revenue",
-    });
-  }
-
-  for (const payment of payments) {
-    if (payment.status === "overdue") {
-      items.push({
-        id: `wq_overdue_${payment.id}`,
-        kind: "Money",
-        title: `Overdue: ${payment.reference ?? payment.source}`,
-        detail: `${payment.net.minor / 100} outstanding`,
-        occurredAt: payment.dueAt ?? "",
-        urgent: true,
-        actionLabel: "Chase",
-        href: routes.money(),
-        rankingBasis: "Payment is past its due date",
-      });
-    } else if (payment.unallocated.minor > 0 && payment.source === "statement") {
-      items.push({
-        id: `wq_unmatched_${payment.id}`,
-        kind: "Money",
-        title: `Attribute ${payment.reference ?? "a statement line"}`,
-        detail: `${payment.unallocated.minor / 100} not yet matched to work`,
-        occurredAt: payment.receivedAt ?? "",
-        urgent: false,
-        actionLabel: "Match",
-        href: routes.money(),
-        rankingBasis: "Unattributed revenue cannot be traced to an asset or shoot",
-      });
-    }
-  }
-
-  return items.sort((a, b) => {
-    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-    return (b.occurredAt ?? "").localeCompare(a.occurredAt ?? "");
+    return {
+      id: shoot.id,
+      title: shoot.title,
+      status: shoot.status,
+      locationName: shoot.locationName,
+      totalAssets: totals.total,
+      selectedCount: totals.selected,
+      metadataPercent: selection.completionPercent,
+      blockedCount: selection.blocked,
+      packageLabel: latestPackage
+        ? latestPackage.status === "needs_review"
+          ? "Needs review"
+          : latestPackage.status.charAt(0).toUpperCase() + latestPackage.status.slice(1)
+        : null,
+      linkLabel:
+        shootSubmissions.length === 0
+          ? null
+          : unlinkedSubmission
+            ? "No recipient link"
+            : linkedCount > 0
+              ? "Recipient link created"
+              : null,
+      lastActivityAt: shoot.updatedAt,
+      actionLabel: action.label,
+      actionHref: action.href,
+      previewUrls: previewsByShoot.get(shoot.id) ?? [],
+    };
   });
+
+  return {
+    nextUp: queue[0] ?? null,
+    queue,
+    counts: workQueueCounts(queue),
+    activeShoots,
+    recipientActivity,
+    money: buildMoneySummary(facts.payments, facts.submissions),
+    pulse: buildWorkPulse(facts),
+  };
+}
+
+/**
+ * Up to `perShoot` signed preview URLs for each active shoot, selected frames
+ * first. One collection query over derivative versions and one storage
+ * signing call; never an original.
+ */
+async function loadPreviews(
+  supabase: SupabaseClient,
+  organizationId: Id,
+  shootIds: readonly string[],
+  perShoot: number,
+): Promise<Map<string, string[]>> {
+  const { data } = await supabase
+    .from("asset_versions")
+    .select("asset_id, version_kind, object_key, storage_bucket, assets!inner(shoot_id, selected)")
+    .eq("organization_id", organizationId)
+    .in("version_kind", ["preview", "thumbnail"])
+    .eq("storage_bucket", "derivatives")
+    .in("assets.shoot_id", [...shootIds])
+    .order("created_at", { ascending: true })
+    .limit(PREVIEW_CANDIDATES);
+
+  const records = (data ?? []).map((row) => {
+    const rel = row.assets as unknown as { shoot_id: string; selected: boolean } | null;
+    return {
+      objectKey: row.object_key as string,
+      shootId: rel?.shoot_id ?? "",
+      selected: Boolean(rel?.selected),
+    };
+  });
+
+  const keysByShoot = new Map<string, string[]>();
+  for (const pass of [true, false]) {
+    for (const version of records) {
+      if (version.selected !== pass || !version.shootId) continue;
+      const bucket = keysByShoot.get(version.shootId) ?? [];
+      if (bucket.length >= perShoot || bucket.includes(version.objectKey)) continue;
+      bucket.push(version.objectKey);
+      keysByShoot.set(version.shootId, bucket);
+    }
+  }
+
+  const signed = await signedUrlsFor(
+    supabase,
+    "derivatives",
+    [...keysByShoot.values()].flat(),
+    600,
+  );
+  const urlsByShoot = new Map<string, string[]>();
+  for (const [shootId, keys] of keysByShoot) {
+    urlsByShoot.set(
+      shootId,
+      keys.map((key) => signed.get(key)).filter((url): url is string => Boolean(url)),
+    );
+  }
+  return urlsByShoot;
 }
 
 /** Median minutes from the start of a shoot to its first dispatch. */
@@ -305,33 +448,16 @@ export async function getMedianDispatchMinutes(
   client?: SupabaseClient,
 ): Promise<number> {
   const supabase = client ?? (await createClient());
-  const [submissions, shoots, packages] = await Promise.all([
+  const [submissions, shootRows, packages] = await Promise.all([
     listSubmissions(organizationId, supabase),
-    listShoots(organizationId, supabase),
+    supabase.from("shoots").select("id, starts_at").eq("organization_id", organizationId),
     listPackages(organizationId, {}, supabase),
   ]);
-  const shootById = new Map(shoots.map((shoot) => [shoot.id, shoot]));
-  const packageById = new Map(packages.map((pkg) => [pkg.id, pkg]));
-
-  const durations: number[] = [];
-  for (const submission of submissions) {
-    if (!submission.sentAt) continue;
-    const pkg = packageById.get(submission.packageId);
-    const shoot = pkg ? shootById.get(pkg.shootId) : undefined;
-    if (!shoot?.startsAt) continue;
-    const minutes =
-      (new Date(submission.sentAt).getTime() - new Date(shoot.startsAt).getTime()) / 60_000;
-    if (minutes > 0) durations.push(minutes);
-  }
-
-  if (durations.length === 0) return 0;
-  durations.sort((a, b) => a - b);
-  const middle = Math.floor(durations.length / 2);
-  return Math.round(
-    durations.length % 2 === 0
-      ? (durations[middle - 1] + durations[middle]) / 2
-      : durations[middle],
-  );
+  const shoots = (shootRows.data ?? []).map((row) => ({
+    id: row.id as string,
+    startsAt: (row.starts_at as string | null) ?? undefined,
+  }));
+  return medianDispatchMinutes(submissions, shoots, packages);
 }
 
 export async function getWorkPulse(
@@ -339,7 +465,7 @@ export async function getWorkPulse(
   client?: SupabaseClient,
 ): Promise<WorkPulse> {
   const supabase = client ?? (await createClient());
-  const [summary, medianDispatchMinutes] = await Promise.all([
+  const [summary, dispatchMinutes] = await Promise.all([
     getMoneySummary(organizationId, supabase),
     getMedianDispatchMinutes(organizationId, supabase),
   ]);
@@ -349,6 +475,6 @@ export async function getWorkPulse(
     outstanding: summary.outstanding,
     unmatched: summary.unallocatedStatementTotal,
     overdueCount: summary.overdueCount,
-    medianDispatchMinutes,
+    medianDispatchMinutes: dispatchMinutes,
   };
 }

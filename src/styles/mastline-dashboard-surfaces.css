@@ -1,0 +1,511 @@
+/*
+ * MASTLINE DASHBOARD SURFACES
+ * Stage 4A -- the parts of panels, cards, figures, lists, tables, and empty
+ * states that the canonical sheet (mastline-dashboard-design-system.css)
+ * does not draw. That sheet owns .ml-panel, .ml-card, .ml-priority-card,
+ * .ml-stat-card, .ml-section-header, .ml-list-row, .ml-table, .ml-progress,
+ * and .ml-empty-state; this one adds their named parts and densities.
+ *
+ * Rules: every selector is a class in the ml- namespace, nothing here styles
+ * a bare element, every value is a token, and wherever a rule has to win over
+ * one in the canonical sheet it does so by specificity you can read, never by
+ * which file the bundler emitted first.
+ */
+
+/* --- Utilities -------------------------------------------------------------- */
+
+/* Out of sight, in the accessibility tree: "Urgent:" before a red-ruled row. */
+.ml-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
+/* --- Section and panel headers --------------------------------------------- */
+
+/* .ml-surface-header is the surfaces' own hook on .ml-section-header, so the
+   two-class selector outweighs the canonical single-class rule explicitly. */
+.ml-section-header.ml-surface-header {
+  align-items: flex-start;
+  padding-block: var(--ml-space-3);
+}
+
+/* Above a table or a grid, not inside a panel: no side padding to match. */
+.ml-section-header.ml-surface-header:not(.ml-panel__header) {
+  padding-inline: 0;
+}
+
+.ml-section-header__copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--ml-space-1);
+}
+
+.ml-section-header__title-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ml-space-3);
+}
+
+.ml-section-header__meta {
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.ml-section-header__description {
+  max-width: 62ch;
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-sm);
+  line-height: 1.45;
+}
+
+.ml-section-header__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ml-space-2);
+}
+
+/* --- Panels ----------------------------------------------------------------- */
+
+.ml-panel__body {
+  padding: var(--ml-space-5);
+}
+
+.ml-panel__body--flush {
+  padding: 0;
+}
+
+.ml-panel--compact .ml-section-header.ml-panel__header {
+  min-height: var(--ml-control-lg);
+  padding-inline: var(--ml-space-4);
+  padding-block: var(--ml-space-2);
+}
+
+.ml-panel--compact .ml-panel__body {
+  padding: var(--ml-space-4);
+}
+
+.ml-panel--compact .ml-panel__body--flush {
+  padding: 0;
+}
+
+/* --- Cards ------------------------------------------------------------------ */
+
+.ml-card--compact {
+  padding: var(--ml-space-4);
+}
+
+.ml-card-link {
+  display: block;
+  min-width: 0;
+  color: var(--ml-ink);
+  overflow-wrap: anywhere;
+}
+
+.ml-priority-card__leading {
+  display: grid;
+  place-items: center;
+}
+
+.ml-priority-card__leading--empty {
+  width: 0;
+}
+
+.ml-priority-card__copy {
+  display: grid;
+  min-width: 0;
+  gap: var(--ml-space-1);
+}
+
+.ml-priority-card__title {
+  color: var(--ml-ink);
+  font-family: var(--ml-font-display);
+  font-size: var(--ml-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ml-priority-card__description {
+  color: var(--ml-ink-soft);
+  font-size: var(--ml-text-md);
+  line-height: 1.5;
+}
+
+.ml-priority-card__meta {
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-xs);
+  line-height: 1.4;
+}
+
+.ml-priority-card__action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ml-space-2);
+}
+
+.ml-stat-card__label {
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A card is a grid item whose minimum width would otherwise be its longest
+   word; a long translated label or a nine-figure sum must wrap, not widen. */
+.ml-stat-card.ml-stat-card {
+  min-width: 0;
+}
+
+.ml-stat-card .ml-stat-card__label,
+.ml-stat-card .ml-stat-card__value,
+.ml-stat-card .ml-stat-card__foot {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ml-stat-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ml-space-3);
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-sm);
+  line-height: 1.4;
+}
+
+.ml-stat-card__delta {
+  font-weight: 700;
+}
+
+/* The arrows repeat what the words say; small, so they read as marks. */
+.ml-stat-card__delta-mark,
+.ml-metric__trend-mark {
+  font-size: 0.8em;
+}
+
+.ml-stat-card__delta[data-direction="flat"] {
+  color: var(--ml-text-muted);
+}
+
+.ml-stat-card__detail[data-tone="danger"] {
+  color: var(--ml-danger);
+}
+.ml-stat-card__detail[data-tone="warning"] {
+  color: var(--ml-warning);
+}
+.ml-stat-card__detail[data-tone="success"] {
+  color: var(--ml-success);
+}
+.ml-stat-card__detail[data-tone="info"] {
+  color: var(--ml-info);
+}
+
+/* --- Metrics ---------------------------------------------------------------- */
+
+/* Hairlines between figures however they wrap: the group's background shows
+   through a one-pixel gap, so there is no last-column special case. */
+.ml-metric-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--ml-border);
+  border-radius: var(--ml-radius-sm);
+  background: var(--ml-border);
+}
+
+.ml-metric {
+  display: grid;
+  min-width: 0;
+  gap: var(--ml-space-2);
+  margin: 0;
+  padding: var(--ml-space-4) var(--ml-space-5);
+  background: var(--ml-surface);
+}
+
+.ml-metric__label {
+  min-width: 0;
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-xs);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.ml-metric__body {
+  display: grid;
+  margin: 0;
+  gap: var(--ml-space-1);
+}
+
+.ml-metric__value {
+  min-width: 0;
+  color: var(--ml-ink);
+  font-family: var(--ml-font-display);
+  font-size: var(--ml-text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.ml-metric__detail,
+.ml-metric__trend {
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-sm);
+  line-height: 1.4;
+}
+
+.ml-metric__trend {
+  font-weight: 700;
+}
+
+.ml-metric__trend[data-direction="up"] {
+  color: var(--ml-success);
+}
+.ml-metric__trend[data-direction="down"] {
+  color: var(--ml-danger);
+}
+
+.ml-metric__detail[data-tone="danger"] {
+  color: var(--ml-danger);
+}
+.ml-metric__detail[data-tone="warning"] {
+  color: var(--ml-warning);
+}
+.ml-metric__detail[data-tone="success"] {
+  color: var(--ml-success);
+}
+.ml-metric__detail[data-tone="info"] {
+  color: var(--ml-info);
+}
+
+/* --- Progress --------------------------------------------------------------- */
+
+.ml-progress-block {
+  display: grid;
+  gap: var(--ml-space-2);
+}
+
+.ml-progress-block__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ml-space-3);
+  font-size: var(--ml-text-sm);
+  line-height: 1.3;
+}
+
+.ml-progress-block__label {
+  min-width: 0;
+  color: var(--ml-text-muted);
+  font-weight: 700;
+}
+
+.ml-progress-block__value {
+  flex: 0 0 auto;
+  color: var(--ml-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ml-progress-block[data-tone="danger"] .ml-progress__bar {
+  background: var(--ml-danger);
+}
+.ml-progress-block[data-tone="warning"] .ml-progress__bar {
+  background: var(--ml-warning);
+}
+.ml-progress-block[data-tone="success"] .ml-progress__bar {
+  background: var(--ml-success);
+}
+.ml-progress-block[data-tone="info"] .ml-progress__bar {
+  background: var(--ml-info);
+}
+
+/* --- Operational lists ------------------------------------------------------ */
+
+/* The list owns its rows' rules; it is a plain list whatever it is nested in. */
+.ml-operational-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The canonical row is a two-column grid; a row with named regions wraps in
+   reading order instead. Two classes, so this wins by specificity. */
+.ml-list-row.ml-operational-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ml-space-2) var(--ml-space-4);
+}
+
+.ml-operational-row__status {
+  flex: 0 0 auto;
+}
+
+.ml-operational-row__body {
+  min-width: 0;
+  flex: 1 1 15rem;
+}
+
+.ml-operational-row__title {
+  overflow-wrap: anywhere;
+}
+
+.ml-operational-row__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ml-operational-row__title-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ml-operational-row__meta {
+  overflow-wrap: anywhere;
+}
+
+.ml-operational-row__date {
+  flex: 0 0 auto;
+  color: var(--ml-text-muted);
+  font-size: var(--ml-text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ml-operational-row__action {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ml-space-2);
+  margin-left: auto;
+}
+
+.ml-operational-list--compact .ml-list-row.ml-operational-row {
+  min-height: var(--ml-control-lg);
+  padding: var(--ml-space-2) var(--ml-space-4);
+}
+
+.ml-operational-list--compact .ml-operational-row__title {
+  font-size: var(--ml-text-md);
+}
+
+/* --- Data tables ------------------------------------------------------------ */
+
+/* The region is the containing block for anything positioned inside the
+   table -- a visually hidden header cell, say -- so a wide table's hidden
+   parts scroll with it instead of widening the page. */
+.ml-data-table.ml-table-wrap {
+  position: relative;
+}
+
+.ml-data-table:focus-visible {
+  outline: 2px solid var(--ml-focus);
+  outline-offset: 2px;
+}
+
+.ml-data-table__caption {
+  padding: var(--ml-space-3) var(--ml-space-4);
+  color: var(--ml-ink);
+  font-size: var(--ml-text-sm);
+  font-weight: 750;
+  text-align: left;
+  caption-side: top;
+}
+
+/* Figures line up whether or not the canonical is-numeric hook is present. */
+.ml-data-table__cell--numeric {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ml-data-table__cell--status {
+  white-space: nowrap;
+}
+
+.ml-data-table__cell--action {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* The empty row is a message, not a record: no hover highlight. Three
+   classes and a pseudo-class, so it outweighs the canonical row hover. */
+.ml-data-table .ml-table tbody tr.ml-data-table__empty:hover {
+  background: transparent;
+}
+
+.ml-data-table__empty-cell {
+  padding: var(--ml-space-8) var(--ml-space-4);
+  color: var(--ml-text-muted);
+  text-align: center;
+}
+
+.ml-data-table--compact .ml-table th {
+  padding: var(--ml-space-2) var(--ml-space-3);
+}
+
+.ml-data-table--compact .ml-table td {
+  padding: var(--ml-space-2) var(--ml-space-3);
+}
+
+/* --- Empty states ----------------------------------------------------------- */
+
+.ml-empty-state__visual {
+  color: var(--ml-text-faint);
+}
+
+.ml-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ml-space-2);
+  margin-top: var(--ml-space-2);
+}
+
+.ml-empty-state.ml-empty-state--compact {
+  min-height: auto;
+  gap: var(--ml-space-2);
+  padding: var(--ml-space-6) var(--ml-space-5);
+}
+
+/* --- Phone ------------------------------------------------------------------ */
+
+@media (max-width: 680px) {
+  .ml-list-row.ml-operational-row {
+    padding-inline: var(--ml-space-4);
+  }
+
+  .ml-operational-row__body {
+    flex-basis: 100%;
+  }
+
+  .ml-section-header.ml-surface-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ml-section-header__actions {
+    justify-content: flex-start;
+  }
+
+  .ml-metric {
+    padding: var(--ml-space-3) var(--ml-space-4);
+  }
+}

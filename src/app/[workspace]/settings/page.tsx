@@ -116,7 +116,7 @@ export default async function SettingsPage({
         <div className="settings-grid">
           <Panel title="Your photo">
             <ProfilePhoto
-            workspaceSlug={workspaceSlug}
+              workspaceSlug={workspaceSlug}
               displayName={session.displayName}
               initials={session.initials}
               url={await signAvatarUrl((await getProfile(session.userId))?.avatarPath)}
@@ -154,7 +154,11 @@ export default async function SettingsPage({
                 </div>
               </dl>
               {can(workspace.role, "workspace.settings") && (
-                <EditWorkspace workspaceSlug={workspaceSlug} name={workspace.name} timezone={workspace.timezone} />
+                <EditWorkspace
+                  workspaceSlug={workspaceSlug}
+                  name={workspace.name}
+                  timezone={workspace.timezone}
+                />
               )}
               <div className="spacer" />
               {workspace.role === "owner" ? (

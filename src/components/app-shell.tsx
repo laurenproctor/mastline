@@ -1,3 +1,5 @@
+import "@/styles/mastline-dashboard-design-system.css";
+import "@/styles/app-shell.css";
 import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
@@ -77,6 +79,32 @@ const ROLE_LABELS: Record<string, string> = {
   viewer: "Viewer · read only",
 };
 
+/**
+ * One destination in the sidebar.
+ *
+ * The active one is told to assistive technology with aria-current, and that
+ * same attribute is what the stylesheet draws the active state from -- there
+ * is no separate class to fall out of step with it.
+ */
+function NavItem({
+  active,
+  href,
+  icon,
+  label,
+}: {
+  active: boolean;
+  href: string;
+  icon: Parameters<typeof NavIcon>[0]["name"];
+  label: string;
+}) {
+  return (
+    <Link aria-current={active ? "page" : undefined} className="ml-nav-item" href={href}>
+      <NavIcon name={icon} />
+      <span className="ml-nav-item__label">{label}</span>
+    </Link>
+  );
+}
+
 export async function AppShell({
   active,
   workspace,
@@ -104,13 +132,19 @@ export async function AppShell({
   const navMode = cookieStore.get(NAV_PROTOTYPE_COOKIE)?.value === "bottom" ? "bottom" : "tiles";
 
   return (
-    <div className={navMode === "bottom" ? "app-shell nav-bottom" : "app-shell"}>
+    <div
+      className={
+        navMode === "bottom" ? "ml-app-shell app-shell nav-bottom" : "ml-app-shell app-shell"
+      }
+      data-mastline-app
+      data-nav-mode={navMode}
+    >
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
 
-      <aside className="sidebar">
-        <Link className="brand" href={routes.work()}>
+      <aside className="ml-sidebar">
+        <Link className="ml-sidebar__brand" href={routes.work()}>
           <Image
             alt="Mastline — go to the work queue"
             height={30}
@@ -122,45 +156,46 @@ export async function AppShell({
 
         <WorkspaceSwitcher activeId={activeWorkspace.id} workspaces={session.workspaces} />
 
-        <nav aria-label="Primary">
-          {NAV.map((item) => {
-            const isActive = active === item.label;
-            return (
-              <Link
-                aria-current={isActive ? "page" : undefined}
-                className={isActive ? "nav-link active" : "nav-link"}
-                href={item.to(routes)}
-                key={item.label}
-              >
-                <NavIcon name={item.icon} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav aria-label="Primary" className="ml-sidebar__nav">
+          {NAV.map((item) => (
+            <NavItem
+              active={active === item.label}
+              href={item.to(routes)}
+              icon={item.icon}
+              key={item.label}
+              label={item.label}
+            />
+          ))}
         </nav>
 
-        <div className="sidebar-foot">
-          <Link
-            aria-current={active === "Settings" ? "page" : undefined}
-            className={active === "Settings" ? "nav-link active" : "nav-link"}
+        <div className="ml-sidebar__footer">
+          <NavItem
+            active={active === "Settings"}
             href={routes.settings()}
-          >
-            <NavIcon name="settings" />
-            <span>Settings</span>
-          </Link>
+            icon="settings"
+            label="Settings"
+          />
 
-          <div className="profile">
+          {/*
+           * Whose workspace this is. Each line truncates on its own, so a long
+           * studio name shortens itself rather than pushing the role off the
+           * rail; the full text stays in the title for anyone who hovers.
+           */}
+          <div className="ml-workspace-identity">
             <Avatar initials={session.initials} url={avatar} />
-            <span>
-              <strong>{session.displayName}</strong>
-              <small>
-                {activeWorkspace.name} · {roleLabel}
+            <span className="ml-workspace-identity__copy">
+              <strong className="ml-truncate" title={session.displayName}>
+                {session.displayName}
+              </strong>
+              <small className="ml-truncate" title={activeWorkspace.name}>
+                {activeWorkspace.name}
               </small>
+              <small className="ml-truncate">{roleLabel}</small>
             </span>
           </div>
 
           <form action="/auth/sign-out" method="post">
-            <button className="signout" type="submit">
+            <button className="ml-button ml-button--quiet ml-button--sm signout" type="submit">
               Sign out
             </button>
           </form>
@@ -193,7 +228,7 @@ export async function AppShell({
         </>
       )}
 
-      <main className="workspace" id="main">
+      <main className="ml-app-main workspace" id="main">
         <WorkspaceBanner notice={status.notice} />
         {children}
       </main>

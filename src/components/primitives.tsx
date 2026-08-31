@@ -1,6 +1,15 @@
 import Link from "next/link";
+import { PendingButton } from "./button";
 
-export type Tone = "neutral" | "good" | "warn" | "danger" | "blue";
+/*
+ * The controls moved into files of their own -- button.tsx, badge.tsx,
+ * field.tsx -- and are re-exported here so the forty-odd files that import
+ * them from primitives keep compiling unchanged. Panel, Metric, Progress,
+ * TableScroll, and PhotoTile stay here until their own migration stage.
+ */
+export { Badge, type BadgeTone, type Tone } from "./badge";
+export { Field } from "./field";
+export { PendingButton };
 
 export function PageHeader({
   eyebrow,
@@ -28,14 +37,10 @@ export function PageHeader({
             {action}
           </Link>
         ) : (
-          <PendingButton className="primary">{action}</PendingButton>
+          <PendingButton variant="primary">{action}</PendingButton>
         ))}
     </header>
   );
-}
-
-export function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: Tone }) {
-  return <span className={`badge ${tone}`}>{children}</span>;
 }
 
 export function Metric({
@@ -145,125 +150,5 @@ export function PhotoTile({
       {warning && <span className="warning-mark">!</span>}
       {label && <em>{label}</em>}
     </div>
-  );
-}
-
-type FieldControl = "input" | "textarea" | "select";
-
-/**
- * A labelled form control.
- *
- * `name` is required and the label is bound to the control by a derived id, so
- * a bare `<label>` sitting next to a bare `<input>` cannot happen. The name is
- * also what a Server Action will read the value under in a later phase, so it
- * has to be unique within a form regardless.
- */
-export function Field({
-  label,
-  name,
-  control = "input",
-  full = false,
-  hint,
-  error,
-  idSuffix,
-  children,
-  ...rest
-}: {
-  label: string;
-  name: string;
-  control?: FieldControl;
-  full?: boolean;
-  hint?: string;
-  /**
-   * Distinguishes two fields with the same `name` on one page.
-   *
-   * The id is derived from the name, which is right until a screen renders the
-   * same form more than once -- a submission with four delivery links offers
-   * four "Recipient" fields. Without this they share a DOM id, every label
-   * points at the first one, and clicking the fourth label focuses the wrong
-   * input. Pass something stable and unique, usually the row's id.
-   */
-  idSuffix?: string;
-  /** A validation message. Bound to the control and announced when it appears. */
-  error?: string;
-  children?: React.ReactNode;
-  // ComponentPropsWithRef rather than InputHTMLAttributes so a caller can hold
-  // the control itself. Setting a default on an uncontrolled input from an
-  // effect is a DOM write, not a state update, and keeps the field the
-  // operator's to type in.
-} & Omit<React.ComponentPropsWithRef<"input">, "children" | "name">) {
-  const id = idSuffix ? `field-${name}-${idSuffix}` : `field-${name}`;
-  const hintId = hint ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [errorId, hintId].filter(Boolean).join(" ") || undefined;
-  // A required field is marked in the label as well as on the control, so the
-  // obligation is visible before the form is submitted. The asterisk is
-  // decorative -- `required` is what a screen reader announces -- so it is
-  // hidden from the accessibility tree rather than read out as punctuation.
-  const isRequired = Boolean((rest as { required?: boolean }).required);
-
-  const shared = {
-    id,
-    name,
-    "aria-describedby": describedBy,
-    "aria-invalid": error ? true : undefined,
-    ...(rest as Record<string, unknown>),
-  };
-
-  return (
-    <div className={full ? "field full" : "field"}>
-      <label htmlFor={id}>
-        {label}
-        {isRequired && (
-          <span aria-hidden="true" className="required-mark">
-            *
-          </span>
-        )}
-      </label>
-      {control === "textarea" ? (
-        <textarea {...(shared as React.TextareaHTMLAttributes<HTMLTextAreaElement>)} />
-      ) : control === "select" ? (
-        <select {...(shared as React.SelectHTMLAttributes<HTMLSelectElement>)}>{children}</select>
-      ) : (
-        <input {...(shared as React.InputHTMLAttributes<HTMLInputElement>)} />
-      )}
-      {error && (
-        <small className="field-error" id={errorId} role="alert">
-          {error}
-        </small>
-      )}
-      {hint && (
-        <small className="section-note" id={hintId}>
-          {hint}
-        </small>
-      )}
-    </div>
-  );
-}
-
-/**
- * A button for an action this phase has not wired up yet.
- *
- * It stays in the tab order so the layout can be reviewed by keyboard, but it
- * announces itself as unavailable rather than silently doing nothing.
- */
-export function PendingButton({
-  children,
-  className = "",
-  small = false,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  small?: boolean;
-}) {
-  return (
-    <button
-      aria-disabled="true"
-      className={`button${small ? " small" : ""}${className ? ` ${className}` : ""}`}
-      title="Not available in this preview"
-      type="button"
-    >
-      {children}
-    </button>
   );
 }

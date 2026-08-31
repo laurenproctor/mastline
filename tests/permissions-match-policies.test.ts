@@ -119,6 +119,50 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
       }
       return false;
     }
+    case "opportunity.write": {
+      // Entering a story writes the canonical signal; authorship is pinned to
+      // the caller by the insert policy, so the probe claims itself.
+      const { data } = await client
+        .from("news_signals")
+        .insert({ organization_id: ORG_A, title: `probe-${role}`, created_by: UID[role] })
+        .select("id");
+      if (data?.[0]?.id) {
+        await service.from("news_signals").delete().eq("id", data[0].id);
+        return true;
+      }
+      return false;
+    }
+    case "opportunity.review": {
+      // A lifecycle decision is an update on an evaluation path, so the probe
+      // needs a signal and a path to decide about. Arranged by the service
+      // role, exercised as the subject. Deleting the signal cascades the path.
+      const { data: signal } = await service
+        .from("news_signals")
+        .insert({ organization_id: ORG_A, title: `probe-review-${role}` })
+        .select("id");
+      const signalId = signal?.[0]?.id;
+      if (!signalId) throw new Error("Could not arrange the news signal fixture");
+      try {
+        const { data: fixture } = await service
+          .from("opportunities")
+          .insert({
+            organization_id: ORG_A,
+            news_signal_id: signalId,
+            opportunity_kind: "archive_match",
+          })
+          .select("id");
+        const fixtureId = fixture?.[0]?.id;
+        if (!fixtureId) throw new Error("Could not arrange the opportunity fixture");
+        const { data } = await client
+          .from("opportunities")
+          .update({ status: "watching" })
+          .eq("id", fixtureId)
+          .select("id");
+        return (data?.length ?? 0) > 0;
+      } finally {
+        await service.from("news_signals").delete().eq("id", signalId);
+      }
+    }
     case "buyer.write": {
       const { data } = await client
         .from("buyers")
@@ -164,6 +208,8 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
 }
 
 const PROBES = [
+  "opportunity.write",
+  "opportunity.review",
   "shoot.write",
   "sensitive_note.read",
   "payment.write",

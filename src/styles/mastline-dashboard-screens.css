@@ -1,0 +1,91 @@
+/*
+ * MASTLINE DASHBOARD SCREENS
+ * Stage 4B -- the few rules a migrated screen needs that no primitive owns.
+ * Same lane as the surfaces sheet: ml- classes plus screen-scoped names,
+ * tokens only, no bare elements, no !important.
+ */
+
+/*
+ * A source URL is one unbroken token; it wraps rather than widening the rail.
+ * The text link is sized to its own max-content so an ordinary label never
+ * breaks; a URL must, so this one link takes the width it is given. The rule
+ * names both classes and wins by specificity, never by import order.
+ */
+.ml-text-link.rights-source-url {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The link out of the "Received by source" panel sits under the bars. */
+.money-sources-foot {
+  margin-top: var(--ml-space-4);
+}
+
+/* A payment reference is an identifier; it never breaks at a hyphen. */
+.money-reference {
+  white-space: nowrap;
+}
+
+/*
+ * WORK QUEUE (Stage 5B)
+ * Screen-scoped names only; every surface below is a Stage 4A primitive.
+ */
+
+/* The filter row sits between the panel's header and its list. */
+.ml-work-queue-filters {
+  padding: var(--ml-space-3) var(--ml-space-5);
+  border-bottom: 1px solid var(--ml-border);
+}
+
+/* The count beside a filter label reads as a figure, not part of the word. */
+.ml-work-queue-filters__count {
+  margin-left: var(--ml-space-2);
+  color: var(--ml-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row states its detail, then on its own line the basis it was ranked on. */
+.ml-work-queue-basis {
+  display: block;
+  color: var(--ml-text-muted);
+}
+
+/* The header figures, then one quiet link out to the Money screen. */
+.ml-work-queue-pulse__foot {
+  margin-top: var(--ml-space-3);
+}
+
+/*
+ * A figure is one unit. On this screen it never breaks after a digit or a
+ * comma: the strip gives way instead -- two figures per row once four would
+ * squeeze a nine-figure sum, one per row where two would -- and a value wider
+ * than even that scrolls inside its own box rather than splitting or widening
+ * the page. Same face, size, and numerals as the metric contract.
+ */
+.ml-work-queue-pulse .ml-metric__value {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+@media (max-width: 1320px) {
+  .ml-work-queue-pulse .ml-metric-group {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .ml-work-queue-pulse .ml-metric-group {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A long shoot title or address wraps inside its card rather than widening the rail. */
+.ml-work-queue-shoot {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

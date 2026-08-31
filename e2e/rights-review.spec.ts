@@ -112,7 +112,7 @@ test.afterAll(async () => {
 
 /** The "Human decision" card on the selected match. */
 function decisionCard(page: import("@playwright/test").Page) {
-  return page.locator(".side-card", {
+  return page.locator(".ml-card", {
     has: page.getByRole("heading", { name: "Human decision" }),
   });
 }
@@ -126,7 +126,7 @@ test("a rights reviewer can select a match and record a defensible decision", as
   await page.goto(at("/rights"));
 
   // The fixture is not the top row, which is the whole reason it was arranged.
-  const firstRow = page.locator("table.data-table tbody tr").first();
+  const firstRow = page.locator("table.ml-table tbody tr").first();
   await expect(firstRow).not.toContainText(LEDGER);
 
   const row = page.getByRole("row", { name: new RegExp(LEDGER) });
@@ -203,7 +203,7 @@ test("an unusable match id selects nothing and says nothing about elsewhere", as
 
   await page.goto(`${at("/rights")}?match=00000000-0000-4000-8000-000000000000`);
   // Scoped to the queue: Next's own route announcer is also an alert region.
-  const queue = page.locator(".panel", {
+  const queue = page.locator(".ml-panel", {
     has: page.getByRole("heading", { name: "Match queue" }),
   });
   await expect(queue.getByRole("alert")).toContainText(/not in this workspace/i);
@@ -221,7 +221,12 @@ test("a viewer can read a match but is offered no triage controls", async ({ con
   await expect(page.getByText("Perceptual hash + crop tolerance").first()).toBeVisible();
 
   await expect(page.getByText(/read-only for your role/i)).toBeVisible();
-  for (const label of ["Start review", "Hold for monitoring", "Ignore this match", "Mark licensed"]) {
+  for (const label of [
+    "Start review",
+    "Hold for monitoring",
+    "Ignore this match",
+    "Mark licensed",
+  ]) {
     await expect(page.getByRole("button", { name: label })).toHaveCount(0);
   }
 });

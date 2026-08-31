@@ -94,6 +94,10 @@ export interface WorkspaceRoutes {
   readonly requests: (options?: RouteOptions) => string;
   readonly newRequest: (options?: RouteOptions) => string;
   readonly request: (requestId: string, options?: RouteOptions) => string;
+  /** One News Radar opportunity: /<workspace>/news/<opportunityId>. */
+  readonly newsOpportunity: (opportunityId: string, options?: RouteOptions) => string;
+  /** Manual story entry. "new" is a static segment, never a record id. */
+  readonly newNewsStory: (options?: RouteOptions) => string;
   readonly shoots: (options?: RouteOptions) => string;
   readonly newShoot: (options?: RouteOptions) => string;
   readonly shoot: (shootId: string, options?: RouteOptions) => string;
@@ -138,6 +142,9 @@ export function workspaceRoutes(canonicalSlug: string): WorkspaceRoutes {
     newRequest: (options?: RouteOptions) => build(slug, ["requests", "new"], options),
     request: (requestId: string, options?: RouteOptions) =>
       build(slug, ["requests", requestId], options),
+    newsOpportunity: (opportunityId: string, options?: RouteOptions) =>
+      build(slug, ["news", opportunityId], options),
+    newNewsStory: (options?: RouteOptions) => build(slug, ["news", "new"], options),
     shoots: (options?: RouteOptions) => build(slug, ["shoots"], options),
     newShoot: (options?: RouteOptions) => build(slug, ["shoots", "new"], options),
     shoot: (shootId: string, options?: RouteOptions) => build(slug, ["shoots", shootId], options),
@@ -199,7 +206,9 @@ export const PUBLIC_PATH_PREFIXES = [
 
 export function isPublicPath(path: string): boolean {
   return PUBLIC_PATH_PREFIXES.some((prefix) =>
-    prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix || path.startsWith(`${prefix}/`),
+    prefix.endsWith("/")
+      ? path.startsWith(prefix)
+      : path === prefix || path.startsWith(`${prefix}/`),
   );
 }
 

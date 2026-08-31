@@ -49,10 +49,7 @@ function readAssetBeats(value: unknown): AssetBeat[] {
   return beats;
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ token: string }> },
-) {
+export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   if (!isDeliveryToken(token)) {
     return NextResponse.json({ accepted: 0 }, { status: 204 });

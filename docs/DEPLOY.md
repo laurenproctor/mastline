@@ -31,15 +31,54 @@ done and what is still needed.
 Created and migrated. Project ref `rctvatrdgqnwhldbmgek`, region East US (North
 Virginia), API URL `https://rctvatrdgqnwhldbmgek.supabase.co`.
 
-There are 30 migrations in `supabase/migrations`, including the three private
+There are 34 migrations in `supabase/migrations`, including the three private
 buckets (`originals`, `derivatives`, `evidence`), none public. Production was
 never seeded; the first workspace is made through real sign-up.
 
 The count is stated rather than claimed as applied: what is actually on the
 remote is whatever `supabase migration list --linked` says, and this file has
-been wrong about that before. The last four -- recipient delivery links,
-approval-time immutability, delivery view analytics, and the open lifecycle --
-have been applied and exercised locally only.
+been wrong about that before. As of 2026-08-29 the remote history holds 32
+rows and they are **not** the first 32 files on disk:
+
+- **Two migrations reached production before they reached Git.**
+  `20260828035034_buyer_requests` and `20260829090000_resumable_field_imports`
+  were pushed to the hosted project from an uncommitted checkout. Their DDL is
+  live (`public.buyer_requests`, `public.request_sensitive_notes`,
+  `public.import_batches`, `public.import_files`, five enums, seven `private`
+  functions, their triggers, policies and grants). The reconciliation branch
+  `chore/reconcile-production-migrations` adds exactly those two files to
+  source control under their recorded versions, so the chain on disk describes
+  the schema that is live. It does **not** reapply them: `db push` sees their
+  versions already in the remote history and skips them. Before the files were
+  committed, a schema-only catalog description of every object they create
+  (columns, constraints, indexes, RLS/forced-RLS, policies, table grants,
+  function signatures, owners, definer state, search paths, execute
+  privileges, trigger definitions, comments) was taken from production and
+  from a fresh local apply of the files, and the two were compared: identical,
+  all 261 lines, including the table grants. Two further uncommitted
+  migrations in the same checkout, `20260830090000` and `20260830100000`, are
+  **not** in production and were not incorporated.
+- **Production lacks the last two committed migrations**,
+  `20260830120000_news_radar_canonical_signal` (on `main` since PR #12) and
+  `20260830130000_immutable_dispatch_snapshots` (on `main` since PR #19).
+  Neither `public.news_signals` nor `public.submission_assets` exists remotely.
+- **PR #19 was merged and auto-deployed on 2026-08-29 before parity was
+  restored**, so production is running the new application against the old
+  schema -- the order the section below calls out as never to be used. The
+  hosted recipient functions still carry their old shapes and grant execute to
+  `anon`/`authenticated` only, so the new routes are refused rather than served:
+  previews and downloads answer 404, nothing is fabricated, nothing non-exact
+  is handed over. Package approval fails (`approve_package()` does not exist)
+  and the submission screen fails on the missing table, until the schema
+  catches up. Until the two remote-only files are in `main`, `db push` refuses
+  outright ("Remote migration versions not found in local migrations
+  directory"); merging the reconciliation branch is what makes the corrective
+  push possible.
+
+None of that drift was harmless by definition. What was verified is stated
+above; what was not verified -- row-level behaviour of the two features in
+production, and whether anything else was pushed from that checkout -- is not
+claimed.
 
 `supabase migration list --linked` is the check that matters here, and it is
 worth running before any deploy that touches data: it prints local and remote
@@ -71,6 +110,113 @@ Two CLI notes that cost time:
 
 `NEXT_PUBLIC_*` variables are inlined into the client bundle **at build time**.
 Changing one requires a redeploy, not just a restart.
+
+### Deploying the approved-frame snapshot
+
+Migration `20260830130000_immutable_dispatch_snapshots.sql` is the 34th and
+last migration. It is additive in schema and **incompatible in both deployment
+orders**, so the rollout is a short, coordinated window: apply the migration,
+deploy the application immediately, then run one repair call. The analysis:
+
+- **Old application, new database** (the window between `db push` and the
+  Vercel deploy): the migration drops and recreates `delivery_assets`,
+  `delivery_preview`, and `record_delivery_download` with new shapes, and the
+  last two become executable by the service role only. The deployed recipient
+  page keeps rendering (it reads the snapshot through `delivery_assets` and
+  shows "No preview" for every frame, because the old code reads a
+  `preview_key` column that no longer exists); previews and downloads answer
+  the neutral 404, because the old routes call the two closed functions with
+  the anonymous client. That is fail-closed: no file is served, no evidence is
+  written, nothing non-exact is handed over. The old approval path still works
+  -- it writes the package, the submission, and the manifest through the Data
+  API -- but it knows nothing of `submission_assets`, so a package approved in
+  the window has a manifest and **no snapshot rows**, and its recipient links
+  list no frames until step 5 below repairs it.
+- **New application, old database** (a deploy that outruns the migration):
+  `approve_package()` and `authorize_delivery_download()` do not exist, so
+  approval and download fail; the submission screen fails on the missing
+  table; and the old `delivery_preview` shape carries no snapshot id, so the
+  marked-preview cache key would collapse to one entry per link and could
+  serve one frame's preview for another. **Never deploy before the migration.**
+- **A compatibility layer is not safe.** Keeping the old `delivery_preview`
+  and `record_delivery_download` contracts callable by `anon` for the window
+  would hand a private object key to anyone holding a token and let them write
+  a `downloaded` event without a signed file -- exactly what this migration
+  removes. Keeping the old approval path writing snapshot-less submissions is
+  the smaller harm and is repairable, so it is tolerated for the window and
+  repaired, not papered over. No two-phase migration is required.
+
+Nothing here has been run against the hosted project.
+
+**Its version is `20260830130000`, deliberately later than the News Radar
+migration's `20260830120000`.** `supabase migration new` stamps the current
+time, and the migrations already on `main` carry hand-chosen versions later
+than that, so a CLI-stamped file would sort before the last applied version
+and the CLI would refuse a plain `migration up` / `db push` until told
+`--include-all`. The file was renamed so that ordinary ordering holds: a
+31-migration database takes it with plain `supabase migration up --local`,
+and `supabase db push --dry-run` lists it as the one pending migration. The
+same rule applies to every migration that follows -- a new version must sort
+after `20260830130000`, whatever the clock says.
+
+1. **Verify parity.** `supabase migration list --linked` must show every
+   local file through `20260829090000` on the remote side, and exactly two
+   local files with no remote row: `20260830120000_news_radar_canonical_signal`
+   and `20260830130000_immutable_dispatch_snapshots`. Do not trust the history
+   table alone: probe a column each adds, e.g.
+   `curl "$URL/rest/v1/news_signals?select=id&limit=1"` and
+   `curl "$URL/rest/v1/submission_assets?select=id&limit=1"` with the service
+   key, and confirm both answer `42P01`, not rows. `supabase db push --dry-run`
+   must list exactly those two files, in that order.
+2. **Apply both, in one push, with explicit approval.** `supabase db push`
+   applies `20260830120000` then `20260830130000`; the deployed application
+   already depends on both, so applying only the first would leave dispatch
+   broken. The second prints `submission_assets backfill: N submissions seen,
+   F frames written, U manifest entries unresolved`. Confirm a recoverable
+   backup exists before this step.
+3. **Verify the backfill.** With the service key:
+   `select * from public.submission_snapshot_gaps_admin()` lists one row per
+   unresolved manifest entry and must match U from step 2 (expected: none),
+   and `select * from public.submission_snapshot_drift_admin()` must be empty.
+   Probe the table: `curl "$URL/rest/v1/submission_assets?select=id&limit=1"`.
+   Every backfilled row carries `snapshot_origin = 'legacy_backfill'`; the
+   submission screen says so, and says which frames could not be frozen.
+4. **Deploy the application immediately** (merge to `main`; Vercel builds
+   it). Keep the window between steps 2 and 4 as short as the Vercel build
+   allows; previews and downloads are closed for its duration.
+5. **Repair anything approved in the window.** With the service key, call
+   `select * from public.backfill_submission_assets_admin()`. It freezes every
+   submission that still has no snapshot rows from the versions its manifest
+   named (provenance `legacy_backfill`, since the metadata is read now rather
+   than at that approval) and substitutes nothing; the counts it returns
+   should be `0 seen` unless somebody approved a package during the window.
+   Re-run `submission_snapshot_gaps_admin()` afterwards.
+6. **Exercise the loop with noncommercial test records.** In a test
+   workspace: build a package from two test frames that have delivery JPEGs,
+   approve it, confirm the submission screen lists two approved frames with
+   origin "approval", create a recipient link, edit one test frame's caption,
+   open the link signed out and confirm the approved caption is shown, accept,
+   download, and confirm the access record shows the download and the
+   redirect named the approved object. Withdraw the link and confirm it no
+   longer opens.
+7. **Run the advisors.** `supabase db advisors --type security --linked` and
+   `supabase/checks/advisors.sql`. Expect no new findings: the new table has
+   RLS forced, every new function sets an empty search path, `anon` holds no
+   table grant, and `delivery_access_events` / `delivery_acceptances` now
+   grant `authenticated` and `service_role` SELECT only (confirm with
+   `select * from public.table_grants_admin('delivery_access_events')`).
+8. **Remove the test records** only through supported behaviour: withdraw the
+   link from the submission screen; leave the test submission in place (it is
+   an approved record) or purge the test workspace with
+   `purge_organization_admin`, which is the audited route.
+
+**Rollback.** The migration cannot be reverted by the CLI. If the application
+must be rolled back, roll back the code only and re-apply the previous
+versions of `delivery_assets`, `delivery_preview`, `open_delivery`, and
+`record_delivery_download` from `20260824101000`, `20260824111000`, and
+`20260828093000` by hand; the `submission_assets` table and `approve_package`
+can stay, unused. Do not drop the table: the rows are part of the commercial
+record from the moment they exist.
 
 ### Re-running the schema checks
 

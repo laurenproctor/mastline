@@ -95,9 +95,9 @@ export default function Page() {
                 with a picture desk, Mastline records for that photographer&rsquo;s delivery record
                 that the link was opened, when it was first and most recently opened, whether the
                 terms were accepted and by what name, and which files were downloaded — each with
-                the time and the address the request came from. Those are commercial records of
-                what happened to somebody&rsquo;s work and are kept whatever choice a visitor makes
-                about the optional measurement below.
+                the time and the address the request came from. Those are commercial records of what
+                happened to somebody&rsquo;s work and are kept whatever choice a visitor makes about
+                the optional measurement below.
               </li>
               <li>
                 <strong>Delivery viewing time (optional):</strong> on a delivery page, and only
@@ -114,11 +114,10 @@ export default function Page() {
                 leaving only aggregate totals against the link.
               </li>
               <li>
-                <strong>What a delivery link never carries:</strong> a recipient&rsquo;s name,
-                email address, phone number, or internal contact reference is stored in
-                Mastline&rsquo;s database and is deliberately kept out of the link address, because
-                a web address ends up in browser history, in referrer headers, and in server logs
-                along the way.
+                <strong>What a delivery link never carries:</strong> a recipient&rsquo;s name, email
+                address, phone number, or internal contact reference is stored in Mastline&rsquo;s
+                database and is deliberately kept out of the link address, because a web address
+                ends up in browser history, in referrer headers, and in server logs along the way.
               </li>
             </ul>
             <h3>Information from third parties</h3>

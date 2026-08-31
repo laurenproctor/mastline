@@ -14,6 +14,7 @@ import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { suggestionsAreConfigured } from "@/lib/data/metadata-suggestions";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { getSensitiveNote, getShoot } from "@/lib/data/shoots";
+import { countApprovedSubmissionsByAsset } from "@/lib/data/submissions";
 import { formatDate, formatDateTime, humanizeStatus } from "@/lib/format";
 import { reviewAsset, reviewSelection } from "@/lib/metadata-rules";
 import { can } from "@/lib/permissions";
@@ -86,9 +87,15 @@ export default async function ShootWorkspacePage({
     };
   });
 
-  const histories = await Promise.all(
-    assets.map((asset) => listCaptionHistory(organizationId, asset.id)),
-  );
+  const [histories, approvedSubmissionCounts] = await Promise.all([
+    Promise.all(assets.map((asset) => listCaptionHistory(organizationId, asset.id))),
+    // So the inspector can say that an edit does not reach an approved
+    // submission. One query for the sheet, not one per frame.
+    countApprovedSubmissionsByAsset(
+      organizationId,
+      assets.map((asset) => asset.id),
+    ),
+  ]);
 
   const inspectorAssets: InspectorAsset[] = assets.map((asset, index) => {
     const report = reviewAsset(asset);
@@ -111,6 +118,7 @@ export default async function ShootWorkspacePage({
       captionAwaitsReview: asset.captionAwaitsReview ?? false,
       captionBasis: asset.captionBasis,
       captionConfidence: asset.captionConfidence,
+      approvedSubmissionCount: approvedSubmissionCounts.get(asset.id) ?? 0,
     };
   });
 
@@ -161,7 +169,6 @@ export default async function ShootWorkspacePage({
           </Panel>
         )}
 
-
         <div className="metrics">
           <div className="metric">
             <span>Imported</span>
@@ -191,9 +198,7 @@ export default async function ShootWorkspacePage({
             <span>Captions to read</span>
             <strong>{awaitingCaptionReview}</strong>
             <small className={awaitingCaptionReview > 0 ? "warn" : "good"}>
-              {awaitingCaptionReview > 0
-                ? "Drafted at import, not yet yours"
-                : "No unread drafts"}
+              {awaitingCaptionReview > 0 ? "Drafted at import, not yet yours" : "No unread drafts"}
             </small>
           </div>
         </div>
@@ -224,7 +229,11 @@ export default async function ShootWorkspacePage({
             Keeping it mounted is also what lets a running batch finish when the
             first file lands and the page re-renders underneath it. */}
         {mayEdit ? (
-          <ImportDropzone workspaceSlug={workspaceSlug} compact={assets.length > 0} shootId={shootId} />
+          <ImportDropzone
+            workspaceSlug={workspaceSlug}
+            compact={assets.length > 0}
+            shootId={shootId}
+          />
         ) : (
           assets.length === 0 && (
             <Panel title="No files yet">

@@ -514,9 +514,7 @@ export async function deletePackage(packageId: string): Promise<void> {
     body: JSON.stringify({ target_package: packageId }),
   });
   if (!purged.ok) {
-    throw new Error(
-      `Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`,
-    );
+    throw new Error(`Could not purge the package (HTTP ${purged.status}): ${await purged.text()}`);
   }
 }
 
@@ -541,7 +539,13 @@ export async function deleteShoot(shootId: string): Promise<void> {
 
 /** The assets on a shoot: id and the fields the creation flow should have set. */
 export async function assetsOnShoot(shootId: string): Promise<
-  { id: string; status: string; caption: string | null; credit_line: string | null; selected: boolean }[]
+  {
+    id: string;
+    status: string;
+    caption: string | null;
+    credit_line: string | null;
+    selected: boolean;
+  }[]
 > {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -742,11 +746,13 @@ export async function engagementForRecipient(recipientLabel: string): Promise<{
     `${url}/rest/v1/delivery_engagement_totals?delivery_id=eq.${deliveryId}&select=active_visible_ms,session_count,visitor_count`,
     { headers: auth },
   );
-  const total = ((await totals.json()) as {
-    active_visible_ms: number;
-    session_count: number;
-    visitor_count: number;
-  }[])[0];
+  const total = (
+    (await totals.json()) as {
+      active_visible_ms: number;
+      session_count: number;
+      visitor_count: number;
+    }[]
+  )[0];
 
   const assets = await fetch(
     `${url}/rest/v1/delivery_asset_engagement_totals?delivery_id=eq.${deliveryId}&select=asset_id`,
@@ -761,4 +767,304 @@ export async function engagementForRecipient(recipientLabel: string): Promise<{
     visitorCount: Number(total?.visitor_count ?? 0),
     assetRows,
   };
+}
+
+/**
+ * A package whose approved objects genuinely exist in storage.
+ *
+ * `createApprovablePackage` builds frames with an original only, which is
+ * right for the approval screen and useless for a download: the seed uploads
+ * no bytes, and a RAW original has no browser preview. This one gives every
+ * frame a delivery JPEG, stands the 1x1 fixture behind it, and points the
+ * package at that version -- so the exact object the approval freezes is one
+ * a recipient can preview and take.
+ */
+export async function createApprovablePackageWithFiles(label: string): Promise<{
+  shootId: string;
+  packageId: string;
+  frames: { assetId: string; deliveryVersionId: string; deliveryKey: string }[];
+  objectKeys: string[];
+}> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot build a package.");
+  const headers = {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    "Content-Type": "application/json",
+    Prefer: "return=representation",
+  };
+  const ORG = "aaaaaaaa-0000-0000-0000-000000000001";
+  const OWNER = "11111111-1111-1111-1111-111111111111";
+  const BUYER = "a0000000-0000-0000-0000-0000000000b1";
+
+  async function post<T>(table: string, body: unknown): Promise<T> {
+    const response = await fetch(`${url}/rest/v1/${table}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`Could not insert into ${table}: ${await response.text()}`);
+    }
+    return ((await response.json()) as T[])[0];
+  }
+
+  const shoot = await post<{ id: string }>("shoots", {
+    organization_id: ORG,
+    title: `${label} ${Date.now()}`,
+    status: "preparing",
+    starts_at: new Date(Date.now() - 1_800_000).toISOString(),
+    created_by: OWNER,
+  });
+
+  const frames: { assetId: string; deliveryVersionId: string; deliveryKey: string }[] = [];
+  const members: unknown[] = [];
+  const objectKeys: string[] = [];
+  for (let index = 0; index < 2; index += 1) {
+    const asset = await post<{ id: string }>("assets", {
+      organization_id: ORG,
+      shoot_id: shoot.id,
+      status: "active",
+      canonical_filename: `E2E_${label}_${index}`,
+      captured_at: new Date(Date.now() - 1_800_000).toISOString(),
+      headline: `${label} frame ${index}`,
+      caption: `The approved caption for ${label} frame ${index}.`,
+      subjects: ["Avery Hart"],
+      credit_line: "Mastline test",
+      copyright_notice: "© 2026 Marcus Hale",
+      selected: true,
+      created_by: OWNER,
+    });
+
+    const stamp = `${Date.now().toString(16)}${index}`;
+    await post<{ id: string }>("asset_versions", {
+      organization_id: ORG,
+      asset_id: asset.id,
+      version_kind: "original",
+      storage_bucket: "originals",
+      object_key: `${ORG}/${shoot.id}/${label}_${index}.arw`,
+      sha256: `${stamp}a`.padEnd(64, "a").slice(0, 64),
+      bytes: 1000,
+      mime_type: "image/x-sony-arw",
+      created_by: OWNER,
+    });
+
+    const deliveryKey = `${ORG}/${shoot.id}/${label}_${index}_delivery.jpg`;
+    const delivery = await post<{ id: string }>("asset_versions", {
+      organization_id: ORG,
+      asset_id: asset.id,
+      version_kind: "delivery",
+      storage_bucket: "derivatives",
+      object_key: deliveryKey,
+      sha256: `${stamp}b`.padEnd(64, "b").slice(0, 64),
+      bytes: 500,
+      mime_type: "image/jpeg",
+      created_by: OWNER,
+    });
+    await putObject(deliveryKey);
+    objectKeys.push(deliveryKey);
+
+    frames.push({ assetId: asset.id, deliveryVersionId: delivery.id, deliveryKey });
+    members.push({
+      organization_id: ORG,
+      asset_id: asset.id,
+      asset_version_id: delivery.id,
+      position: index,
+    });
+  }
+
+  const pkg = await post<{ id: string }>("packages", {
+    organization_id: ORG,
+    shoot_id: shoot.id,
+    buyer_id: BUYER,
+    name: `${label} package`,
+    status: "ready",
+    delivery_method: "SFTP",
+    proposed_terms: "Non-exclusive agency distribution; photographer retains copyright.",
+    restrictions: "Editorial use only.",
+    created_by: OWNER,
+  });
+
+  const attach = await fetch(`${url}/rest/v1/package_assets`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(members.map((member) => ({ ...(member as object), package_id: pkg.id }))),
+  });
+  if (!attach.ok) throw new Error(`Could not fill the package: ${await attach.text()}`);
+
+  return { shootId: shoot.id, packageId: pkg.id, frames, objectKeys };
+}
+
+/** The 1x1 JPEG fixture, placed at an exact key in the derivatives bucket. */
+export async function putObject(objectKey: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot place a fixture.");
+  const jpeg = Buffer.from(
+    "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
+    "base64",
+  );
+  const response = await fetch(`${url}/storage/v1/object/derivatives/${objectKey}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "image/jpeg", "x-upsert": "true" },
+    body: jpeg,
+  });
+  if (!response.ok) throw new Error(`Could not place ${objectKey}: ${await response.text()}`);
+}
+
+/** Rewrite an asset's editorial fields directly, as an operator's later edit would. */
+export async function rewriteAssetCaption(
+  assetId: string,
+  patch: { caption: string; headline?: string },
+): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot edit the asset.");
+  const response = await fetch(`${url}/rest/v1/assets?id=eq.${assetId}`, {
+    method: "PATCH",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) throw new Error(`Could not edit the asset: ${await response.text()}`);
+}
+
+/** A delivery derivative made after approval, with real bytes behind it. */
+export async function addLaterDerivative(assetId: string, objectKey: string): Promise<string> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot add a derivative.");
+  const ORG = "aaaaaaaa-0000-0000-0000-000000000001";
+  const response = await fetch(`${url}/rest/v1/asset_versions`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      organization_id: ORG,
+      asset_id: assetId,
+      version_kind: "delivery",
+      storage_bucket: "derivatives",
+      object_key: objectKey,
+      sha256: `${Date.now().toString(16)}c`.padEnd(64, "c").slice(0, 64),
+      bytes: 600,
+      mime_type: "image/jpeg",
+      created_by: "11111111-1111-1111-1111-111111111111",
+    }),
+  });
+  if (!response.ok) throw new Error(`Could not add the derivative: ${await response.text()}`);
+  await putObject(objectKey);
+  return ((await response.json()) as { id: string }[])[0].id;
+}
+
+/** The approved-frame record for a submission, straight from the table. */
+export async function approvedFrames(submissionId: string): Promise<
+  {
+    asset_id: string;
+    asset_version_id: string;
+    position: number;
+    caption_snapshot: string | null;
+    object_key_snapshot: string;
+    snapshot_origin: string;
+  }[]
+> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot read the snapshot.");
+  const response = await fetch(
+    `${url}/rest/v1/submission_assets?submission_id=eq.${submissionId}&select=asset_id,asset_version_id,position,caption_snapshot,object_key_snapshot,snapshot_origin&order=position`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+  );
+  return (await response.json()) as {
+    asset_id: string;
+    asset_version_id: string;
+    position: number;
+    caption_snapshot: string | null;
+    object_key_snapshot: string;
+    snapshot_origin: string;
+  }[];
+}
+
+/** Download events recorded for a recipient link, by the frame downloaded. */
+export async function downloadedAssetIds(recipientLabel: string): Promise<string[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot read the access record.");
+  const auth = { apikey: key, Authorization: `Bearer ${key}` };
+  const links = await fetch(
+    `${url}/rest/v1/submission_deliveries?recipient_label=eq.${encodeURIComponent(recipientLabel)}&select=id`,
+    { headers: auth },
+  );
+  const deliveryId = ((await links.json()) as { id: string }[])[0]?.id;
+  if (!deliveryId) return [];
+  const events = await fetch(
+    `${url}/rest/v1/delivery_access_events?delivery_id=eq.${deliveryId}&kind=eq.downloaded&select=asset_id`,
+    { headers: auth },
+  );
+  return ((await events.json()) as { asset_id: string }[]).map((event) => event.asset_id);
+}
+
+/**
+ * Unwind a shoot whose package was approved.
+ *
+ * `purgeShootWithAssets` cannot: an approved package restricts the asset
+ * purge through its submission and its frozen membership. Order follows the
+ * foreign keys -- submissions, assets, packages, shoot -- through the audited
+ * purge routines, and the fixture objects are removed from storage last.
+ */
+export async function purgeApprovedShoot(
+  shootId: string,
+  objectKeys: string[] = [],
+): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up the shoot.");
+  const auth = { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" };
+
+  async function rpc(name: string, body: unknown) {
+    const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`${name} failed: ${await response.text()}`);
+  }
+
+  const packages = (await (
+    await fetch(`${url}/rest/v1/packages?shoot_id=eq.${shootId}&select=id`, { headers: auth })
+  ).json()) as { id: string }[];
+
+  for (const pkg of packages) {
+    const submissions = (await (
+      await fetch(`${url}/rest/v1/submissions?package_id=eq.${pkg.id}&select=id`, {
+        headers: auth,
+      })
+    ).json()) as { id: string }[];
+    for (const submission of submissions) {
+      await rpc("purge_submission_admin", { target_submission: submission.id });
+    }
+  }
+
+  for (const asset of await assetsOnShoot(shootId)) {
+    await rpc("purge_asset_admin", { target_asset: asset.id });
+  }
+  for (const pkg of packages) {
+    await rpc("purge_package_admin", { target_package: pkg.id });
+  }
+  await deleteShoot(shootId);
+
+  for (const objectKey of objectKeys) {
+    await fetch(`${url}/storage/v1/object/derivatives/${objectKey}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${key}` },
+    });
+  }
 }

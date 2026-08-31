@@ -33,7 +33,10 @@ export function BulkMetadata({
     usageRestrictions?: string;
   };
 }) {
-  const [state, formAction, pending] = useActionState(applyMetadataToManyAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    applyMetadataToManyAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
 
   if (selectedIds.length === 0) {

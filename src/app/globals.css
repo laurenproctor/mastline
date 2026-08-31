@@ -33,7 +33,6 @@
   --amber-ink: #8d5700; /* 5.75:1 on surface, for the same state in words */
   --green: #227048; /* 5.78:1 on surface */
   --track: #e6e4dd; /* the unfilled part of a progress bar */
-  --sidebar: 224px;
   --radius: 3px;
   /*
    * The auth and settings blocks below were written against --rule and
@@ -112,68 +111,6 @@ button {
   cursor: pointer;
 }
 
-.app-shell {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: var(--sidebar) 1fr;
-}
-/*
- * Space kept clear at the bottom of the viewport.
- *
- * The consent banner is fixed to the bottom, and this shell anchors Sign out to
- * the bottom too. They occupied the same pixels, and the banner is above: while
- * a consent choice was outstanding the button could not be clicked at all --
- * every visitor in the EEA, the UK, or Switzerland, and everyone whose country
- * could not be resolved. The banner publishes its measured height here while it
- * is up, and nothing reserves any space once it has gone.
- */
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: calc(100vh - var(--consent-inset, 0px));
-  /* Reserving the banner's height is only half of it: the preferences panel is
-     tall enough that what is left can be shorter than the sidebar's own
-     content, and without this the overflow spills back under the panel and
-     Sign out is unreachable again -- the same bug, one layer further in. */
-  overflow-y: auto;
-  border-right: 1px solid var(--line);
-  background: #efede7;
-  padding: 24px 14px 18px;
-  display: flex;
-  flex-direction: column;
-}
-.brand {
-  display: block;
-  padding: 6px 8px 28px;
-}
-.brand img {
-  width: 174px;
-  height: auto;
-  object-fit: contain;
-}
-.sidebar nav {
-  display: grid;
-  gap: 3px;
-}
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 42px;
-  padding: 0 12px;
-  border-left: 2px solid transparent;
-  color: #55534c;
-}
-.nav-link:hover {
-  background: rgba(255, 255, 255, 0.55);
-  color: var(--ink);
-}
-.nav-link.active {
-  color: var(--ink);
-  background: #fff;
-  border-left-color: var(--blue);
-  font-weight: 700;
-}
 /* An SVG now, not a glyph in a monospace box.
    0.62 faded the stroke to about 2.6:1 against the sidebar, and in the
    collapsed rail the icon is the only thing the link draws. */
@@ -182,13 +119,6 @@ button {
   width: 18px;
   height: 18px;
   opacity: 0.85;
-}
-.nav-link.active .nav-icon,
-.nav-link:hover .nav-icon {
-  opacity: 1;
-}
-.sidebar-foot {
-  margin-top: auto;
 }
 .profile {
   border-top: 1px solid var(--line);
@@ -922,6 +852,18 @@ button {
 .inspector .field label {
   color: #b8b8b4;
 }
+/* The same three rules for a Field that has moved to the design system. */
+.inspector .ml-field {
+  margin-bottom: 12px;
+}
+.inspector .ml-field :where(.ml-input, .ml-textarea, .ml-select) {
+  background: #232426;
+  color: white;
+  border-color: #6a6b6e;
+}
+.inspector .ml-field .ml-label {
+  color: #b8b8b4;
+}
 .dark-toolbar {
   padding: 12px;
   display: flex;
@@ -1260,59 +1202,6 @@ button {
 }
 
 @media (max-width: 1000px) {
-  :root {
-    --sidebar: 96px;
-  }
-  /*
-   * The full wordmark cropped to 44px was an unreadable smudge, and a square
-   * crop cut the mark itself in half. The mark is 290x180 in the source, so
-   * the window it is shown through has to be wider than it is tall.
-   */
-  .brand img {
-    width: 48px;
-    height: 28px;
-    object-position: left center;
-    object-fit: cover;
-  }
-  /*
-   * The label goes out of sight, NOT out of the accessibility tree.
-   *
-   * `display: none` here left eight links whose only content was an
-   * aria-hidden SVG, so every destination in the rail announced itself as an
-   * unnamed link and the rail was unusable by voice control or a screen
-   * reader at any tablet width. Clipping the text keeps the name attached to
-   * the link and costs nothing visually.
-   */
-  .nav-link span:last-child,
-  .sidebar .profile span:last-child {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .nav-link {
-    justify-content: center;
-    gap: 0;
-    padding: 0;
-  }
-  .nav-icon {
-    width: 20px;
-    height: 20px;
-  }
-  .sidebar .profile {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-  }
-  .signout {
-    text-align: center;
-    padding: 8px 2px;
-    white-space: nowrap;
-  }
   .panel-grid,
   .three-col,
   .shoot-layout,
@@ -1342,106 +1231,6 @@ button {
   }
 }
 @media (max-width: 680px) {
-  :root {
-    --sidebar: 0px;
-  }
-  .app-shell {
-    display: block;
-  }
-  /*
-   * On a phone the rail lies down across the top of the page.
-   *
-   * It stays in document order -- wordmark, workspace, destinations, account
-   * -- so what a keyboard tabs through is what the eye reads, and it is not
-   * pinned: this is a header you scroll past once, not a bar that spends the
-   * whole session eating a quarter of a 390px screen.
-   *
-   * Every destination stays on screen. A phone is where a photographer checks
-   * whether a payment landed while standing on a kerb, and a queue of
-   * destinations hidden behind a scroll or a toggle is the wrong trade for
-   * about eighty pixels.
-   */
-  .sidebar {
-    position: static;
-    width: 100%;
-    height: auto;
-    padding: 10px 12px 12px;
-  }
-  .brand {
-    padding: 2px 4px 10px;
-  }
-  .brand img {
-    width: 148px;
-    height: auto;
-    object-fit: contain;
-  }
-  .sidebar nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 4px;
-  }
-  /* Icon over label, so "Submissions" fits a quarter of a 390px screen at a
-     readable size instead of being shrunk to fit beside its icon. */
-  .sidebar nav .nav-link {
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    min-height: 56px;
-    padding: 6px 2px;
-    text-align: center;
-    border-left: 0;
-    border-bottom: 2px solid transparent;
-  }
-  .sidebar nav .nav-link.active {
-    border-bottom-color: var(--blue);
-  }
-  /* There is room for the labels again, so undo the rail's clipping in full.
-     Resetting `display` alone would leave them one pixel square. */
-  .nav-link span:last-child {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 0;
-    overflow: visible;
-    clip-path: none;
-    display: block;
-    font-size: var(--fs-label);
-    line-height: 1.25;
-  }
-  /* Settings, the photograph, and the way out, on one line under the grid. */
-  .sidebar-foot {
-    margin-top: 10px;
-    border-top: 1px solid var(--line);
-    padding-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .sidebar-foot .nav-link {
-    justify-content: flex-start;
-    min-height: 44px;
-    padding: 0 10px;
-  }
-  .sidebar-foot form {
-    margin-left: auto;
-  }
-  .sidebar .profile {
-    border-top: 0;
-    margin-top: 0;
-    margin-left: auto;
-    padding: 0;
-    min-width: 0;
-  }
-  /* The name and role stay clipped rather than removed, as in the rail: there
-     is no room for them beside the wordmark, and a screen reader still needs
-     to be told whose workspace this is. */
-  .signout {
-    margin-top: 0;
-    min-height: 44px;
-    padding: 0 8px;
-    font-size: var(--fs-note);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
   .page {
     padding: 24px 16px;
   }
@@ -1846,9 +1635,6 @@ button {
 .photo-grid :where(a, button):focus-visible {
   outline-color: var(--acid);
 }
-.nav-link:focus-visible {
-  outline-offset: -2px;
-}
 .field input:focus-visible,
 .field select:focus-visible,
 .field textarea:focus-visible {
@@ -1871,21 +1657,6 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .skip-link {
     transition: none;
-  }
-}
-
-/* Active navigation is marked with a left rule and weight, not colour alone. */
-.nav-link[aria-current="page"]::after {
-  content: "";
-  margin-left: auto;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--blue);
-}
-@media (max-width: 1000px) {
-  .nav-link[aria-current="page"]::after {
-    display: none;
   }
 }
 
@@ -1955,8 +1726,6 @@ button {
   .package-tab {
     min-height: 44px;
   }
-  .nav-link,
-  .signout,
   .row-action {
     min-height: 44px;
   }
@@ -2128,13 +1897,6 @@ button {
 }
 
 @media (max-width: 680px) {
-  /* The sidebar is not hidden with visibility or a clip: display:none takes it
-     out of the accessibility tree too, so exactly one navigation landmark
-     called "Primary" is exposed at any width, never two. */
-  .nav-bottom .sidebar {
-    display: none;
-  }
-
   /* The wordmark, and nothing else. It scrolls away, because the navigation no
      longer lives up here and a signed-in operator does not need to be told
      which product they are in twice a screen. */
@@ -2375,38 +2137,6 @@ button {
   padding: 1px 4px;
 }
 
-.workspace-switcher {
-  display: grid;
-  gap: 6px;
-  padding: 0 8px 18px;
-}
-.workspace-switcher select {
-  border: 1px solid var(--field-line);
-  background: #fff;
-  min-height: 40px;
-  padding: 0 10px;
-  font-size: var(--fs-lead);
-  width: 100%;
-}
-.workspace-switcher .button {
-  width: 100%;
-}
-
-.signout {
-  margin-top: 12px;
-  border: 0;
-  background: transparent;
-  padding: 6px 8px;
-  color: var(--muted);
-  font-size: var(--fs-micro);
-  font-weight: 700;
-  text-align: left;
-}
-.signout:hover {
-  color: var(--ink);
-  text-decoration: underline;
-}
-
 @media (max-width: 900px) {
   .auth-page {
     grid-template-columns: 1fr;
@@ -2419,14 +2149,6 @@ button {
     border-left: 0;
     border-top: 1px solid var(--line);
     padding: 24px;
-  }
-}
-@media (max-width: 680px) {
-  .workspace-switcher {
-    padding: 0 0 12px;
-  }
-  .workspace-switcher .eyebrow {
-    display: none;
   }
 }
 
@@ -2802,7 +2524,8 @@ button {
   background: #fff;
   min-width: 240px;
 }
-.allocate-form .field {
+.allocate-form .field,
+.allocate-form .ml-field {
   gap: 4px;
 }
 
@@ -2828,7 +2551,8 @@ button {
   align-items: flex-end;
   margin-bottom: 8px;
 }
-.archive-search .field {
+.archive-search .field,
+.archive-search .ml-field {
   flex: 1;
 }
 .asset-card-image {
@@ -2921,12 +2645,14 @@ a.badge:hover {
 }
 
 /* A file input should not look like a text field. */
-.field input[type="file"] {
+.field input[type="file"],
+.ml-field .ml-input[type="file"] {
   padding: 9px;
   background: #fff;
   font-size: var(--fs-body);
 }
-.field input[type="file"]::file-selector-button {
+.field input[type="file"]::file-selector-button,
+.ml-field .ml-input[type="file"]::file-selector-button {
   border: 1px solid var(--ink);
   background: transparent;
   font: inherit;
@@ -3742,4 +3468,203 @@ img.avatar {
   .staged-metadata .form-grid {
     padding-left: 8px;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   News Radar: two modes of one radar.
+   --------------------------------------------------------------------------- */
+
+/* The mode control is the screen's central decision, so it is drawn as two
+   large addressable cards rather than a small tab strip. Selection is carried
+   by aria-current and the wording as well as the fill. */
+.news-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.news-mode {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.news-mode strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.news-mode small {
+  color: var(--muted);
+}
+.news-mode-count {
+  font-size: var(--fs-note);
+  color: var(--blue);
+  background: #e9eeff;
+  border-radius: 99px;
+  padding: 3px 9px;
+}
+.news-mode.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: white;
+}
+.news-mode.selected small {
+  color: rgba(255, 255, 255, 0.75);
+}
+.news-mode.selected .news-mode-count {
+  background: var(--blue);
+  color: white;
+}
+
+/* The queue. The basis column carries prose, so it is capped rather than left
+   to stretch the row into one long line. */
+.news-table .news-basis {
+  max-width: 340px;
+}
+.news-table .news-basis small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.news-table .story-link {
+  color: inherit;
+}
+.news-table .story-link:hover {
+  color: var(--blue);
+}
+.news-row-actions {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.row-decisions .actions {
+  margin: 0;
+}
+
+/* Dismissing is final, so it takes a second motion and says why out loud.
+   The same component renders inside a queue cell and as a card on the detail
+   screen; only the padding differs. */
+.dismiss-confirm {
+  display: grid;
+  gap: 8px;
+  max-width: 340px;
+}
+.dismiss-warning {
+  margin: 0;
+  font-size: var(--fs-note);
+  color: var(--ink-2);
+}
+.dismiss-confirm textarea {
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius);
+  background: white;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: var(--fs-note);
+}
+
+/* Manual entry: the kind is the first decision, drawn as two labelled cards. */
+.kind-choice {
+  border: 0;
+  padding: 0;
+  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.kind-choice legend {
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 750;
+  margin-bottom: 8px;
+}
+.kind-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--field-line);
+  background: white;
+  cursor: pointer;
+}
+.kind-option input {
+  margin-top: 3px;
+  accent-color: var(--blue);
+}
+.kind-option span {
+  display: grid;
+  gap: 3px;
+}
+.kind-option small {
+  color: var(--muted);
+}
+.kind-option.selected {
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+  background: #f6f8ff;
+}
+.story-form .form-grid + .form-grid {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.story-form .actions {
+  margin-top: 16px;
+}
+
+/* A region a later stage will fill. Drawn honestly as not yet built: dashed,
+   quiet, and holding no invented records. */
+.future-region {
+  border: 1px dashed var(--field-line);
+  margin: 12px 18px;
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.empty-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1.375rem;
+  margin: 4px 0 8px;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.history-list li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+}
+.history-list li:first-child {
+  border-top: 0;
+  padding-top: 2px;
+}
+.history-list small {
+  color: var(--muted);
+}
+
+@media (max-width: 680px) {
+  .news-mode-switch,
+  .kind-choice {
+    grid-template-columns: 1fr;
+  }
+  .news-table .news-basis {
+    max-width: 260px;
+  }
+}
+
+.story-form .field textarea,
+.story-form .ml-field .ml-textarea {
+  min-height: 84px;
 }

@@ -2,7 +2,8 @@
 
 import { useActionState, useState } from "react";
 import { BuyerSelect } from "@/components/buyer-select";
-import { Field } from "@/components/primitives";
+import { Button } from "@/components/button";
+import { Field } from "@/components/field";
 import { type MoneyActionState, recordPaymentAction } from "../actions";
 
 const INITIAL: MoneyActionState = {};
@@ -14,8 +15,17 @@ const INITIAL: MoneyActionState = {};
  * stay separately inspectable. Net is derived here and shown live, so the
  * operator sees what will actually land before committing.
  */
-export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string; buyers: readonly { id: string; name: string }[] }) {
-  const [state, formAction, pending] = useActionState(recordPaymentAction.bind(null, workspaceSlug), INITIAL);
+export function RecordPayment({
+  workspaceSlug,
+  buyers,
+}: {
+  workspaceSlug: string;
+  buyers: readonly { id: string; name: string }[];
+}) {
+  const [state, formAction, pending] = useActionState(
+    recordPaymentAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
   const [open, setOpen] = useState(false);
   const [amounts, setAmounts] = useState({ gross: "", deductions: "", platformFee: "", tax: "" });
 
@@ -28,24 +38,28 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
 
   if (!open) {
     return (
-      <div className="side-card">
-        <h3>Record a payment</h3>
-        <p>Log what a buyer actually paid, and what they deducted.</p>
-        <button className="button" onClick={() => setOpen(true)} type="button">
-          Record payment
-        </button>
+      <div className="ml-card ml-stack">
+        <h3 className="ml-subtitle">Record a payment</h3>
+        <p className="ml-body">Log what a buyer actually paid, and what they deducted.</p>
+        <p>
+          <Button onClick={() => setOpen(true)} variant="secondary">
+            Record payment
+          </Button>
+        </p>
       </div>
     );
   }
 
   return (
-    <form action={formAction} className="side-card">
-      <h3>Record a payment</h3>
+    <form action={formAction} className="ml-card ml-stack">
+      <h3 className="ml-subtitle">Record a payment</h3>
 
-      <BuyerSelect workspaceSlug={workspaceSlug} buyers={buyers} emptyLabel="Not linked to a buyer" />
-      <div className="spacer" />
+      <BuyerSelect
+        workspaceSlug={workspaceSlug}
+        buyers={buyers}
+        emptyLabel="Not linked to a buyer"
+      />
       <Field label="Reference" name="reference" placeholder="BG-882341" />
-      <div className="spacer" />
       <Field control="select" defaultValue="statement" label="Source" name="source">
         <option value="statement">Agency statement</option>
         <option value="invoice">Invoice</option>
@@ -53,7 +67,6 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         <option value="recovery">Rights recovery</option>
         <option value="manual">Manual entry</option>
       </Field>
-      <div className="spacer" />
       <Field control="select" defaultValue="received" label="Status" name="status">
         <option value="received">Received</option>
         <option value="invoiced">Invoiced</option>
@@ -61,7 +74,6 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         <option value="reported">Reported on a statement</option>
       </Field>
 
-      <div className="spacer" />
       <Field
         inputMode="decimal"
         label="Gross"
@@ -71,7 +83,6 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         required
         value={amounts.gross}
       />
-      <div className="spacer" />
       <Field
         hint="Agency commission and anything else withheld."
         inputMode="decimal"
@@ -81,7 +92,6 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         placeholder="1560"
         value={amounts.deductions}
       />
-      <div className="spacer" />
       <Field
         hint="Only for a license Mastline generated."
         inputMode="decimal"
@@ -91,7 +101,6 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         placeholder="0"
         value={amounts.platformFee}
       />
-      <div className="spacer" />
       <Field
         inputMode="decimal"
         label="Tax withheld"
@@ -102,15 +111,13 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
       />
 
       <div className="split-preview">
-        <dl className="confirm-list">
-          <div>
-            <dt>Net that arrives</dt>
-            <dd className={net < 0 ? "danger-text" : undefined}>
-              {amounts.gross ? `$${net.toFixed(2)}` : "—"}
-            </dd>
-          </div>
+        <dl className="ml-metadata">
+          <dt>Net that arrives</dt>
+          <dd className={net < 0 ? "danger-text" : undefined}>
+            {amounts.gross ? `$${net.toFixed(2)}` : "—"}
+          </dd>
         </dl>
-        <p className="section-note">Allocations divide this net, never the gross.</p>
+        <p className="ml-caption">Allocations divide this net, never the gross.</p>
       </div>
 
       {state.error && (
@@ -124,14 +131,13 @@ export function RecordPayment({ workspaceSlug, buyers }: { workspaceSlug: string
         </p>
       )}
 
-      <div className="spacer" />
-      <div className="actions">
-        <button className="button blue" disabled={pending || net < 0} type="submit">
+      <div className="ml-cluster">
+        <Button disabled={pending || net < 0} type="submit">
           {pending ? "Recording…" : "Record payment"}
-        </button>
-        <button className="button" onClick={() => setOpen(false)} type="button">
+        </Button>
+        <Button onClick={() => setOpen(false)} variant="secondary">
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

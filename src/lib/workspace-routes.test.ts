@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { WORKSPACE_SECTIONS, isProtected } from "./routes";
-import {
-  isPublicPath,
-  workspaceRoutes,
-  workspaceSlugFromPathname,
-} from "./workspace-routes";
+import { isPublicPath, workspaceRoutes, workspaceSlugFromPathname } from "./workspace-routes";
 
 /**
  * The route builder.
@@ -28,6 +24,8 @@ describe("workspaceRoutes", () => {
       routes.requests(),
       routes.newRequest(),
       routes.request("req-1"),
+      routes.newsOpportunity("op-1"),
+      routes.newNewsStory(),
       routes.shoots(),
       routes.newShoot(),
       routes.shoot("shoot-1"),
@@ -61,6 +59,8 @@ describe("workspaceRoutes", () => {
     expect(routes.newRequest()).toBe("/hale-studio/requests/new");
     expect(routes.request("abc")).toBe("/hale-studio/requests/abc");
     expect(routes.newShoot()).toBe("/hale-studio/shoots/new");
+    expect(routes.newsOpportunity("op-1")).toBe("/hale-studio/news/op-1");
+    expect(routes.newNewsStory()).toBe("/hale-studio/news/new");
     expect(routes.shoot("abc")).toBe("/hale-studio/shoots/abc");
     expect(routes.asset("def")).toBe("/hale-studio/assets/def");
     expect(routes.submission("ghi")).toBe("/hale-studio/submissions/ghi");
@@ -102,6 +102,16 @@ describe("workspaceRoutes", () => {
     expect(routes.settings({ query: { saved: "address" } })).toBe(
       "/hale-studio/settings?saved=address",
     );
+  });
+
+  /**
+   * The News Radar's two modes are URL-addressable, so a mode can be linked,
+   * bookmarked, and restored. The mode rides in the query, never in the path.
+   */
+  it("addresses the news radar modes by query parameter", () => {
+    expect(routes.news({ query: { mode: "archive" } })).toBe("/hale-studio/news?mode=archive");
+    expect(routes.news({ query: { mode: "shoot" } })).toBe("/hale-studio/news?mode=shoot");
+    expect(routes.news()).toBe("/hale-studio/news");
   });
 
   it("keeps a hash for an on-page anchor", () => {

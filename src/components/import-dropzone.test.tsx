@@ -17,7 +17,9 @@ const failing = new Set<string>();
 let releaseRegister: (() => void) | null = null;
 
 vi.mock("@/app/[workspace]/shoots/actions", () => ({
-  prepareUploadAction: vi.fn(async (_workspaceSlug: string, token: string) => ({ stagingKey: `org/_staging/${token}` })),
+  prepareUploadAction: vi.fn(async (_workspaceSlug: string, token: string) => ({
+    stagingKey: `org/_staging/${token}`,
+  })),
   registerImportAction: vi.fn(async (_workspaceSlug: string, input: { filename: string }) => {
     // Held open on demand so a second selection can arrive mid-flight.
     if (releaseRegister) {
@@ -35,7 +37,7 @@ vi.mock("@/app/[workspace]/shoots/actions", () => ({
     registered.push(input.filename);
     return { ok: true, assetId: `asset-${registered.length}`, filename: input.filename };
   }),
-  registerPreviewAction: vi.fn(async (_workspaceSlug: string, ) => ({ ok: true })),
+  registerPreviewAction: vi.fn(async (_workspaceSlug: string) => ({ ok: true })),
   finishImportAction: vi.fn(async (_workspaceSlug: string, shootId: string) => {
     finished.push(shootId);
   }),

@@ -48,7 +48,11 @@ export default async function SecureYourAccountPage() {
             : `Your account is protected, so ${session.activeWorkspace.name} is yours to use again.`}
         </p>
         <div className="spacer" />
-        <TwoFactor workspaceSlug={session.activeWorkspace.slug} email={session.email} standing={standing} />
+        <TwoFactor
+          workspaceSlug={session.activeWorkspace.slug}
+          email={session.email}
+          standing={standing}
+        />
         {!blocked && (
           <p className="section-note">
             <Link href={`/${session.activeWorkspace.slug}/work`}>Continue to your work</Link>

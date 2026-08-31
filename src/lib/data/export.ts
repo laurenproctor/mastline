@@ -151,7 +151,8 @@ export async function collectExport(
         visitorCount: measured?.visitorCount ?? 0,
         // Left undefined when nothing was measured, so the column is blank
         // rather than reading as a confident zero.
-        activeVisibleMs: measured && measured.sessionCount > 0 ? measured.activeVisibleMs : undefined,
+        activeVisibleMs:
+          measured && measured.sessionCount > 0 ? measured.activeVisibleMs : undefined,
         downloadCount: measured?.downloadCount ?? 0,
         acceptedBy: acceptance?.acceptedBy,
         acceptedAt: acceptance?.acceptedAt,

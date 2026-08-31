@@ -28,16 +28,21 @@ export interface CreateBuyerResult {
 }
 
 export async function createBuyerAction(
-  workspaceSlug: string,input: {
-  name: string;
-  buyerType: string;
-  contactName?: string;
-  contactEmail?: string;
-}): Promise<CreateBuyerResult> {
+  workspaceSlug: string,
+  input: {
+    name: string;
+    buyerType: string;
+    contactName?: string;
+    contactEmail?: string;
+  },
+): Promise<CreateBuyerResult> {
   const parsed = parseNewBuyer(input);
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
-  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(workspaceSlug, "buyer.write");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "buyer.write",
+  );
 
   try {
     const buyer = await createBuyer({ organizationId, actorId, buyer: parsed.value });

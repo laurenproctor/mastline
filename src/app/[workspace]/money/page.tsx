@@ -1,6 +1,26 @@
-import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { Badge, Metric, PageHeader, Panel, TableScroll } from "@/components/primitives";
+import { Badge } from "@/components/badge";
+import { TextLink } from "@/components/button";
+import {
+  DataTable,
+  EmptyState,
+  Metric,
+  MetricGroup,
+  OperationalList,
+  OperationalListRow,
+  Panel,
+  PanelBody,
+  PanelHeader,
+  Progress,
+  TableBody,
+  TableCell,
+  TableEmptyRow,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/dashboard-surfaces";
+import { PageHeader } from "@/components/page-header";
+import "@/styles/mastline-dashboard-screens.css";
 import { getMoneySummary, getRevenueBySource, listLicenses, listPayments } from "@/lib/data/money";
 import { listSubmissions } from "@/lib/data/submissions";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
@@ -27,11 +47,7 @@ const STATUS_TONE: Record<string, "neutral" | "good" | "warn" | "danger" | "blue
 
 const OUTSTANDING = new Set(["expected", "invoiced", "partial", "overdue"]);
 
-export default async function MoneyPage({
-  params,
-}: {
-  params: Promise<{ workspace: string }>;
-}) {
+export default async function MoneyPage({ params }: { params: Promise<{ workspace: string }> }) {
   const { workspace: requestedWorkspace } = await params;
   const { session, organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);
@@ -92,11 +108,11 @@ export default async function MoneyPage({
           title="Revenue & payments"
         />
 
-        <div className="metrics">
+        <MetricGroup label="Revenue summary">
           <Metric
             detail="Net that actually arrived"
             label="Net received"
-            tone="good"
+            tone="success"
             value={formatMoney(summary.netReceived)}
           />
           <Metric
@@ -115,111 +131,122 @@ export default async function MoneyPage({
             label="Average time to payment"
             value={`${summary.averageDaysToPayment} days`}
           />
-        </div>
+        </MetricGroup>
 
-        <div className="panel-grid">
-          <div className="stack">
+        <div className="ml-dashboard-grid">
+          <div className="ml-stack">
             {mayWrite && openLines.length > 0 && (
-              <Panel
-                action={<span className="muted">{openLines.length} lines</span>}
-                title="Statement lines awaiting confirmation"
-              >
-                <TableScroll label="Statement lines awaiting confirmation">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Description</th>
-                        <th scope="col">Gross</th>
-                        <th scope="col">Deducted</th>
-                        <th scope="col">Net</th>
-                        <th scope="col">Why</th>
-                        <th scope="col">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+              <Panel aria-labelledby="money-statement-lines">
+                <PanelHeader
+                  id="money-statement-lines"
+                  meta={`${openLines.length} lines`}
+                  title="Statement lines awaiting confirmation"
+                />
+                <PanelBody flush>
+                  <DataTable caption="Open statement lines" captionHidden>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell>Reference</TableHeaderCell>
+                        <TableHeaderCell>Description</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Gross</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Deducted</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Net</TableHeaderCell>
+                        <TableHeaderCell>Why</TableHeaderCell>
+                        <TableHeaderCell kind="action">Action</TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                       {openLines.slice(0, 20).map(({ statement, line }) => (
-                        <tr key={line.id}>
-                          <td>
+                        <TableRow key={line.id}>
+                          <TableCell>
                             <strong>{line.externalReference ?? "—"}</strong>
-                            <small>{statement.filename}</small>
-                          </td>
-                          <td>{line.description ?? "—"}</td>
-                          <td>{formatMoney(line.gross)}</td>
-                          <td>{formatMoney(line.deductions)}</td>
-                          <td>
+                            <div className="ml-meta">{statement.filename}</div>
+                          </TableCell>
+                          <TableCell>{line.description ?? "—"}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(line.gross)}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(line.deductions)}</TableCell>
+                          <TableCell kind="numeric">
                             <strong>{formatMoney(line.net)}</strong>
-                          </td>
-                          <td>
-                            <small>{line.matchBasis ?? "No basis recorded."}</small>
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
+                            <span className="ml-meta">
+                              {line.matchBasis ?? "No basis recorded."}
+                            </span>
+                          </TableCell>
+                          <TableCell kind="action">
                             <ConfirmLine
                               workspaceSlug={workspaceSlug}
                               disabled={!line.matchedSubmissionId && !line.matchedLicenseId}
                               lineId={line.id}
                             />
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
-                <p className="section-note panel-body">
-                  Every proposed match states its basis. Confirming a line creates a payment and
-                  attributes it; the imported figures are never rewritten.
-                </p>
+                    </TableBody>
+                  </DataTable>
+                </PanelBody>
+                <PanelBody>
+                  <p className="ml-caption">
+                    Every proposed match states its basis. Confirming a line creates a payment and
+                    attributes it; the imported figures are never rewritten.
+                  </p>
+                </PanelBody>
               </Panel>
             )}
 
-            <Panel
-              action={<span className="muted">{needsAttention.length} lines</span>}
-              title="Reconciliation queue"
-            >
-              {needsAttention.length === 0 ? (
-                <div className="panel-body">
-                  <p className="section-note">
-                    Every payment is fully attributed to the work that earned it.
-                  </p>
-                </div>
-              ) : (
-                <TableScroll label="Reconciliation queue">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Status</th>
-                        <th scope="col">Reference</th>
-                        <th scope="col">Buyer</th>
-                        <th scope="col">Net</th>
-                        <th scope="col">Attributed</th>
-                        <th scope="col">Unattributed</th>
-                        {mayWrite && <th scope="col">Action</th>}
-                      </tr>
-                    </thead>
-                    <tbody>
+            <Panel aria-labelledby="money-reconciliation">
+              <PanelHeader
+                id="money-reconciliation"
+                meta={`${needsAttention.length} lines`}
+                title="Reconciliation queue"
+              />
+              <PanelBody flush>
+                {needsAttention.length === 0 ? (
+                  <EmptyState
+                    compact
+                    description="Every payment is fully attributed to the work that earned it."
+                    level={3}
+                    title="Nothing to reconcile"
+                  />
+                ) : (
+                  <DataTable caption="Payments with unattributed amounts" captionHidden>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell kind="status">Status</TableHeaderCell>
+                        <TableHeaderCell>Reference</TableHeaderCell>
+                        <TableHeaderCell>Buyer</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Net</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Attributed</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Unattributed</TableHeaderCell>
+                        {mayWrite && <TableHeaderCell kind="action">Action</TableHeaderCell>}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                       {needsAttention.map((payment) => (
-                        <tr key={payment.id}>
-                          <td>
+                        <TableRow key={payment.id}>
+                          <TableCell kind="status">
                             <Badge tone={STATUS_TONE[payment.status] ?? "neutral"}>
                               {humanizeStatus(payment.status)}
                             </Badge>
-                          </td>
-                          <td>
-                            <strong>{payment.reference ?? "—"}</strong>
-                            <small>{humanizeStatus(payment.source)}</small>
-                          </td>
-                          <td>{buyerNames.get(payment.buyerId ?? "") ?? "—"}</td>
-                          <td>{formatMoney(payment.net)}</td>
-                          <td>{formatMoney(payment.allocatedTotal)}</td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
+                            <strong className="money-reference">{payment.reference ?? "—"}</strong>
+                            <div className="ml-meta">{humanizeStatus(payment.source)}</div>
+                          </TableCell>
+                          <TableCell>{buyerNames.get(payment.buyerId ?? "") ?? "—"}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(payment.net)}</TableCell>
+                          <TableCell kind="numeric">
+                            {formatMoney(payment.allocatedTotal)}
+                          </TableCell>
+                          <TableCell kind="numeric">
                             {payment.unallocated.minor > 0 ? (
                               <strong>{formatMoney(payment.unallocated)}</strong>
                             ) : (
                               "—"
                             )}
-                          </td>
+                          </TableCell>
                           {mayWrite && (
-                            <td>
+                            <TableCell kind="action">
                               {payment.unallocated.minor > 0 ? (
                                 <AllocateForm
                                   workspaceSlug={workspaceSlug}
@@ -230,191 +257,235 @@ export default async function MoneyPage({
                                   submissions={submissionOptions}
                                 />
                               ) : (
-                                <span className="muted">—</span>
+                                <span className="ml-meta">—</span>
                               )}
-                            </td>
+                            </TableCell>
                           )}
-                        </tr>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
-              )}
+                    </TableBody>
+                  </DataTable>
+                )}
+              </PanelBody>
             </Panel>
 
-            <Panel title="Recent payments">
-              <TableScroll label="Recent payments">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">Received</th>
-                      <th scope="col">Source</th>
-                      <th scope="col">Gross</th>
-                      <th scope="col">Deductions</th>
-                      <th scope="col">Sales Engine</th>
-                      <th scope="col">Tax</th>
-                      <th scope="col">Net</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recent.map((payment) => (
-                      <tr key={payment.id}>
-                        <td>
-                          {payment.receivedAt
-                            ? formatDate(payment.receivedAt, { withYear: true })
-                            : "—"}
-                        </td>
-                        <td>
-                          <strong>{buyerNames.get(payment.buyerId ?? "") ?? "—"}</strong>
-                          <small>{payment.reference}</small>
-                        </td>
-                        <td>{formatMoney(payment.gross)}</td>
-                        <td>{formatMoney(payment.deductions)}</td>
-                        <td>{formatMoney(payment.platformFee)}</td>
-                        <td>{formatMoney(payment.tax)}</td>
-                        <td>
-                          <strong>{formatMoney(payment.net)}</strong>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </TableScroll>
-              <p className="section-note panel-body">
-                Gross, deductions, the Sales Engine share, tax, and net stay separately inspectable.
-                The 30% share applies only to a license generated inside Mastline.
-              </p>
+            <Panel aria-labelledby="money-recent">
+              <PanelHeader id="money-recent" title="Recent payments" />
+              <PanelBody flush>
+                <DataTable caption="Payments received, newest first" captionHidden>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Received</TableHeaderCell>
+                      <TableHeaderCell>Source</TableHeaderCell>
+                      <TableHeaderCell kind="numeric">Gross</TableHeaderCell>
+                      <TableHeaderCell kind="numeric">Deductions</TableHeaderCell>
+                      <TableHeaderCell kind="numeric">Sales Engine</TableHeaderCell>
+                      <TableHeaderCell kind="numeric">Tax</TableHeaderCell>
+                      <TableHeaderCell kind="numeric">Net</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {recent.length === 0 ? (
+                      <TableEmptyRow columns={7}>No payments have been received yet.</TableEmptyRow>
+                    ) : (
+                      recent.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell>
+                            {payment.receivedAt
+                              ? formatDate(payment.receivedAt, { withYear: true })
+                              : "—"}
+                          </TableCell>
+                          <TableCell>
+                            <strong>{buyerNames.get(payment.buyerId ?? "") ?? "—"}</strong>
+                            <div className="ml-meta money-reference">{payment.reference}</div>
+                          </TableCell>
+                          <TableCell kind="numeric">{formatMoney(payment.gross)}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(payment.deductions)}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(payment.platformFee)}</TableCell>
+                          <TableCell kind="numeric">{formatMoney(payment.tax)}</TableCell>
+                          <TableCell kind="numeric">
+                            <strong>{formatMoney(payment.net)}</strong>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </DataTable>
+              </PanelBody>
+              <PanelBody>
+                <p className="ml-caption">
+                  Gross, deductions, the Sales Engine share, tax, and net stay separately
+                  inspectable. The 30% share applies only to a license generated inside Mastline.
+                </p>
+              </PanelBody>
             </Panel>
 
-            <Panel action={<span className="muted">{licenses.length}</span>} title="Licenses">
-              {licenses.length === 0 ? (
-                <div className="panel-body">
-                  <p className="section-note">No licenses recorded yet.</p>
-                </div>
-              ) : (
-                <TableScroll label="Licenses">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Licensee</th>
-                        <th scope="col">Origin</th>
-                        <th scope="col">Sale base</th>
-                        <th scope="col">Photographer</th>
-                        <th scope="col">Mastline</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+            <Panel aria-labelledby="money-licenses">
+              <PanelHeader id="money-licenses" meta={String(licenses.length)} title="Licenses" />
+              <PanelBody flush>
+                {licenses.length === 0 ? (
+                  <EmptyState
+                    compact
+                    description="A license appears here once a sale is recorded against a submission or through the Sales Engine."
+                    level={3}
+                    title="No licenses recorded yet"
+                  />
+                ) : (
+                  <DataTable caption="Licenses recorded" captionHidden>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeaderCell>Licensee</TableHeaderCell>
+                        <TableHeaderCell kind="status">Origin</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Sale base</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Photographer</TableHeaderCell>
+                        <TableHeaderCell kind="numeric">Mastline</TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                       {licenses.map((license) => (
-                        <tr key={license.id}>
-                          <td>
+                        <TableRow key={license.id}>
+                          <TableCell>
                             <strong>{license.licenseeName}</strong>
-                            <small>
+                            <div className="ml-meta">
                               {license.media ?? "—"}
                               {license.territory ? ` · ${license.territory}` : ""}
-                            </small>
-                          </td>
-                          <td>
+                            </div>
+                          </TableCell>
+                          <TableCell kind="status">
                             {license.origin === "mastline_sales_engine" ? (
                               <Badge tone="blue">Via Mastline</Badge>
                             ) : (
                               <Badge tone="neutral">Own relationship</Badge>
                             )}
-                          </td>
-                          <td>{formatMoney(license.saleBase)}</td>
-                          <td>
+                          </TableCell>
+                          <TableCell kind="numeric">{formatMoney(license.saleBase)}</TableCell>
+                          <TableCell kind="numeric">
                             <strong>{formatMoney(license.photographerShare)}</strong>
-                          </td>
-                          <td>{formatMoney(license.salesEngineShare)}</td>
-                        </tr>
+                          </TableCell>
+                          <TableCell kind="numeric">
+                            {formatMoney(license.salesEngineShare)}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
-              )}
+                    </TableBody>
+                  </DataTable>
+                )}
+              </PanelBody>
             </Panel>
           </div>
 
-          <div className="stack">
+          <div className="ml-stack">
             {mayWrite && (
-              <Panel title="Record">
-                <RecordPayment
-                  workspaceSlug={workspaceSlug}
-                  buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
-                />
-                <ImportStatement
-                  workspaceSlug={workspaceSlug}
-                  buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
-                />
-                <div className="side-card">
-                  <h3>Export everything</h3>
-                  <p>
-                    Assets, metadata, submissions, licenses, payments, allocations, and the full
-                    activity record, as CSV.
-                  </p>
-                  <a className="button" download href={`/api/workspaces/${workspaceSlug}/export`}>
-                    Download workspace export
-                  </a>
-                  <p className="section-note">
-                    Confidential source notes are excluded. Exporting those is a deliberate,
-                    separate them.
-                  </p>
-                </div>
+              <Panel aria-labelledby="money-record">
+                <PanelHeader id="money-record" title="Record" />
+                <PanelBody>
+                  <div className="ml-stack">
+                    <RecordPayment
+                      workspaceSlug={workspaceSlug}
+                      buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
+                    />
+                    <ImportStatement
+                      workspaceSlug={workspaceSlug}
+                      buyers={buyers.map((buyer) => ({ id: buyer.id, name: buyer.name }))}
+                    />
+                    <div className="ml-card ml-stack">
+                      <h3 className="ml-subtitle">Export everything</h3>
+                      <p className="ml-body">
+                        Assets, metadata, submissions, licenses, payments, allocations, and the full
+                        activity record, as CSV.
+                      </p>
+                      <p>
+                        {/* A file download, not a navigation: a plain anchor with `download`. */}
+                        <a
+                          className="ml-button ml-button--secondary"
+                          download
+                          href={`/api/workspaces/${workspaceSlug}/export`}
+                        >
+                          Download workspace export
+                        </a>
+                      </p>
+                      <p className="ml-caption">
+                        Confidential source notes are excluded. Exporting those is a deliberate,
+                        separate them.
+                      </p>
+                    </div>
+                  </div>
+                </PanelBody>
               </Panel>
             )}
 
-            <Panel title="Receivables">
-              {receivables.length === 0 && (
-                <div className="side-card">
-                  <p>Nothing outstanding.</p>
-                </div>
-              )}
-              {receivables.map((payment) => (
-                <div className="side-card" key={payment.id}>
-                  <h3>
-                    {buyerNames.get(payment.buyerId ?? "") ?? "Unknown buyer"} ·{" "}
-                    {formatMoney(payment.net)}
-                  </h3>
-                  {payment.status === "overdue" ? (
-                    <p className="danger-text">
-                      Overdue{payment.dueAt ? ` since ${formatDate(payment.dueAt)}` : ""}
-                    </p>
-                  ) : (
-                    <p>
-                      Due{" "}
-                      {payment.dueAt
-                        ? formatDate(payment.dueAt, { withYear: true })
-                        : "unscheduled"}
-                    </p>
-                  )}
-                  <small className="muted">{payment.reference}</small>
-                </div>
-              ))}
+            <Panel aria-labelledby="money-receivables">
+              <PanelHeader
+                id="money-receivables"
+                meta={receivables.length > 0 ? String(receivables.length) : undefined}
+                title="Receivables"
+              />
+              <PanelBody flush>
+                {receivables.length === 0 ? (
+                  <EmptyState
+                    compact
+                    description="No payment is expected, invoiced, partly paid, or overdue."
+                    level={3}
+                    title="Nothing outstanding"
+                  />
+                ) : (
+                  <OperationalList compact label="Receivables">
+                    {receivables.map((payment) => (
+                      <OperationalListRow
+                        date={
+                          payment.status === "overdue"
+                            ? payment.dueAt
+                              ? `Overdue since ${formatDate(payment.dueAt)}`
+                              : "Overdue"
+                            : payment.dueAt
+                              ? `Due ${formatDate(payment.dueAt, { withYear: true })}`
+                              : "Due unscheduled"
+                        }
+                        key={payment.id}
+                        level={3}
+                        meta={payment.reference}
+                        priority={payment.status === "overdue" ? "high" : "normal"}
+                        priorityLabel="Overdue"
+                        status={
+                          <Badge tone={STATUS_TONE[payment.status] ?? "neutral"}>
+                            {humanizeStatus(payment.status)}
+                          </Badge>
+                        }
+                        title={`${buyerNames.get(payment.buyerId ?? "") ?? "Unknown buyer"} · ${formatMoney(payment.net)}`}
+                      />
+                    ))}
+                  </OperationalList>
+                )}
+              </PanelBody>
             </Panel>
 
-            <Panel title="Received by source">
-              {sources.length === 0 && (
-                <div className="side-card">
-                  <p>No received payments yet.</p>
-                </div>
-              )}
-              {sources.map((source) => (
-                <div className="side-card" key={source.label}>
-                  <div className="source-row">
-                    <p>{source.label}</p>
-                    <strong>{formatMoney(source.amount)}</strong>
+            <Panel aria-labelledby="money-sources">
+              <PanelHeader id="money-sources" title="Received by source" />
+              <PanelBody>
+                {sources.length === 0 ? (
+                  <EmptyState compact level={3} title="No received payments yet" />
+                ) : (
+                  <div className="ml-stack">
+                    {sources.map((source) => (
+                      <Progress
+                        key={source.label}
+                        label={source.label}
+                        max={largest}
+                        value={source.amount.minor}
+                        valueText={formatMoney(source.amount)}
+                      />
+                    ))}
+                    <p className="ml-caption">
+                      Each bar is that source&apos;s share of the largest.
+                    </p>
                   </div>
-                  <div
-                    aria-hidden="true"
-                    className="source-bar"
-                    style={{ width: `${Math.round((source.amount.minor / largest) * 100)}%` }}
-                  />
-                </div>
-              ))}
-              <div className="side-card">
-                <Link className="text-link" href={routes.archive()}>
-                  Open the archive <span aria-hidden="true">→</span>
-                </Link>
-              </div>
+                )}
+                <p className="money-sources-foot">
+                  <TextLink href={routes.archive()}>
+                    Open the archive <span aria-hidden="true">→</span>
+                  </TextLink>
+                </p>
+              </PanelBody>
             </Panel>
           </div>
         </div>

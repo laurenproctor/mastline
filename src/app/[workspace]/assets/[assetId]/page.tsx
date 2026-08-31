@@ -24,7 +24,11 @@ interface HistoryRow {
   href?: string;
 }
 
-export default async function AssetPage({ params }: { params: Promise<{ workspace: string; assetId: string }> }) {
+export default async function AssetPage({
+  params,
+}: {
+  params: Promise<{ workspace: string; assetId: string }>;
+}) {
   const { workspace: requestedWorkspace, assetId } = await params;
   const { organizationId, canonicalSlug } = await workspaceContext(requestedWorkspace);
   const routes = workspaceRoutes(canonicalSlug);
@@ -210,7 +214,10 @@ export default async function AssetPage({ params }: { params: Promise<{ workspac
                   </ol>
                 )}
                 <p className="section-note">
-                  Editing the current caption never destroys a prior version.
+                  Editing the current caption never destroys a prior version
+                  {assetSubmissions.length > 0
+                    ? ", and never changes an approved submission: what each recipient sees and downloads is frozen at approval."
+                    : "."}
                 </p>
               </div>
             </Panel>

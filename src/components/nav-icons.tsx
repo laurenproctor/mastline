@@ -13,7 +13,8 @@ const ICONS = {
   work: "M3 8.5 9 3.5l6 5V15a.5.5 0 0 1-.5.5h-3v-4h-5v4h-3A.5.5 0 0 1 3 15z",
   news: "M4.5 5.5h9v7h-9zM6.5 8h5M6.5 10h3",
   // An inbox tray: what somebody else has put in front of you.
-  requests: "M2.5 9.5h3l1 2h5l1-2h3M2.5 9.5 4.6 4.3h8.8l2.1 5.2v4a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5z",
+  requests:
+    "M2.5 9.5h3l1 2h5l1-2h3M2.5 9.5 4.6 4.3h8.8l2.1 5.2v4a.5.5 0 0 1-.5.5h-12a.5.5 0 0 1-.5-.5z",
   shoots: "M2.5 6h13v8.5h-13zM6 6l1.2-2h3.6L12 6M9 12.2a2.4 2.4 0 1 0 0-4.8 2.4 2.4 0 0 0 0 4.8",
   submissions: "M15 3.5 8 10M15 3.5l-4.4 11.6-2.2-5-5-2.2z",
   money:

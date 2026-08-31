@@ -21,7 +21,8 @@ The asset is the canonical center, but it is not isolated:
 | memberships | Person-to-organization role and status |
 | profiles | The readable face of an account: name, address, avatar key. Visible to people who share a workspace |
 | buyers | Agencies, publishers, picture desks, and direct licensees |
-| opportunities | News/tip/demand signals and suggested archive value |
+| news_signals | The canonical News Radar story: source facts owned once per workspace, deduplicated per organization on the source URL |
+| opportunities | One evaluation path of a news signal — archive_match (may reactivate owned work) or shoot_opportunity (may justify a new shoot) — with its own labelled suggestion, window, and independent lifecycle |
 | buyer_requests | One piece of inbound demand: who asked, what for, by when, on what terms, and what became of it |
 | request_sensitive_notes | Source protection for a request. Owner and editor only, mirroring shoot_sensitive_notes |
 | shoots | Brief, place/time, assignment, confidentiality, workflow state |
@@ -29,6 +30,7 @@ The asset is the canonical center, but it is not isolated:
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
 | packages | Selected asset versions and a buyer/delivery profile |
 | submissions | Immutable-from-creation record of what was approved, and what became of it |
+| submission_assets | **The authoritative approved-delivery record.** One row per approved frame: the exact version and storage object, and the editorial facts at approval. Append-only; written only by the approval transaction and once by the backfill |
 | submission_deliveries | One recipient-specific link: token, protected recipient fields, attribution snapshot, share and withdrawal |
 | delivery_access_events | Append-only evidence: opened, accepted, downloaded, refused |
 | delivery_acceptances | A recipient agreeing to the terms as they were shown |
@@ -49,6 +51,8 @@ Statuses should be database enums or checked text, changed only by an explicit m
 
 | Record | Values |
 | --- | --- |
+| Opportunity | new, watching, pitching, acted, dismissed, expired — acted, dismissed, and expired are terminal; a dismissed or expired path is never treated as new again, and the other path of the same story is unaffected |
+| Opportunity kind | archive_match, shoot_opportunity — two evaluation paths of one canonical news signal, unique per (signal, kind); the story itself exists once |
 | Buyer request | draft, new, needs_clarification, qualified, matching, coverage_planned, preparing_response, submitted, negotiating, won, lost, expired, declined, cancelled |
 | Shoot | draft, scheduled, active, ingesting, preparing, ready, dispatched, completed, archived, cancelled |
 | Asset | ingesting, active, restricted, archived, tombstoned |
@@ -117,6 +121,43 @@ Two states need explaining, and both are in `docs/DECISIONS.md`:
 - **Nothing expires by itself.** There is no scheduler, so a passing deadline is
   rendered as a derived "Past deadline" at read time and never written back.
   `expired` is a transition somebody performs.
+## News Radar: one signal, two paths
+
+`one news signal → archive opportunity path + shoot opportunity path`
+
+- `news_signals` owns the source facts (title, source name/URL, publication
+  time, summary) exactly once per story, per workspace. Typed by an operator
+  today; written by an ingestion pass later. Lifecycle decisions never edit
+  them, and there is no second copy to drift: the legacy source columns on
+  `opportunities` were dropped, not deprecated, because the table had never
+  been written by application code and a column that still accepts writes is
+  how two copies diverge.
+- `opportunities` is one evaluation path per kind — `archive_match` or
+  `shoot_opportunity` — unique per (signal, kind), referencing the signal
+  through a composite foreign key on (news_signal_id, organization_id), so a
+  path in one workspace can never reference a signal in another whatever the
+  application does.
+- One manual entry creates the signal and BOTH paths atomically, through the
+  SECURITY INVOKER function `create_news_story` (empty search path, execute
+  revoked from PUBLIC and anon, granted to authenticated only). Authorship is
+  `auth.uid()` inside the database; the insert policy pins `created_by` to the
+  caller and the update grant is column-scoped to the source facts, so
+  authorship can be neither forged nor rewritten. `created_by` is nullable
+  (machine and historical rows) and `ON DELETE SET NULL`: history outlives its
+  author.
+- Repeating an organization/source-URL is answered with the existing records
+  ("duplicate"), not a second signal or pair of paths. Different workspaces
+  may hold the same URL.
+- Each path carries labelled inference — `signal`, `confidence`,
+  `suggestion_basis` (jsonb with a human-readable `summary`; a check refuses a
+  confidence with an empty basis) — and an independent lifecycle: `status`,
+  `dismissal_reason` (dismissed rows only, enforced), `acted_at` (acted rows
+  only, enforced). Dismissing one path does not touch the other.
+- Deliberately absent: a news-provider model, provider identifiers, and any
+  matched-asset storage. Archive matching will add a relational
+  opportunity-assets table; asset ids never go into `suggestion_basis`.
+- Live ingestion, archive matching, and the story-to-shoot handoff are not
+  built. Nothing on the radar contacts anyone or creates anything by itself.
 
 ## Money
 
@@ -194,3 +235,95 @@ Nothing is backfilled and no history is invented.
   every one of them reports **"the link was opened, but detailed viewing time
   was unavailable"** rather than zero engagement. That is the honest reading: no
   measurement was taken, which is not the same as nobody looking.
+
+## The approved-frame record
+
+`submission_assets` is what a recipient link renders and downloads. Nothing on
+the recipient surface reads a live asset, the current package membership, or
+whichever derivative is preferred today.
+
+- One row per approved frame, unique on `(submission_id, position)` and
+  `(submission_id, asset_id)`.
+- Four composite foreign keys keep every row inside one workspace:
+  `(organization_id, submission_id)` → submissions,
+  `(organization_id, asset_id)` → assets, and
+  `(organization_id, asset_id, asset_version_id)` and
+  `(organization_id, asset_id, preview_asset_version_id)` → asset_versions, so
+  a version of another asset or another organization is refused by Postgres
+  whatever the application does.
+- `version_kind_snapshot`, `storage_bucket_snapshot`, `object_key_snapshot`,
+  `sha256_snapshot`, `mime_type_snapshot`, `bytes_snapshot`, `width_snapshot`,
+  and `height_snapshot` name the exact approved object. A `before insert`
+  trigger checks every one of them against the version row, so a snapshot
+  cannot name a valid version and a different file.
+- `preview_asset_version_id`, `preview_storage_bucket_snapshot`,
+  `preview_object_key_snapshot`, `preview_sha256_snapshot`, and
+  `preview_mime_type_snapshot` name the preview derivative the reviewer was
+  shown at approval -- the earliest `preview` version of the asset, which is
+  what the review screen renders. All five are set or all five are null; the
+  trigger checks them against the version row and requires the kind to be
+  `preview`. Null means no preview existed at approval, and the recipient
+  preview is then rendered from the approved object itself or not at all.
+- `filename_snapshot`, `headline_snapshot`, `caption_snapshot`,
+  `people_snapshot` (from `assets.subjects`, the operator-entered "People"),
+  `credit_line_snapshot`, `copyright_notice_snapshot`,
+  `copyright_owner_snapshot`, `captured_at_snapshot`, `location_snapshot`,
+  and `usage_restrictions_snapshot` are the editorial facts at approval.
+  Location and usage restrictions are frozen for the internal record; the
+  recipient page does not show them.
+- `snapshot_origin` is `approval` for rows the approval transaction wrote and
+  `legacy_backfill` for rows migration `20260830130000` reconstructed. See
+  the legacy note below. `created_at` is the snapshot timestamp: the approval
+  instant for `approval` rows, the migration run for `legacy_backfill` rows.
+- Immutable: the same append-only trigger the caption history and the activity
+  log use refuses updates and deletes except under the purge flag.
+- RLS enabled and forced. Members read their workspace's rows through
+  `submission_assets_select`; there is no insert, update, or delete policy and
+  `authenticated` holds only `select`. `service_role` holds `select, insert,
+  delete` for trusted server code and fixtures; the triggers still apply to it.
+  `anon` holds nothing. A recipient reaches these rows only through the
+  delivery functions.
+
+### Approval is one transaction
+
+`public.approve_package(target_package, recipient_label, follow_up_at)` is
+`security definer` with an empty search path, executable by `authenticated`
+only, and decides inside itself what the policies would have decided: the
+caller must be a member of the package's workspace (otherwise "could not be
+found", the same answer a stranger gets) and hold `owner` or `dispatcher`. It
+then, in one transaction: locks the package `for update`; locks and reads the
+membership once; verifies every version belongs to its asset in this
+workspace and no frame is restricted or tombstoned; marks the package
+`approved`; inserts the submission with `delivery_manifest` built from that
+same read; inserts one `submission_assets` row per frame from that same read;
+and writes the `package.approved` event. Any failure unwinds all of it. The
+`package_assets` trigger takes a share lock on the parent package, so a
+membership change cannot slip in behind an approval in flight.
+
+`delivery_manifest` remains as a summary and compatibility record for the
+existing readers and the export. Two service-role checks keep it honest:
+`public.submission_snapshot_drift_admin()` lists any submission with a
+snapshot row its manifest does not account for (must always be empty), and
+`public.submission_snapshot_gaps_admin()` lists every manifest entry with no
+snapshot row, one row per missing frame.
+
+### Legacy submissions
+
+Submissions approved before the record existed were backfilled by the
+migration, one manifest entry at a time, from the version ids frozen in their
+manifests, using each version's real bucket, key, digest, and size, and the
+editorial metadata **as it stood at migration time**. That metadata is not
+provably what a recipient saw at the original approval, which is why those
+rows carry `snapshot_origin = 'legacy_backfill'` and the submission screen
+says so. No preview identity is invented for them; their recipient preview is
+rendered from the approved object or not at all.
+
+A manifest entry that did not resolve to a version of its own asset in its own
+workspace fails closed for that entry alone: no row is written for it, no
+substitute is chosen, the submission keeps its record and its other frames,
+and `submission_snapshot_gaps_admin()` lists the entry. A recipient link on
+such a submission shows the frames that froze and cannot show, preview, or
+download the one that did not; the submission screen names it as "Not
+deliverable". `public.backfill_submission_assets_admin()` (service role) runs
+the same backfill again for any submission that still has no rows, and is
+idempotent.

@@ -37,6 +37,12 @@ export interface InspectorAsset {
   /** What that draft was made from. Shown, never hidden. */
   readonly captionBasis?: string;
   readonly captionConfidence?: number;
+  /**
+   * How many approved submissions carry this frame. An edit here changes the
+   * asset for future packages and none of those submissions: what a recipient
+   * sees and downloads is frozen at approval.
+   */
+  readonly approvedSubmissionCount?: number;
 }
 
 /**
@@ -86,7 +92,10 @@ function InspectorForm({
   shootLocationName?: string;
   suggestionsAvailable: boolean;
 }) {
-  const [state, formAction, pending] = useActionState(saveAssetMetadataAction.bind(null, workspaceSlug), INITIAL);
+  const [state, formAction, pending] = useActionState(
+    saveAssetMetadataAction.bind(null, workspaceSlug),
+    INITIAL,
+  );
 
   // One fact entered once: a frame with no location of its own starts at the
   // shoot's, and the operator can overwrite it like any other field. This is a
@@ -166,18 +175,18 @@ function InspectorForm({
       )}
 
       {/*
-        * Two banners, because they describe two genuinely different situations
-        * and collapsing them would misstate one of them.
-        *
-        * The draft banner is about a caption that is already in the record: the
-        * writer put it there when the frame landed, it is in the archive and in
-        * an export, and the only thing missing is a person's agreement. Saying
-        * "nothing is recorded until you save" there would be false.
-        *
-        * The suggestion banner below is the on-demand button, where that
-        * sentence is exactly true. `suggestion` wins when both could apply,
-        * since a fresh read has replaced whatever the field held.
-        */}
+       * Two banners, because they describe two genuinely different situations
+       * and collapsing them would misstate one of them.
+       *
+       * The draft banner is about a caption that is already in the record: the
+       * writer put it there when the frame landed, it is in the archive and in
+       * an export, and the only thing missing is a person's agreement. Saying
+       * "nothing is recorded until you save" there would be false.
+       *
+       * The suggestion banner below is the on-demand button, where that
+       * sentence is exactly true. `suggestion` wins when both could apply,
+       * since a fresh read has replaced whatever the field held.
+       */}
       {asset.captionAwaitsReview && !suggestion && (
         <div className="suggestion-note" role="status">
           <Badge tone="warn">Drafted at import</Badge>
@@ -271,6 +280,14 @@ function InspectorForm({
           : "Earlier versions are kept on every edit."}{" "}
         Editing never destroys what was there before.
       </p>
+      {(asset.approvedSubmissionCount ?? 0) > 0 && (
+        <p className="section-note" role="note">
+          This frame is in {asset.approvedSubmissionCount}{" "}
+          {asset.approvedSubmissionCount === 1 ? "approved submission" : "approved submissions"}.
+          Saving here changes the asset for future packages only; what those recipients see and
+          download stays exactly as approved. To send a correction, approve a new package.
+        </p>
+      )}
     </form>
   );
 }

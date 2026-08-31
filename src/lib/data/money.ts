@@ -18,8 +18,8 @@ import { recordEventWith } from "./activity";
  *     remain separately inspectable there.
  */
 
-const RECEIVED: readonly PaymentStatus[] = ["received"];
-const OUTSTANDING: readonly PaymentStatus[] = ["expected", "invoiced", "partial", "overdue"];
+export const RECEIVED: readonly PaymentStatus[] = ["received"];
+export const OUTSTANDING: readonly PaymentStatus[] = ["expected", "invoiced", "partial", "overdue"];
 
 interface LicenseRow {
   id: string;
