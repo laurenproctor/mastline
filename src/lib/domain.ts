@@ -49,6 +49,45 @@ export const ASSET_STATUSES = [
 ] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
+/**
+ * How far one queued import has got.
+ *
+ * The happy path is the first six, in order:
+ *
+ *   pending -> staged -> uploading -> uploaded -> finalizing -> complete
+ *
+ * `staged` means the bytes are held locally in a place that survives a reload,
+ * not that they have reached the server. The four that follow are the ways a
+ * run can be interrupted rather than finished. The transitions between them
+ * are in src/lib/import-queue/state.ts, which is the only thing entitled to
+ * move an item from one to another.
+ */
+export const IMPORT_FILE_STATUSES = [
+  "pending",
+  "staged",
+  "uploading",
+  "uploaded",
+  "finalizing",
+  "complete",
+  "paused",
+  "retrying",
+  "failed",
+  "canceled",
+] as const;
+export type ImportFileStatus = (typeof IMPORT_FILE_STATUSES)[number];
+
+/** The batch's own state. Derived from its files, except when a person pauses
+ *  or cancels the whole thing, which is a decision the counters do not overrule. */
+export const IMPORT_BATCH_STATUSES = [
+  "pending",
+  "uploading",
+  "paused",
+  "complete",
+  "failed",
+  "canceled",
+] as const;
+export type ImportBatchStatus = (typeof IMPORT_BATCH_STATUSES)[number];
+
 export const PACKAGE_STATUSES = [
   "draft",
   "needs_review",

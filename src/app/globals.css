@@ -2194,12 +2194,95 @@ button {
 }
 .import-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 80px 150px;
-  gap: 12px;
-  align-items: baseline;
+  /* thumbnail · filename · size · state · controls */
+  grid-template-columns: 44px minmax(0, 1fr) 80px 150px auto;
+  gap: 6px 12px;
+  align-items: center;
   padding: 11px 18px;
   border-bottom: 1px solid var(--line);
   font-size: var(--fs-note);
+}
+.import-thumb {
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.import-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.import-thumb-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* The bar is a second signal for a number that is already written out. */
+.import-bar {
+  grid-column: 2 / -1;
+  height: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+.import-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--blue);
+  transition: width 180ms linear;
+}
+.import-row.complete .import-bar-fill {
+  background: var(--green);
+}
+.import-row.failed .import-bar-fill {
+  background: var(--red);
+}
+.import-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.import-chip {
+  font-size: var(--fs-note);
+  color: var(--muted);
+}
+.import-chip.offline {
+  color: var(--amber-ink);
+  font-weight: 650;
+}
+.import-batch-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.import-warnings {
+  margin-top: 12px;
+  border: 1px solid var(--amber);
+  border-left-width: 2px;
+  background: var(--surface);
+  padding: 10px 14px;
+}
+.import-warnings p {
+  margin: 0 0 6px;
+  font-size: var(--fs-note);
+  color: var(--ink-2);
+}
+.import-warnings p:last-child {
+  margin-bottom: 0;
+}
+.import-detail-alert {
+  color: var(--red);
 }
 .import-row:last-child {
   border-bottom: 0;
@@ -2224,19 +2307,24 @@ button {
   font-size: var(--fs-note);
 }
 /* State is carried by the label text; the rule is a secondary signal. */
-.import-row.done {
-  border-left: 2px solid var(--green);
-}
 .import-row.failed {
   border-left: 2px solid var(--red);
 }
 .import-row.failed .import-detail {
   color: var(--red);
 }
-.import-row.hashing,
 .import-row.uploading,
-.import-row.recording {
+.import-row.uploaded,
+.import-row.finalizing,
+.import-row.retrying {
   border-left: 2px solid var(--blue);
+}
+.import-row.complete {
+  border-left: 2px solid var(--green);
+}
+.import-row.paused,
+.import-row.canceled {
+  border-left: 2px solid var(--line);
 }
 
 .sheet-header {
@@ -2404,11 +2492,24 @@ button {
 }
 
 @media (max-width: 680px) {
+  /* On a phone the thumbnail and the state stay; the byte count goes. It is
+     the least useful of the four when the row is already this narrow. */
   .import-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+  .import-thumb {
+    width: 36px;
+    height: 36px;
   }
   .import-size {
     display: none;
+  }
+  .import-bar,
+  .import-actions {
+    grid-column: 1 / -1;
+  }
+  .import-actions {
+    justify-content: flex-start;
   }
   .sheet-header {
     flex-direction: column;

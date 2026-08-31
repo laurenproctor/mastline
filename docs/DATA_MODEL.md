@@ -129,6 +129,23 @@ Use private buckets:
 
 The first path segment is `organization_id`; storage RLS must verify an active membership. Uploads are staged, hashed, and promoted after record creation. Do not use public URLs for originals or evidence. Use short-lived signed URLs from trusted server code.
 
+## Resumable imports
+
+A card dump is the one place in the product where losing a file is silent, so the server keeps a record of what was *meant* to arrive, not only what did.
+
+- `import_batches`: one photographer's selection for one shoot. Unique on `(organization_id, idempotency_key)`, so re-registering the same selection lands on the batch it already made. `total_files`, `completed_files`, and `failed_files` are maintained by trigger from the files; they are never written by hand.
+- `import_files`: one file in a batch. Unique on `(import_batch_id, client_file_id)`. The storage path is deterministic and immutable — `<organization_id>/_staging/<batch id>/<client_file_id>` — so a retry addresses the object it already uploaded. `asset_id` is written once by finalization and a partial unique index keeps an asset to one import file, forever.
+
+The lifecycle is `pending → staged → uploading → uploaded → finalizing → complete`, plus `paused`, `retrying`, `failed`, and `canceled`. `staged` means the bytes are held locally in the origin private file system, not that they have reached the server.
+
+The database enforces only what must hold whatever a client believes: `complete` is terminal, the storage path is fixed at registration, and an import file has at most one asset. The full transition table is `src/lib/import-queue/state.ts`.
+
+These rows record lifecycle transitions, never per-byte progress. Fine-grained progress is local to the browser doing the uploading; a row written per chunk would be write amplification wearing a progress bar.
+
+Finalization goes through `registerImport()`, so a file that arrives through the queue produces exactly the records the dropzone has always produced. A local staged copy may only be deleted once the server confirms three things about the same file: the object is in the bucket, finalization succeeded, and the asset record exists.
+
+`prune_abandoned_imports(retain_days)` clears failed and cancelled import records, service role only, and never touches a completed import. Nothing schedules it — see `docs/IMPORT_QUEUE.md`, which is the operator runbook for a stuck or interrupted card dump.
+
 ## Current Supabase constraints to respect
 
 - New projects may not expose public tables to the Data API automatically. Use explicit grants and RLS together.
