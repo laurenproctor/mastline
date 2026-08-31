@@ -410,3 +410,28 @@ package, submission or license links to a `buyer_request` yet. Also deferred:
 any inbound ingestion (the `source` enum holds `email`, `portal` and `api`, and
 only `manual` is written), automated archive matching, outbound messaging of any
 kind, and a public buyer portal.
+
+## Requests on the Work Queue (2026-08-31)
+
+Phase 2 predates the deterministic ranking, so merging it forced four calls,
+reviewed and ratified on 2026-08-31.
+
+**Requests are the ninth round trip, not a screen of their own.** Inbound
+demand joins the same fixed-cost load as everything else: one collection query
+for the open statuses, whatever the workspace holds, and the query budget rose
+from eight to nine to say so out loud. A query per request would have been the
+old 3 + 4N shape sneaking back in.
+
+**Only a passed response deadline is urgent.** It is a recorded, explicit date,
+so it ranks class 3 beside a passed follow-up date and is drawn red with the
+action "Answer". Phase 2 also drew "due within a day" in red; the redesign's
+urgent contract — a recorded failure, an overdue payment, or a passed explicit
+date — is narrower, and it won: due-soon is a prediction, not a recorded fact.
+A due-soon request ranks class 9 with its reason spelled out in normal ink, and
+promotes itself to red the moment the deadline actually passes.
+
+**Request rows carry the "In preparation" chip.** Answering a desk is
+preparing a response. A fifth "Requests" category was considered and declined
+for now: it changes the filter contract, the counts, and the chip row for one
+kind of item, and the reason string on each row already says why it is there.
+Revisit if request volume makes the shared chip misleading.
