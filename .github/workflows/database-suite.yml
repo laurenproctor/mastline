@@ -15,12 +15,6 @@ name: Database suite
 
 on:
   workflow_dispatch:
-  # Temporary, and scoped to this one branch: workflow_dispatch only works
-  # once the file exists on the default branch, and this branch needs the
-  # suite run before it merges. Remove the push trigger when it lands.
-  push:
-    branches:
-      - chore/suites-on-runners
 
 jobs:
   database:
