@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createPackageFromSelection, updatePackage } from "@/lib/data/packages";
+import {
+  createPackageFromSelection,
+  ensureDraftPackage,
+  setPackageSelection,
+  updatePackage,
+} from "@/lib/data/packages";
 import { approvePackageAndCreateSubmission, recordSubmissionOutcome } from "@/lib/data/submissions";
 import { getPackage } from "@/lib/data/packages";
 import { listAssets } from "@/lib/data/assets";
@@ -67,6 +72,68 @@ export async function buildPackageAction(
    * screen already reads.
    */
   redirect(routes.dispatch({ shootId: createdOnShoot, packageId }));
+}
+
+/**
+ * Start (or resume) the delivery flow for a shoot.
+ *
+ * Lands on the operator's live draft for this shoot, creating one only when
+ * none exists. A double-click, a retry, and a refresh all land on the same
+ * draft: idempotency lives in ensureDraftPackage's deterministic addressing,
+ * not in this action.
+ */
+export async function startDeliveryFlowAction(
+  workspaceSlug: string,
+  formData: FormData,
+): Promise<void> {
+  const shootId = String(formData.get("shootId") ?? "");
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "package.write",
+  );
+
+  const draft = await ensureDraftPackage({ organizationId, actorId, shootId });
+
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.shoot(draft.shootId));
+  redirect(
+    routes.dispatch(
+      { shootId: draft.shootId, packageId: draft.id },
+      { query: { stage: "photos" } },
+    ),
+  );
+}
+
+/**
+ * Save the flow's selection: the package holds exactly these frames in this
+ * order. Reconciliation makes a retry converge rather than duplicate, and the
+ * database refuses the write outright once the package is approved.
+ */
+export async function saveFlowSelectionAction(
+  workspaceSlug: string,
+  input: {
+    shootId: string;
+    packageId: string;
+    assetIds: readonly string[];
+  },
+): Promise<{ ok: boolean; count?: number; error?: string }> {
+  const { organizationId, actorId, canonicalSlug } = await requireWorkspaceContext(
+    workspaceSlug,
+    "package.write",
+  );
+
+  try {
+    const { count } = await setPackageSelection({
+      organizationId,
+      actorId,
+      packageId: input.packageId,
+      assetIds: input.assetIds,
+    });
+    revalidatePath(workspaceRoutes(canonicalSlug).dispatch({ shootId: input.shootId }));
+    return { ok: true, count };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save." };
+  }
 }
 
 export async function updatePackageAction(

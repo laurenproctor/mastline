@@ -50,7 +50,7 @@ test.describe("what was approved is what the recipient gets", () => {
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
       await expect(page.getByRole("heading", { name: "Every check passes" })).toBeVisible();
       // Under review, and the strip says so from the record.
-      await expect(page.locator('[aria-current="step"]')).toContainText("Review & approve");
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
 
       await page.getByRole("button", { name: "Approve package" }).click();
       await page.getByRole("button", { name: "Yes, approve this package" }).click();
@@ -82,9 +82,13 @@ test.describe("what was approved is what the recipient gets", () => {
       await expect(firstRow).toContainText("People: Avery Hart");
       await expect(page.locator("[data-unresolved-frame]")).toHaveCount(0);
 
-      // ...and the dispatch strip has moved on: approved is not sent.
+      // ...and the flow holds at Review & share: approved is not sent, and
+      // the screen says no link exists yet.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.locator('[aria-current="step"]')).toContainText("Create recipient link");
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
+      await expect(page.locator("[data-lifecycle-detail]")).toContainText(
+        "No recipient link has been created yet",
+      );
 
       // ---------------------------------------------------------------
       // 4. A recipient link
@@ -99,11 +103,11 @@ test.describe("what was approved is what the recipient gets", () => {
       const path = new URL(url).pathname;
       const token = path.split("/d/")[1];
 
-      // The lifecycle strip reads the link: created is not shared, and the
-      // screen says so rather than inventing a send.
+      // The flow reads the link: created is not shared, and the screen says
+      // so rather than inventing a send.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.locator('[aria-current="step"]')).toContainText("Create recipient link");
-      await expect(page.locator("[data-lifecycle-detail]")).toHaveText(
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
+      await expect(page.locator("[data-lifecycle-detail]")).toContainText(
         "A recipient link exists and has not been marked as shared. Nothing has left Mastline.",
       );
 

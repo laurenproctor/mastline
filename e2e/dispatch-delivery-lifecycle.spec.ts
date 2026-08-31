@@ -293,9 +293,9 @@ test.describe("the dispatch screen after approval", () => {
     await expect(
       page.getByRole("heading", { name: /A recipient has opened a link to this package/ }),
     ).toBeVisible();
-    // The lifecycle strip is read from the record: an opened package is no
-    // longer under review, and it is not yet an outcome.
-    await expect(page.locator('[aria-current="step"]')).toHaveText(/Shared \/ awaiting outcome/);
+    // The flow strip is read from the record: an opened package sits at the
+    // Shared stage, and the evidence lives on the submission.
+    await expect(page.locator('[aria-current="step"]')).toHaveText(/Shared/);
   });
 });
 

@@ -125,23 +125,48 @@ Inspector:
 
 Supporting workspace information: brief, timeline, map/logistics, contacts, notes, team messages, costs, and the explicit next action. Optimize key field actions for mobile and keyboard use.
 
-## 5. Dispatch Review — `/dispatch/[shootId]`
+## 5. Delivery Flow — `/dispatch/[shootId]`
 
-Question answered: **Is the package buyer-ready?**
+Question answered: **How does this package reach one recipient, honestly?**
 
-Validate:
+One persistent five-stage progression, per package, per recipient:
 
-- Asset selection and duplicates
-- Filenames and delivery derivatives
-- Captions, people, places, timestamps, credit, and copyright
-- Restrictions, embargo, exclusivity, and confidentiality
-- Buyer/outlet metadata profile and package requirements
-- Delivery method and credentials
-- Package note and completeness
+1. **Photos** — choose the frames. The selection lives on a draft package and
+   saves as it changes; a refresh renders exactly what is stored.
+2. **Details** — Headline, Caption, and People per frame, with readiness from
+   the same metadata rules the contact sheet and the approval gate use. A
+   drafted caption still needs a person to read and save it.
+3. **Recipient** — the Potential Buyer, the terms, and the per-link access:
+   expiry, an optional plain-text recipient note, whether full-resolution
+   files are offered, and whether viewing waits for the terms. Previews are
+   always watermarked per recipient; that is a fact on the screen, not a
+   setting.
+4. **Review & share** — every check, then the one confirmed act: **Create
+   private delivery**, which freezes the package into an immutable Submission
+   Record and creates one tracked recipient link. Nothing is shared yet, and
+   the screen says so. Copying the link writes nothing; **Mark as shared** is
+   the separate, deliberate statement that the link went out.
+5. **Shared** — the evidence timeline: shared, opened, terms accepted,
+   downloaded — each shown only once it is recorded. From here: follow-up
+   reminder, the submission record, and **Share with another recipient**,
+   which creates another distinct tracked link.
 
-Statuses: draft, needs_review, ready, sending, delivered, failed, recalled. A failed delivery creates a high-priority Work Queue item.
+The stage in the URL is clamped against the record: an address naming a stage
+the facts do not support lands on the work that is actually next, and the
+working stages close permanently at approval.
 
-Primary action: **Approve and Send**. Sending requires a fresh human confirmation — a second, explicit act, showing the frames, the buyer, the terms, and the restrictions before it commits — and creates an immutable Submission Record. This gate is deliberately the only confirmation step in the shoot lifecycle; creating a shoot has none.
+Statuses underneath are unchanged: draft, needs_review, ready, approved,
+sending, delivered, failed, recalled — the seven delivery facts of
+`docs/DELIVERY_LINKS.md` remain the record; the stages are a reading of them.
+A failed delivery creates a high-priority Work Queue item.
+
+The create act keeps the fresh human confirmation — a second, explicit act
+showing the frames, the buyer, the terms, and the restrictions before it
+commits. This gate is deliberately the only confirmation step in the shoot
+lifecycle; creating a shoot has none. The five stages are navigation through
+one continuing piece of work, not a re-confirmation at every step — the
+create-shoot page remains a single document, and the anti-wizard stance there
+stands.
 
 ## 6. Submission Record — `/submissions/[submissionId]`
 

@@ -209,10 +209,15 @@ test.describe("status is never colour alone", () => {
     }
   });
 
-  test("a blocked dispatch check says the word, not just a colour", async ({ page }) => {
+  test("incomplete details in the delivery flow say the words, not just a colour", async ({
+    page,
+  }) => {
     await signIn(page);
+    // The seeded shoot's open package carries an uncaptioned frame, so the
+    // flow lands on Details and the readiness line states the gap in words.
     await page.goto(at(`/dispatch/${SEEDED_SHOOT}`));
-    await expect(page.getByText("Blocked").first()).toBeVisible();
+    await expect(page.getByText(/of 2 photographs have required details/)).toBeVisible();
+    await expect(page.getByText(/still needs/i).first()).toBeVisible();
   });
 });
 
