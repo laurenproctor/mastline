@@ -1,0 +1,91 @@
+# The browser suite, on demand.
+#
+# The specs under e2e/ check what no amount of parsing HTML can: layouts at
+# the sizes ACCEPTANCE.md names, visible focus, and client-rendered states,
+# against a production build and a real local stack. Like the database suite,
+# they stay out of the PR gate and exist for a development machine that cannot
+# hold a healthy stack or a quiet browser run.
+#
+# Nothing here contacts a hosted project: `supabase start` is entirely local
+# to the runner, and the only secrets used are the CLI's local development
+# defaults, which are public knowledge.
+name: E2E suite
+
+on:
+  workflow_dispatch:
+  # Temporary, and scoped to this one branch: workflow_dispatch only works
+  # once the file exists on the default branch, and this branch needs the
+  # suite run before it merges. Remove the push trigger when it lands.
+  push:
+    branches:
+      - chore/suites-on-runners
+
+jobs:
+  e2e:
+    name: E2E suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          # Pinned for the same reason CI pins it: the CLI applies the
+          # migrations, and an unannounced CLI change should not arrive as a
+          # mystery red run.
+          version: 2.101.0
+
+      # The full local stack — database, PostgREST, GoTrue, Storage — with the
+      # whole migration chain applied from empty and supabase/seed.sql loaded.
+      - name: Start the local stack
+        run: supabase start
+
+      # Written before the build on purpose: `next build` inlines the
+      # NEXT_PUBLIC_* values, so the app must know its Supabase before it is
+      # compiled, not merely before it starts.
+      - name: Point the app and the specs at the runner's stack
+        run: |
+          eval "$(supabase status -o env \
+            | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' )"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_TEST_PASSWORD=mastline-dev-password"
+          } > .env.local
+
+      - name: Build the app
+        run: npm run build
+
+      # Chromium for the desktop and tablet projects; WebKit because the
+      # mobile project is the iPhone device descriptor, which runs WebKit.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      # The config starts `next start -p 4100` itself and refuses to reuse a
+      # stray server under CI, so the build above is exactly what is tested.
+      - name: Run the browser suite
+        run: npx playwright test
+
+      - name: Keep the failure traces
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop the local stack
+        if: always()
+        run: supabase stop --no-backup
