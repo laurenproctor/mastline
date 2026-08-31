@@ -18,7 +18,12 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
+  // Two on CI, not one: the mobile project runs last, against a `next start`
+  // that has been hammered for twenty minutes on a small runner, and by then
+  // the server itself 404s routes at random -- the same exhaustion pattern
+  // known from loaded dev machines. A retry that passes is still reported
+  // flaky, so real instability stays visible.
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : [["list"]],
 
   use: {
