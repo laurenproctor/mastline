@@ -341,3 +341,140 @@ test.describe("the banner and the application share a viewport", () => {
     await signOut.click({ trial: true, timeout: 5_000 });
   });
 });
+
+test.describe("the banner and the page content share a viewport", () => {
+  /**
+   * The banner is fixed to the bottom of the viewport, so the page reserves
+   * its measured height at the bottom -- otherwise the last control on a
+   * long screen can never be scrolled out from under it. On a phone the
+   * mobile .page rule used to reset that reservation to 24px with a padding
+   * shorthand; bottom-navigation mode kept its own. These pin all four
+   * cases, from computed positions, with the banner up and after a choice.
+   */
+  const GAP = 8;
+
+  async function landOnWork(page: import("@playwright/test").Page, bottomNav = false) {
+    await page.context().clearCookies();
+    const cookies = [{ name: "ml_country", value: "FR", url: "http://127.0.0.1:4100" }];
+    if (bottomNav)
+      cookies.push({ name: "mastline_nav", value: "bottom", url: "http://127.0.0.1:4100" });
+    await page.context().addCookies(cookies);
+    await signIn(page, SEEDED.owner);
+    await expect(banner(page)).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(150);
+  }
+
+  /** Bottom edges of the fixed surfaces and of the last control in the page. */
+  async function geometry(page: import("@playwright/test").Page) {
+    return page.evaluate(() => {
+      const box = (el: Element | null) => (el ? el.getBoundingClientRect() : null);
+      const controls = Array.from(
+        document.querySelectorAll<HTMLElement>("main a, main button"),
+      ).filter((el) => el.getBoundingClientRect().height > 0);
+      const last = controls[controls.length - 1];
+      const dialog = box(document.querySelector("[role='dialog']"));
+      const tabBar = box(document.querySelector(".nav-bottom .tab-bar"));
+      const page = getComputedStyle(document.querySelector(".page")!);
+      return {
+        inset: getComputedStyle(document.documentElement)
+          .getPropertyValue("--consent-inset")
+          .trim(),
+        paddingBottom: parseFloat(page.paddingBottom),
+        bannerTop: dialog?.top ?? null,
+        tabBarTop: tabBar?.top ?? null,
+        tabBarBottom: tabBar?.bottom ?? null,
+        lastBottom: last?.getBoundingClientRect().bottom ?? null,
+        lastText: last?.textContent?.trim() ?? "",
+        sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      };
+    });
+  }
+
+  const lastControl = (page: import("@playwright/test").Page) =>
+    page.locator("main a, main button").filter({ visible: true }).last();
+
+  test("on a phone, the last control clears the banner and can be focused", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "the phone layout is the point");
+    await landOnWork(page);
+
+    const before = await geometry(page);
+    expect(before.bannerTop, "the banner is up").not.toBeNull();
+    expect(before.lastBottom!, `${before.lastText} sits under the banner`).toBeLessThanOrEqual(
+      before.bannerTop! - GAP,
+    );
+    // The reservation is the banner's own measured height, nothing hard-coded.
+    expect(before.paddingBottom).toBeCloseTo(24 + parseFloat(before.inset), 0);
+    expect(before.sideways).toBe(false);
+
+    // Reached by keyboard -- focus lands on it from the control before it, so
+    // the focus-visible ring applies -- and nothing sits on top of it.
+    const control = lastControl(page);
+    await control.focus();
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    const focused = await control.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      const style = getComputedStyle(element);
+      return {
+        active: document.activeElement === element,
+        covered: top ? !element.contains(top) && !top.contains(element) : true,
+        ring: style.outlineStyle !== "none" || style.boxShadow !== "none",
+      };
+    });
+    expect(focused).toEqual({ active: true, covered: false, ring: true });
+  });
+
+  test("in bottom-navigation mode the tab bar sits above the banner, and the reservation is not doubled", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "the phone layout is the point");
+    await landOnWork(page, true);
+
+    const facts = await geometry(page);
+    expect(facts.tabBarBottom!).toBeLessThanOrEqual(facts.bannerTop!);
+    expect(facts.lastBottom!, facts.lastText).toBeLessThanOrEqual(facts.tabBarTop! - GAP);
+    // The bottom-navigation rule keeps its own allowance: the bar, plus the
+    // banner's height, once.
+    expect(facts.paddingBottom).toBeCloseTo(84 + parseFloat(facts.inset), 0);
+    expect(facts.sideways).toBe(false);
+  });
+
+  for (const [choice, testId] of [
+    ["accepting", "consent-accept"],
+    ["refusing", "consent-reject"],
+  ] as const) {
+    test(`after ${choice}, the banner leaves and takes its reservation with it`, async ({
+      page,
+    }, testInfo) => {
+      test.skip(testInfo.project.name !== "mobile", "the phone layout is the point");
+      await landOnWork(page);
+      await page.getByTestId(testId).click();
+      await expect(banner(page)).toHaveCount(0);
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+
+      const after = await geometry(page);
+      expect(after.inset).toBe("");
+      expect(after.paddingBottom).toBe(24);
+      expect(after.bannerTop).toBeNull();
+      expect(after.sideways).toBe(false);
+      await lastControl(page).click({ trial: true, timeout: 5_000 });
+    });
+  }
+
+  test("on a desktop or tablet the reservation is the one it always had", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name === "mobile", "covered by the phone cases");
+    await landOnWork(page);
+
+    const facts = await geometry(page);
+    expect(facts.paddingBottom).toBeCloseTo(64 + parseFloat(facts.inset), 0);
+    expect(facts.lastBottom!, facts.lastText).toBeLessThanOrEqual(facts.bannerTop! - GAP);
+    expect(facts.sideways).toBe(false);
+    await page.getByRole("button", { name: "Sign out" }).click({ trial: true, timeout: 5_000 });
+  });
+});
