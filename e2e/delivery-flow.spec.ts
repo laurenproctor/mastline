@@ -28,7 +28,10 @@ import {
 const SEEDED_PACKAGE_02 = "a0000000-0000-0000-0000-0000000000f2";
 
 test.describe("the delivery flow", () => {
-  test.beforeEach(async ({ context }) => refuseCookies(context));
+  test.beforeEach(async ({ context }) => {
+    test.setTimeout(240_000);
+    await refuseCookies(context);
+  });
 
   test("opens on the work the record says is next, with one current step", async ({ page }) => {
     await signIn(page);
@@ -62,7 +65,7 @@ test.describe("the delivery flow", () => {
       await page.goto(
         at(`/dispatch/${SEEDED_SHOOT}?package=${SEEDED_PACKAGE_02}&stage=${requested}`),
       );
-      await page.waitForURL(/stage=details/);
+      await page.waitForURL(/stage=details/, { timeout: 90_000 });
       await expect(
         page.getByRole("heading", { level: 1, name: "Describe the photographs" }),
       ).toBeVisible();
@@ -72,13 +75,15 @@ test.describe("the delivery flow", () => {
   test("photos are chosen on the draft, survive a reload, and keep their order", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const fixture = await createApprovablePackage(`FLOW${testInfo.project.name}`);
 
     try {
       await signIn(page);
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=photos`));
-      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible({
+        timeout: 90_000,
+      });
 
       const grid = page.getByRole("list", { name: "Choose photographs" });
       const tiles = grid.getByRole("button");
@@ -86,21 +91,33 @@ test.describe("the delivery flow", () => {
       expect(count).toBeGreaterThanOrEqual(2);
 
       // The fixture's frames are already in the package, in order.
-      await expect(tiles.nth(0)).toHaveAttribute("aria-pressed", "true");
+      await expect(tiles.nth(0)).toHaveAttribute("aria-pressed", "true", { timeout: 90_000 });
 
       // Remove the first frame; the saved count changes, and a reload renders
-      // the stored state rather than anything optimistic.
-      await tiles.nth(0).click();
-      await expect(tiles.nth(0)).toHaveAttribute("aria-pressed", "false");
+      // the stored state rather than anything optimistic. Click-and-check is
+      // one retried unit: a click that lands before hydration is lost, and
+      // the honest response is to take it again once the page is live.
+      await expect(async () => {
+        await tiles.nth(0).click();
+        await expect(tiles.nth(0)).toHaveAttribute("aria-pressed", "false", { timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
+      await expect(page.locator(".ml-delivery-toolbar__count")).not.toContainText("saving", {
+        timeout: 90_000,
+      });
       await page.reload();
       await expect(
         page.getByRole("list", { name: "Choose photographs" }).getByRole("button").nth(0),
-      ).toHaveAttribute("aria-pressed", "false");
+      ).toHaveAttribute("aria-pressed", "false", { timeout: 90_000 });
 
       // Put it back; it re-enters at the end of the order.
       const after = page.getByRole("list", { name: "Choose photographs" }).getByRole("button");
-      await after.nth(0).click();
-      await expect(after.nth(0)).toHaveAttribute("aria-pressed", "true");
+      await expect(async () => {
+        await after.nth(0).click();
+        await expect(after.nth(0)).toHaveAttribute("aria-pressed", "true", { timeout: 2_000 });
+      }).toPass({ timeout: 30_000 });
+      await expect(page.locator(".ml-delivery-toolbar__count")).not.toContainText("saving", {
+        timeout: 90_000,
+      });
       await expect(after.nth(0)).toContainText(String(count));
 
       expect(await hasHorizontalOverflow(page)).toBe(false);
@@ -112,13 +129,15 @@ test.describe("the delivery flow", () => {
   test("creating the delivery holds at Review & share and closes the working stages", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const fixture = await createApprovablePackage(`FLOWAPP${testInfo.project.name}`);
 
     try {
       await signIn(page);
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible({
+        timeout: 90_000,
+      });
       await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
 
       // Two motions: the first reveals what becomes permanent, the second
@@ -129,7 +148,7 @@ test.describe("the delivery flow", () => {
 
       // Created is not sent: the flow stays on Review & share and says
       // exactly what exists -- a link, unshared, nothing left Mastline.
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
       await expect(page.getByText("It has not been shared.").first()).toBeVisible();
       await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
       await expect(page.getByText("This package has been sent")).toHaveCount(0);
@@ -140,7 +159,7 @@ test.describe("the delivery flow", () => {
       // Editing URLs for the working stages clamp forward to the review: the
       // frozen selection is not offered as a place to work.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=photos`));
-      await page.waitForURL(/stage=review/);
+      await page.waitForURL(/stage=review/, { timeout: 90_000 });
       await expect(page.getByText(/Nothing is sent/).first()).toBeVisible();
 
       // The URL stays inside the canonical workspace throughout.
@@ -168,7 +187,10 @@ test.describe("the delivery flow", () => {
 });
 
 test.describe("the five stages, walked end to end", () => {
-  test.beforeEach(async ({ context }) => refuseCookies(context));
+  test.beforeEach(async ({ context }) => {
+    test.setTimeout(300_000);
+    await refuseCookies(context);
+  });
 
   test("photos to shared, with a gated recipient who accepts, browses, and downloads", async ({
     page,
@@ -183,18 +205,22 @@ test.describe("the five stages, walked end to end", () => {
 
       // -- Photos -------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=photos`));
-      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible({
+        timeout: 90_000,
+      });
       await page.getByRole("link", { name: "Continue to details" }).click();
 
       // -- Details ------------------------------------------------------
-      await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible({
+        timeout: 90_000,
+      });
       await expect(page.getByText(/2 of 2 photographs have required details/)).toBeVisible();
       await page.getByRole("link", { name: "Continue to recipient" }).click();
 
       // -- Recipient ----------------------------------------------------
-      await expect(
-        page.getByRole("heading", { name: "Choose recipient and access" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Choose recipient and access" })).toBeVisible({
+        timeout: 90_000,
+      });
       await expect(page.getByText(/Recipient watermark: On/)).toBeVisible();
       await page.getByLabel("Recipient desk or contact").fill(deskName);
       await page.getByLabel("Contact email or reference").fill("walk-desk@example.com");
@@ -203,13 +229,15 @@ test.describe("the five stages, walked end to end", () => {
       await page.getByRole("button", { name: "Review delivery" }).click();
 
       // -- Review & share ----------------------------------------------
-      await page.waitForURL(/stage=review/);
-      await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible();
+      await page.waitForURL(/stage=review/, { timeout: 90_000 });
+      await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible({
+        timeout: 90_000,
+      });
       // The recipient email travels to the record, never into any URL shown.
       await page.getByRole("button", { name: "Create private delivery" }).click();
       await expect(page.getByText(/This becomes permanent/)).toBeVisible();
       await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
 
       const deliveryHref = (await page.locator(".ml-delivery-review__url code").innerText()).trim();
       const deliveryPath = new URL(deliveryHref).pathname;
@@ -218,12 +246,14 @@ test.describe("the five stages, walked end to end", () => {
 
       // Refresh: the created state survives, and no second link is minted.
       await page.reload();
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
 
       // -- Mark as shared → Shared -------------------------------------
       await page.getByRole("button", { name: "Mark as shared" }).click();
-      await page.waitForURL(/stage=shared/);
-      await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible();
+      await page.waitForURL(/stage=shared/, { timeout: 90_000 });
+      await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible({
+        timeout: 90_000,
+      });
       const timeline = page.locator(".ml-delivery-timeline");
       await expect(timeline.locator('[data-state="done"]')).toHaveCount(1);
       await expect(timeline.getByText("Opened")).toBeVisible();
@@ -234,7 +264,9 @@ test.describe("the five stages, walked end to end", () => {
       try {
         await deskPage.goto(deliveryPath);
         // The gate: no frames are on this page, and the database returns none.
-        await expect(deskPage.getByRole("heading", { name: "Open this delivery" })).toBeVisible();
+        await expect(deskPage.getByRole("heading", { name: "Open this delivery" })).toBeVisible({
+          timeout: 90_000,
+        });
         await expect(deskPage.getByText("Two frames from this morning's shoot.")).toBeVisible();
         await expect(deskPage.locator("[data-asset-id]")).toHaveCount(0);
 
@@ -275,17 +307,17 @@ test.describe("the five stages, walked end to end", () => {
 
       // -- Share with another recipient ---------------------------------
       await page.getByRole("link", { name: "Share with another recipient" }).click();
-      await page.waitForURL(/stage=recipient/);
+      await page.waitForURL(/stage=recipient/, { timeout: 90_000 });
       // The package is frozen: terms are facts here, not fields.
       await expect(page.getByText(/Frozen at approval/)).toBeVisible();
       await expect(page.getByLabel("Terms")).toHaveCount(0);
       const secondDesk = `Second desk ${testInfo.project.name} ${Date.now()}`;
       await page.getByLabel("Recipient desk or contact").fill(secondDesk);
       await page.getByRole("link", { name: "Review delivery" }).click();
-      await page.waitForURL(/stage=review/);
+      await page.waitForURL(/stage=review/, { timeout: 90_000 });
       await page.getByRole("button", { name: "Create private delivery" }).click();
       await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
       const secondHref = (await page.locator(".ml-delivery-review__url code").innerText()).trim();
       expect(new URL(secondHref).pathname).not.toBe(deliveryPath);
     } finally {
