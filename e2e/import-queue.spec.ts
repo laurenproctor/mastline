@@ -472,6 +472,17 @@ test.describe("importing a field shoot", () => {
       });
     });
 
+    // Hold the upload at the network until the warnings have been read. On a
+    // fast machine the whole import finishes inside the assertion timeout,
+    // and a completed row rightly stops warning about recovery -- the race
+    // is the test's to lose, not the product's.
+    let releaseUpload!: () => void;
+    const uploadGate = new Promise<void>((resolve) => (releaseUpload = resolve));
+    await page.route("**/upload/resumable/**", async (route: Route) => {
+      await uploadGate;
+      return route.continue();
+    });
+
     await open(page, shootId);
     await page.setInputFiles("#import-files", [jpeg("TIGHT_0001.ARW", 4 * 1024 * 1024)]);
 
@@ -484,6 +495,7 @@ test.describe("importing a field shoot", () => {
     await expect(row).toBeVisible();
     await expect(row).toContainText(/Reload recovery cannot be guaranteed/i);
     // And it still uploads in this tab, which is the honest offer.
+    releaseUpload();
     await expectState(page, "TIGHT_0001.ARW", /Imported/, 90_000);
   });
 
