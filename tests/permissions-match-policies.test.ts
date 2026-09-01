@@ -174,6 +174,26 @@ async function databaseAllows(role: AppRole, probe: string): Promise<boolean> {
       }
       return false;
     }
+    case "request.write": {
+      // Inbound demand. The reference and the idempotency key are both unique
+      // per workspace, so the probe carries the role and the clock in each.
+      const stamp = `${role}-${Date.now()}`;
+      const { data } = await client
+        .from("buyer_requests")
+        .insert({
+          organization_id: ORG_A,
+          created_by: UID[role],
+          idempotency_key: `probe-${stamp}`,
+          reference: `REQ-0000-${String(Date.now()).slice(-4)}`,
+          title: `probe-${role}`,
+        })
+        .select("id");
+      if (data?.[0]?.id) {
+        await service.from("buyer_requests").delete().eq("id", data[0].id);
+        return true;
+      }
+      return false;
+    }
     case "asset.write": {
       const { data } = await client
         .from("assets")
@@ -198,6 +218,7 @@ const PROBES = [
   "buyer.write",
   "rights.triage",
   "asset.write",
+  "request.write",
 ] as const;
 
 describeIf("the capability table matches the database policies", () => {

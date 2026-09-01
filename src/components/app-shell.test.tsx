@@ -54,6 +54,7 @@ async function renderShell(active?: NavLabel) {
 const NAV_ORDER = [
   "Work",
   "News radar",
+  "Requests",
   "Shoots",
   "Submissions",
   "Commercial",

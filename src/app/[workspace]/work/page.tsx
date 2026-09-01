@@ -21,7 +21,7 @@ import { WorkRecentActivity } from "./_components/work-recent-activity";
  * deterministic ranking in the data layer decides the order, and the screen
  * repeats its reasons rather than inventing its own.
  *
- * One load: the eight-call dashboard and the one-call activity feed.
+ * One load: the nine-call dashboard and the one-call activity feed.
  */
 
 type SearchParams = Record<string, string | string[] | undefined>;

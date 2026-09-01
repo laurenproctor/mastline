@@ -363,3 +363,75 @@ Item numbers below are permanent. Resolved items keep their number so older note
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.
+
+## Buyer requests — the status vocabulary
+
+Recorded 2026-08-28, when Phase 1 of Buyer Requests landed. The brief proposed a
+vocabulary; three points of it were changed, and one was kept against the
+obvious instinct. All four are settled and should not be re-litigated without a
+migration.
+
+**`cancelled`, not `canceled`.** The brief spelled it with one L. Two existing
+Postgres enums — `shoot_status` and `license_status` — already spell it with
+two, and their TypeScript unions with them. One schema carrying two spellings of
+one word is a bug waiting for whoever types the other one, and the cost of
+picking the majority spelling is a single word in a brief.
+
+**`won` exists in the enum and cannot be reached.** Winning a request means
+connecting it to a license, and Mastline has no link between the two records
+yet. The transition table in `src/lib/requests.ts` refuses it and the interface
+names the absence rather than leaving a gap. It is in the enum so that Phase 2
+adds a foreign key rather than a migration that rewrites an enum every row,
+policy and index depends on.
+
+**Nothing moves to `expired` on its own.** There is no scheduler in this system,
+and a status that becomes true while nobody is watching is one nobody can trust
+— the same reasoning that keeps `sent_at` and `delivered_at` write-once and
+evidenced. A deadline that has gone by is derived at read time and rendered as
+"Past deadline"; `expired` stays a transition somebody performs. If a scheduler
+is ever built, it may write the status, and it must write an activity event
+naming itself as the actor.
+
+**A closed request cannot move at all**, not merely "cannot return to an active
+state". Recording a request as lost and then rewriting it as cancelled changes
+what happened. Correcting a mistake goes through the same audited purge path as
+every other closed record in this system.
+
+**Cancelled and declined stay separate**, because they are opposite facts about
+the same ending: cancelled is the buyer withdrawing, declined is the
+photographer saying no. Collapsing them would make "how often do we turn work
+down" unanswerable, and that is one of the few numbers an independent operator
+can actually act on.
+
+### Deferred to Phase 2
+
+The connection between a request and the work that answers it: no shoot,
+package, submission or license links to a `buyer_request` yet. Also deferred:
+any inbound ingestion (the `source` enum holds `email`, `portal` and `api`, and
+only `manual` is written), automated archive matching, outbound messaging of any
+kind, and a public buyer portal.
+
+## Requests on the Work Queue (2026-08-31)
+
+Phase 2 predates the deterministic ranking, so merging it forced four calls,
+reviewed and ratified on 2026-08-31.
+
+**Requests are the ninth round trip, not a screen of their own.** Inbound
+demand joins the same fixed-cost load as everything else: one collection query
+for the open statuses, whatever the workspace holds, and the query budget rose
+from eight to nine to say so out loud. A query per request would have been the
+old 3 + 4N shape sneaking back in.
+
+**Only a passed response deadline is urgent.** It is a recorded, explicit date,
+so it ranks class 3 beside a passed follow-up date and is drawn red with the
+action "Answer". Phase 2 also drew "due within a day" in red; the redesign's
+urgent contract — a recorded failure, an overdue payment, or a passed explicit
+date — is narrower, and it won: due-soon is a prediction, not a recorded fact.
+A due-soon request ranks class 9 with its reason spelled out in normal ink, and
+promotes itself to red the moment the deadline actually passes.
+
+**Request rows carry the "In preparation" chip.** Answering a desk is
+preparing a response. A fifth "Requests" category was considered and declined
+for now: it changes the filter contract, the counts, and the chip row for one
+kind of item, and the reason string on each row already says why it is there.
+Revisit if request volume makes the shared chip misleading.
