@@ -139,6 +139,72 @@ export const RIGHTS_MATCH_STATUSES = [
 export type RightsMatchStatus = (typeof RIGHTS_MATCH_STATUSES)[number];
 
 /**
+ * Inbound demand: what a buyer asked for.
+ *
+ * The happy path runs left to right, and the last five are closed states:
+ *
+ *   draft -> new -> needs_clarification -> qualified -> matching
+ *         -> coverage_planned -> preparing_response -> submitted -> negotiating
+ *
+ * Two things about this vocabulary are worth knowing before reading it:
+ *
+ *   * `cancelled`, not `canceled`. SHOOT_STATUSES and LICENSE_STATUSES already
+ *     spell it with two Ls and the Postgres enums with them, so the alternative
+ *     was two spellings of one word in one schema.
+ *   * `won` is here and is NOT reachable yet. Winning means connecting the
+ *     request to a license, and that connection is Phase 2. The transition
+ *     table in src/lib/requests.ts refuses it; the value exists so that adding
+ *     the link later is a code change rather than an enum migration.
+ *
+ * Nothing moves to `expired` on its own. There is no scheduler, so a passing
+ * deadline is rendered as a derived fact -- see `isPastDeadline` -- and the
+ * status only changes when somebody says so.
+ */
+export const REQUEST_STATUSES = [
+  "draft",
+  "new",
+  "needs_clarification",
+  "qualified",
+  "matching",
+  "coverage_planned",
+  "preparing_response",
+  "submitted",
+  "negotiating",
+  "won",
+  "lost",
+  "expired",
+  "declined",
+  "cancelled",
+] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+/** How the record reached Mastline. Only `manual` is written in this phase. */
+export const REQUEST_SOURCES = ["manual", "email", "portal", "api"] as const;
+export type RequestSource = (typeof REQUEST_SOURCES)[number];
+
+export const REQUEST_TYPES = ["archive", "coverage", "commission", "exclusive", "other"] as const;
+export type RequestType = (typeof REQUEST_TYPES)[number];
+
+/**
+ * How the buyer got hold of the photographer. Separate from `source`, which is
+ * how the record got into Mastline. Undefined is "not recorded", which is not
+ * the same as "other".
+ */
+export const REQUEST_CHANNELS = [
+  "phone",
+  "text_message",
+  "whatsapp",
+  "email",
+  "in_person",
+  "buyer_relationship",
+  "other",
+] as const;
+export type RequestChannel = (typeof REQUEST_CHANNELS)[number];
+
+export const REQUEST_ORIENTATIONS = ["landscape", "portrait", "square", "any"] as const;
+export type RequestOrientation = (typeof REQUEST_ORIENTATIONS)[number];
+
+/**
  * A license check is an observation, never a legal conclusion. The product may
  * report that no linked license was found; it may not call that infringement.
  */
@@ -475,6 +541,73 @@ export interface Opportunity {
   readonly actedAt?: IsoTimestamp;
   readonly createdAt: IsoTimestamp;
   readonly updatedAt: IsoTimestamp;
+}
+
+/**
+ * A commercial term a buyer either stated or did not.
+ *
+ * `undefined` throughout the request means "not provided", and the interface is
+ * required to render it as those words. A desk that said nothing about
+ * territory has not asked for worldwide; one that mentioned no fee has not
+ * offered zero. Budget is the sharp case, so it carries `budgetDisclosed`
+ * alongside the figures: false with no figures is silence, true with a zero
+ * minimum is a desk saying out loud that there is no money in it.
+ */
+export interface BuyerRequest {
+  readonly id: Id;
+  readonly organizationId: Id;
+  readonly buyerId?: Id;
+  /** Resolved for display. Absent when no buyer has been identified yet. */
+  readonly buyerName?: string;
+  readonly createdBy: Id;
+  readonly assignedTo?: Id;
+  readonly assignedAt?: IsoTimestamp;
+  readonly assignedBy?: Id;
+  /** Unique within the workspace, e.g. REQ-0827-4417. Fixed at creation. */
+  readonly reference: string;
+  readonly source: RequestSource;
+  readonly receivedVia?: RequestChannel;
+  readonly requestType: RequestType;
+  readonly status: RequestStatus;
+  readonly title: string;
+  readonly brief?: string;
+  readonly subjectOrEvent?: string;
+  readonly subjectNames: readonly string[];
+  readonly topics: readonly string[];
+  readonly eventAt?: IsoTimestamp;
+  readonly locationName?: string;
+  readonly responseDeadline?: IsoTimestamp;
+  readonly expiresAt?: IsoTimestamp;
+  readonly deliverables?: string;
+  readonly requestedFormats: readonly string[];
+  readonly orientation?: RequestOrientation;
+  readonly approximateQuantity?: number;
+  readonly usageMedia?: string;
+  readonly territory?: string;
+  readonly usageDuration?: string;
+  readonly exclusivity?: string;
+  /** Whether a budget was stated at all. See the note on this interface. */
+  readonly budgetDisclosed: boolean;
+  readonly budgetMin?: Money;
+  readonly budgetMax?: Money;
+  readonly currency: Money["currency"];
+  readonly embargoUntil?: IsoTimestamp;
+  readonly deliveryRequirements?: string;
+  readonly usageRestrictions?: string;
+  readonly closedReason?: string;
+  readonly createdAt: IsoTimestamp;
+  readonly updatedAt: IsoTimestamp;
+  readonly qualifiedAt?: IsoTimestamp;
+  readonly closedAt?: IsoTimestamp;
+  /** True when a confidential note exists. The body lives behind a role check. */
+  readonly hasSensitiveNote: boolean;
+}
+
+/** Source protection for a request. Only owners and editors can read this. */
+export interface RequestSensitiveNote {
+  readonly sourceNote?: string;
+  readonly confidentialLocation?: string;
+  readonly confidentialIdentity?: string;
 }
 
 export interface Expense {

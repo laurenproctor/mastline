@@ -3,6 +3,7 @@ import type { Asset, DispatchPackage, Id, Shoot, ShootStatus, Submission } from 
 import { money } from "../money";
 import { getMoneySummary, listPayments } from "./money";
 import { listPackages } from "./packages";
+import { listRequests } from "./requests";
 import { createClient } from "../supabase/server";
 import { listSubmissions } from "./submissions";
 import { signedUrlsFor } from "./imports";
@@ -88,6 +89,10 @@ function toQueueAsset(row: Record<string, unknown>, organizationId: Id, shootId:
  * 7. delivery links, as id, submission, and recipient label -- never the
  *    token: the queue needs to know a link exists and who it names, not the
  *    credential itself
+ * 8. open buyer requests. Inbound demand joins the same queue rather than
+ *    getting one of its own: a picture desk waiting on an answer belongs
+ *    beside a package waiting on approval. Only the open statuses are
+ *    fetched -- a closed request is not work.
  *
  * The asset query waits for the shoot ids, so it is one round trip later
  * rather than one round trip more.
@@ -102,7 +107,7 @@ async function fetchWorkQueueFacts(
     .eq("organization_id", organizationId)
     .order("updated_at", { ascending: false });
 
-  const [shootRows, submissions, payments, packages, deliveryRows] = await Promise.all([
+  const [shootRows, submissions, payments, packages, deliveryRows, requests] = await Promise.all([
     shootQuery,
     listSubmissions(organizationId, supabase),
     listPayments(organizationId, supabase),
@@ -111,6 +116,21 @@ async function fetchWorkQueueFacts(
       .from("submission_deliveries")
       .select("id, submission_id, recipient_label")
       .eq("organization_id", organizationId),
+    listRequests(
+      organizationId,
+      {
+        status: [
+          "new",
+          "needs_clarification",
+          "qualified",
+          "matching",
+          "coverage_planned",
+          "preparing_response",
+          "negotiating",
+        ],
+      },
+      supabase,
+    ),
   ]);
   if (shootRows.error) throw new Error(`Could not load shoots: ${shootRows.error.message}`);
   if (deliveryRows.error)
@@ -181,6 +201,7 @@ async function fetchWorkQueueFacts(
     submissions,
     deliveryCountBySubmission,
     payments,
+    requests,
     deliveries,
     assetTotalsByShoot,
     now: new Date(),
@@ -227,8 +248,8 @@ export interface WorkQueueDashboardOptions {
 }
 
 /**
- * Everything the Work Queue screen renders, in one fixed-cost load: eight
- * round trips -- the seven queue facts plus the recorded access events --
+ * Everything the Work Queue screen renders, in one fixed-cost load: nine
+ * round trips -- the eight queue facts plus the recorded access events --
  * whatever the workspace holds. The header figures, the money strip, the
  * active-shoot summaries, and the recipient rows are all computed from those
  * same records; nothing is fetched twice. No original is ever read for this
