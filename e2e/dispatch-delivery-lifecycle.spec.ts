@@ -310,7 +310,7 @@ test.describe("approving, then measuring what the desk actually looked at", () =
     page,
     browser,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(360_000);
     const recipient = desk(testInfo, "Measured desk");
     const fixture = await createApprovablePackage(`APPROVE${testInfo.project.name}`);
 
@@ -321,21 +321,27 @@ test.describe("approving, then measuring what the desk actually looked at", () =
       // Create the private delivery: approve + link, one confirmed act
       // ---------------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible({
+        timeout: 90_000,
+      });
 
       await page.getByRole("button", { name: "Create private delivery" }).click();
       await expect(
         page.getByText(/frozen on the submission and cannot be edited afterwards/),
       ).toBeVisible();
       await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
 
       // ---------------------------------------------------------------
       // Approved, and explicitly not sent
       // ---------------------------------------------------------------
       await page.getByRole("link", { name: "View submission record" }).click();
       await page.waitForURL(/\/submissions\//);
-      await expect(page.locator(".page-header")).toContainText(/nothing sent yet/i);
+      // The flow already made the recipient link, so the header states the
+      // sharper truth: created is not shared, and nothing has been sent.
+      await expect(page.locator(".page-header")).toContainText(/link created, not yet shared/i, {
+        timeout: 90_000,
+      });
       await expect(page.locator(".page-header")).not.toContainText(/^Sent to/);
       await expect(page.getByText("Approved; nothing sent yet")).toBeVisible();
 

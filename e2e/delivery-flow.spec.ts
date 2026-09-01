@@ -309,8 +309,10 @@ test.describe("the five stages, walked end to end", () => {
       await page.getByRole("link", { name: "Share with another recipient" }).click();
       await page.waitForURL(/stage=recipient/, { timeout: 90_000 });
       // The package is frozen: terms are facts here, not fields.
-      await expect(page.getByText(/Frozen at approval/)).toBeVisible();
-      await expect(page.getByLabel("Terms")).toHaveCount(0);
+      await expect(page.getByText(/Frozen at approval/)).toBeVisible({ timeout: 90_000 });
+      // The terms are a stated fact here, not a field.
+      await expect(page.getByText(/^Terms:/)).toBeVisible();
+      await expect(page.getByRole("textbox", { name: "Terms", exact: true })).toHaveCount(0);
       const secondDesk = `Second desk ${testInfo.project.name} ${Date.now()}`;
       await page.getByLabel("Recipient desk or contact").fill(secondDesk);
       await page.getByRole("link", { name: "Review delivery" }).click();

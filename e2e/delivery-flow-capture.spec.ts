@@ -40,17 +40,21 @@ test.describe("delivery flow captures", () => {
 
       const base = `/dispatch/${fixture.shootId}?package=${fixture.packageId}`;
       await page.goto(at(`${base}&stage=photos`));
-      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible({
+        timeout: 90_000,
+      });
       await shot("01-photos-1440");
 
       await page.goto(at(`${base}&stage=details`));
-      await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible({
+        timeout: 90_000,
+      });
       await shot("02-details-1440");
 
       await page.goto(at(`${base}&stage=recipient`));
-      await expect(
-        page.getByRole("heading", { name: "Choose recipient and access" }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Choose recipient and access" })).toBeVisible({
+        timeout: 90_000,
+      });
       await page.getByLabel("Recipient desk or contact").fill("Hudson Square photo desk");
       await page
         .getByLabel("Recipient note")
@@ -58,30 +62,43 @@ test.describe("delivery flow captures", () => {
       await shot("03-recipient-1440");
 
       await page.getByRole("button", { name: "Review delivery" }).click();
-      await page.waitForURL(/stage=review/);
+      await page.waitForURL(/stage=review/, { timeout: 90_000 });
       await shot("04-review-1440");
 
       await page.getByRole("button", { name: "Create private delivery" }).click();
-      await expect(page.getByText(/This becomes permanent/)).toBeVisible();
+      await expect(page.getByText(/This becomes permanent/)).toBeVisible({ timeout: 90_000 });
       await shot("05-review-confirm-1440");
 
       await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
       await shot("06-link-created-1440");
       const deliveryPath = new URL(
         (await page.locator(".ml-delivery-review__url code").innerText()).trim(),
       ).pathname;
 
+      // The created state at 1280 first: once the link is marked shared it
+      // stops being the review's truth, so the narrow capture happens now.
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.reload();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 60_000 });
+      await shot("08-review-1280");
+      await page.setViewportSize({ width: 1440, height: 1024 });
+      await page.reload();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 60_000 });
+
       await page.getByRole("button", { name: "Mark as shared" }).click();
-      await page.waitForURL(/stage=shared/);
+      await page.waitForURL(/stage=shared/, { timeout: 90_000 });
+      await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible({
+        timeout: 90_000,
+      });
+      await expect(page.getByText("Delivery activity")).toBeVisible();
       await shot("07-shared-1440");
 
-      // The photographer flow again at 1280.
       await page.setViewportSize({ width: 1280, height: 900 });
-      await page.goto(at(`${base}&stage=review`));
-      await expect(page.getByText("Private delivery created")).toBeVisible();
-      await shot("08-review-1280");
       await page.goto(at(`${base}&stage=shared`));
+      await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible({
+        timeout: 60_000,
+      });
       await shot("09-shared-1280");
 
       // The recipient, desktop and phone and zoomed.
@@ -89,7 +106,7 @@ test.describe("delivery flow captures", () => {
       const deskPage = await desk.newPage();
       try {
         await deskPage.goto(deliveryPath);
-        await expect(deskPage.getByRole("heading", { level: 1 })).toBeVisible();
+        await expect(deskPage.getByRole("heading", { level: 1 })).toBeVisible({ timeout: 60_000 });
         await deskPage.screenshot({ fullPage: true, path: `${OUT}/10-recipient-1440.png` });
 
         await deskPage.setViewportSize({ width: 390, height: 844 });

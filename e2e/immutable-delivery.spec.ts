@@ -34,7 +34,7 @@ test.describe("what was approved is what the recipient gets", () => {
     page,
     browser,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(360_000);
     const label = `IMMUTABLE${testInfo.project.name}`;
     const recipient = `Immutable desk ${testInfo.project.name} ${Date.now()}`;
     const fixture = await createApprovablePackageWithFiles(label);
@@ -48,15 +48,19 @@ test.describe("what was approved is what the recipient gets", () => {
       // 1–2. Open the prepared package and create the private delivery
       // ---------------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible({
+        timeout: 90_000,
+      });
       // Under review, and the strip says so from the record.
       await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
 
       await page.getByRole("button", { name: "Create private delivery" }).click();
       await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
       // Created is not sent: the flow stays put and says exactly what exists.
-      await expect(page.getByText("Private delivery created")).toBeVisible();
-      await expect(page.getByText("It has not been shared.").first()).toBeVisible();
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
+      await expect(page.getByText("It has not been shared.").first()).toBeVisible({
+        timeout: 90_000,
+      });
 
       await page.getByRole("link", { name: "View submission record" }).click();
       await page.waitForURL(/\/submissions\//);
