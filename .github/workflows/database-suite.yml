@@ -1,0 +1,70 @@
+# The database suite, on demand.
+#
+# The suites under tests/ verify tenancy, snapshots, delivery links, and the
+# access options against a real Postgres with the full migration chain and
+# seed applied. They stay out of the PR gate on purpose — they are a local and
+# pre-deploy check — but a development machine that cannot hold a healthy
+# Docker stack still needs a way to run them somewhere honest. This workflow
+# is that: trigger it by hand against a branch, and it runs the exact suite a
+# healthy laptop would.
+#
+# Nothing here contacts a hosted project: `supabase start` is entirely local
+# to the runner, and the only secrets used are the CLI's local development
+# defaults, which are public knowledge.
+name: Database suite
+
+on:
+  workflow_dispatch:
+
+jobs:
+  database:
+    name: Database suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          # Pinned for the same reason CI pins it: the CLI applies the
+          # migrations, and an unannounced CLI change should not arrive as a
+          # mystery red run.
+          version: 2.101.0
+
+      # The full local stack — database, PostgREST, GoTrue, Storage — with the
+      # whole migration chain applied from empty and supabase/seed.sql loaded,
+      # exactly what the suites assume.
+      - name: Start the local stack
+        run: supabase start
+
+      # Written to .env.local rather than exported: the vitest config reads its
+      # Supabase facts through loadEnv, and a file is the one channel that
+      # behaves identically on a laptop and on a runner.
+      - name: Point the tests at the runner's stack
+        run: |
+          eval "$(supabase status -o env \
+            | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' )"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_TEST_PASSWORD=mastline-dev-password"
+          } > .env.local
+
+      - name: Run the database suite
+        run: npx vitest run --project database
+
+      - name: Stop the local stack
+        if: always()
+        run: supabase stop --no-backup

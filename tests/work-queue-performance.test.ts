@@ -12,17 +12,18 @@ import { ORG_A, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/su
  *
  * This measures the shape rather than the wall clock: with N shoots the number
  * of round trips must not grow, and it must not exceed the budget the queue
- * has always kept -- eight collection queries. The dashboard, which now
- * carries the header figures, the money strip, the active shoots, and the
- * recipient evidence as well, is held to the same eight. It used to be
- * roughly 3 + 4N.
+ * has always kept. The dashboard, which now carries the header figures, the
+ * money strip, the active shoots, and the recipient evidence as well, is
+ * held to the same budget. It used to be roughly 3 + 4N. Buyer requests
+ * raised the budget from eight to nine: inbound demand is one more
+ * collection on the same queue, never a query per request.
  */
 const describeIf = hasLocalSupabase() ? describe : describe.skip;
 
 const OWNER = "11111111-1111-1111-1111-111111111111";
 
 /** The budget every loader on this screen is held to. */
-const QUERY_BUDGET = 8;
+const QUERY_BUDGET = 9;
 
 /** Count PostgREST and storage calls by wrapping fetch. */
 async function countCalls(run: () => Promise<unknown>): Promise<{ rest: number; storage: number }> {
