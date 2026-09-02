@@ -392,7 +392,12 @@ describeIf("news radar handoffs", () => {
       expect(assetRows!.every((a) => a.selected === false)).toBe(true);
 
       // A retry with the same key, and a second confirmation with a new key,
-      // both return the original package and create nothing.
+      // both return the original package and create nothing. Each `existing`
+      // answer carries the package's shoot -- the continue link into the
+      // dispatch review is addressed by shoot and package, so an answer
+      // without it would leave the person nowhere to go -- and the package's
+      // real frame count, so a retry answered as the creation it was never
+      // reports a draft "with 0 photographs".
       const retry = await handoffArchivePackage({
         client: editor,
         organizationId: ORG_A,
@@ -401,7 +406,13 @@ describeIf("news radar handoffs", () => {
         requestKey,
         selectedAssetIds: [assets.a, assets.b],
       });
-      expect(retry).toMatchObject({ outcome: "existing", packageId, sameRequest: true });
+      expect(retry).toMatchObject({
+        outcome: "existing",
+        packageId,
+        shootId: fixtureShoot,
+        frameCount: 2,
+        sameRequest: true,
+      });
       const again = await handoffArchivePackage({
         client: editor,
         organizationId: ORG_A,
@@ -410,7 +421,13 @@ describeIf("news radar handoffs", () => {
         requestKey: key(),
         selectedAssetIds: [assets.a],
       });
-      expect(again).toMatchObject({ outcome: "existing", packageId, sameRequest: false });
+      expect(again).toMatchObject({
+        outcome: "existing",
+        packageId,
+        shootId: fixtureShoot,
+        frameCount: 2,
+        sameRequest: false,
+      });
       expect(await count("packages", { shoot_id: fixtureShoot })).toBe(1);
       expect(await count("opportunity_handoffs", { opportunity_id: archiveId })).toBe(1);
     }, 30_000);
@@ -441,6 +458,38 @@ describeIf("news radar handoffs", () => {
         true,
       );
       expect(await count("packages", { shoot_id: fixtureShoot })).toBe(before + 1);
+    }, 30_000);
+
+    it("refuses a request key reused from another path rather than answering with its handoff", async () => {
+      const first = await story("reused-key-first");
+      const second = await story("reused-key-second");
+      const editor = await clientFor("editor");
+      const requestKey = key();
+
+      const created = await handoffArchivePackage({
+        client: editor,
+        organizationId: ORG_A,
+        opportunityId: first.archiveId,
+        ...(await evaluationIdentity(first.archiveId)),
+        requestKey,
+        selectedAssetIds: [assets.a],
+      });
+      expect(created.outcome).toBe("created");
+
+      // The same key on a DIFFERENT path is not that path's repeat: answering
+      // `existing` here would hand this path the other path's package. It is
+      // a key that identifies the wrong confirmation, and a reload mints a
+      // fresh one.
+      const reused = await handoffArchivePackage({
+        client: editor,
+        organizationId: ORG_A,
+        opportunityId: second.archiveId,
+        ...(await evaluationIdentity(second.archiveId)),
+        requestKey,
+        selectedAssetIds: [assets.a],
+      });
+      expect(reused).toMatchObject({ outcome: "invalid_selection", reason: "request_key" });
+      expect(await count("opportunity_handoffs", { opportunity_id: second.archiveId })).toBe(0);
     }, 30_000);
 
     it("refuses a restricted frame, an unmatched frame, a frame on no shoot, and a selection across shoots -- and writes nothing", async () => {

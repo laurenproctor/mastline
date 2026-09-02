@@ -32,7 +32,10 @@ export function HandoffResultNotice({
         <p>
           {created
             ? kind === "package"
-              ? `A ${what} with ${result.frameCount ?? 0} ${result.frameCount === 1 ? "photograph" : "photographs"} was created from this evaluation.`
+              ? result.frameCount === undefined
+                ? // A count the answer does not carry is not said, rather than said as zero.
+                  `A ${what} was created from this evaluation.`
+                : `A ${what} with ${result.frameCount} ${result.frameCount === 1 ? "photograph" : "photographs"} was created from this evaluation.`
               : `A ${what} was created from the confirmed facts of this brief.`
             : HANDOFF_OUTCOME_LABELS.existing}{" "}
           It is <strong>still a draft</strong>: nothing was approved, sent, priced or scheduled, and

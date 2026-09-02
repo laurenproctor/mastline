@@ -42,6 +42,8 @@ export const SELECTION_REASONS = [
   "empty",
   "not_matched",
   "restricted",
+  "ingesting",
+  "tombstoned",
   "no_shoot",
   "mixed_shoots",
   "no_file",
@@ -67,6 +69,10 @@ export const SELECTION_REASON_LABELS: Record<SelectionReason, string> = {
     "A selected photograph is not one of this evaluation's recorded matches. Only matched photographs can enter the draft.",
   restricted:
     "A selected photograph is restricted. Restricted photographs cannot enter a package until their status is reviewed; unselect it to continue.",
+  ingesting:
+    "A selected photograph is still importing. Wait for the import to finish, or unselect it.",
+  tombstoned:
+    "A selected photograph's original has been removed. It cannot enter a package; unselect it to continue.",
   no_shoot:
     "A selected photograph is not on any shoot. A package belongs to a shoot, so attach the photograph to one first.",
   mixed_shoots:

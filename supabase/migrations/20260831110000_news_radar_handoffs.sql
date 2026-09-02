@@ -86,10 +86,24 @@ create table public.opportunity_handoffs (
     references public.opportunities (id, organization_id, opportunity_kind) on delete cascade,
   foreign key (news_signal_id, organization_id)
     references public.news_signals (id, organization_id) on delete cascade,
+  -- RESTRICT, not cascade: this row is append-only provenance, and a cascade
+  -- would let deleting the package or shoot silently erase it -- and, through
+  -- the unique below, quietly reopen the path for a second handoff. Whoever
+  -- removes the result must remove the provenance first, deliberately: the
+  -- service role holds the delete grant (cleanup and the audited purge
+  -- routines), and deleting the news signal or the opportunity still cascades
+  -- the whole story away. `purge_package_admin` does not delete handoff rows
+  -- itself; a purge of a handoff-made package deletes this row first.
+  -- Application delete paths do not collide: the only hard package delete in
+  -- the application (createPackageFromSelection's member-insert failure path,
+  -- src/lib/data/packages.ts) can only ever delete a package it just created
+  -- outside any handoff, and a handoff-made package is committed in the same
+  -- transaction as its handoff row, so no handoff row can exist for a package
+  -- that path deletes.
   foreign key (organization_id, package_id)
-    references public.packages (organization_id, id) on delete cascade,
+    references public.packages (organization_id, id) on delete restrict,
   foreign key (organization_id, shoot_id)
-    references public.shoots (organization_id, id) on delete cascade,
+    references public.shoots (organization_id, id) on delete restrict,
 
   -- The kind decides the action: an archive path makes packages, a shoot path
   -- makes shoots, and the database refuses the other way round.
@@ -105,9 +119,11 @@ create table public.opportunity_handoffs (
     ),
   -- One handoff per path. The package or shoot it made is authoritative from
   -- then on; a second request on the same path is answered with the first.
-  unique (opportunity_id),
+  -- Named, because the handoff functions catch unique_violation by exactly
+  -- these two names and rethrow every other one.
+  constraint opportunity_handoffs_one_per_path unique (opportunity_id),
   -- And one per request key, so a repeat is a repeat whichever path it names.
-  unique (organization_id, request_key)
+  constraint opportunity_handoffs_one_per_request unique (organization_id, request_key)
 );
 
 -- Every foreign key covered in its own column order (advisor lint 0001).
@@ -186,6 +202,64 @@ grant select, insert, delete on public.opportunity_handoffs to service_role;
 -- Returns a refusal ({"outcome": ...}) or {"ok": true, "path": {...}}.
 -- ---------------------------------------------------------------------------
 
+-- The answer for a path that has already been handed off, or null when it
+-- has not been. Shared by the preamble and by the functions' unique_violation
+-- handlers, so a repeat is answered identically wherever it is noticed.
+--
+-- For a package handoff the answer carries the PACKAGE's shoot -- the
+-- provenance row's own shoot_id is null for a package handoff (see
+-- opportunity_handoffs_one_result), and the dispatch review is addressed by
+-- shoot and package, so an `existing` answer without the shoot would leave
+-- the person no way to continue. It also carries the package's live frame
+-- count, so a repeat answered as the creation it was can say how many
+-- photographs the draft holds.
+--
+-- A row found by request key alone -- the same key reused on a DIFFERENT
+-- path -- is NOT that path's handoff, and answering `existing` with it would
+-- hand the person another path's package. That is a key that identifies the
+-- wrong confirmation: refused as such, and a reload issues a fresh key.
+create or replace function private.handoff_existing_answer(
+  path_id uuid,
+  target_org uuid,
+  request_key text
+) returns jsonb
+language plpgsql security invoker set search_path = '' as $$
+declare
+  existing record;
+begin
+  select h.id, h.opportunity_id, h.package_id, h.shoot_id, h.request_key,
+         p.shoot_id as package_shoot_id,
+         case when h.package_id is null then null else
+           (select count(*)::int from public.package_assets pa where pa.package_id = h.package_id)
+         end as frame_count
+    into existing
+  from public.opportunity_handoffs h
+  left join public.packages p
+    on p.organization_id = h.organization_id and p.id = h.package_id
+  where h.opportunity_id = handoff_existing_answer.path_id
+     or (h.organization_id = target_org
+         and h.request_key = handoff_existing_answer.request_key)
+  order by (h.opportunity_id = handoff_existing_answer.path_id) desc
+  limit 1;
+  if existing.id is null then
+    return null;
+  end if;
+  if existing.opportunity_id <> handoff_existing_answer.path_id then
+    return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'request_key');
+  end if;
+  return jsonb_build_object(
+    'outcome', 'existing',
+    'handoff_id', existing.id,
+    'package_id', existing.package_id,
+    'shoot_id', coalesce(existing.shoot_id, existing.package_shoot_id),
+    'frame_count', existing.frame_count,
+    'same_request', existing.request_key = handoff_existing_answer.request_key);
+end;
+$$;
+
+revoke all on function private.handoff_existing_answer(uuid, uuid, text) from public;
+grant execute on function private.handoff_existing_answer(uuid, uuid, text) to authenticated;
+
 create or replace function private.handoff_preamble(
   target_opportunity uuid,
   wanted_kind text,
@@ -197,7 +271,7 @@ language plpgsql security invoker set search_path = '' as $$
 declare
   actor uuid := (select auth.uid());
   path record;
-  existing record;
+  existing jsonb;
   evaluation record;
 begin
   if actor is null then
@@ -240,21 +314,12 @@ begin
   end if;
 
   -- A repeat -- the same key, or any second confirmation on a path that has
-  -- already been handed off -- is answered with the record as it stands.
-  select h.id, h.action_type, h.package_id, h.shoot_id, h.request_key
-    into existing
-  from public.opportunity_handoffs h
-  where h.opportunity_id = path.id
-     or (h.organization_id = path.organization_id and h.request_key = handoff_preamble.request_key)
-  order by (h.opportunity_id = path.id) desc
-  limit 1;
-  if existing.id is not null then
-    return jsonb_build_object(
-      'outcome', 'existing',
-      'handoff_id', existing.id,
-      'package_id', existing.package_id,
-      'shoot_id', existing.shoot_id,
-      'same_request', existing.request_key = handoff_preamble.request_key);
+  -- already been handed off -- is answered with the record as it stands; a
+  -- key reused from another path is refused (see handoff_existing_answer).
+  existing := private.handoff_existing_answer(
+    path.id, path.organization_id, handoff_preamble.request_key);
+  if existing is not null then
+    return existing;
   end if;
 
   if path.status in ('acted', 'dismissed', 'expired') then
@@ -357,6 +422,21 @@ grant execute on function private.handoff_close_path(uuid, uuid, text, uuid, tex
 -- shoot, is refused with the reason rather than quietly trimmed. A restricted
 -- frame is refused the same way: approval would refuse it later, and a
 -- selection should not be edited by the system between confirm and create.
+--
+-- SOURCE OF TRUTH FOR THE PACKAGE SHAPE
+--
+-- createPackageFromSelection (src/lib/data/packages.ts) is the application's
+-- builder and the source of truth for what a draft package looks like: one
+-- packages row in `draft`, package_assets in canonical filename order naming
+-- the delivery version where one exists and the original otherwise, then
+-- `needs_review`. If that builder's shape changes, change this function with
+-- it. One deliberate divergence: the builder packages only `active` frames,
+-- because it reads a live shoot's contact-sheet selection; this function ALSO
+-- admits `archived` frames, because reselling from the archive is the whole
+-- point of the archive path -- an archived frame is filed, not withdrawn.
+-- Every other status is refused under its own name (`restricted`,
+-- `ingesting`, `tombstoned`), matching SELECTION_REASON_LABELS in
+-- src/lib/news-radar-handoff.ts.
 -- ---------------------------------------------------------------------------
 
 create or replace function public.handoff_archive_package(
@@ -385,6 +465,8 @@ declare
   frame record;
   version uuid;
   ordered uuid[] := '{}'::uuid[];
+  conflicted text;
+  existing jsonb;
 begin
   pre := private.handoff_preamble(target_opportunity, 'archive_match', evaluator, input_digest, request_key);
   if pre ? 'outcome' then return pre; end if;
@@ -414,7 +496,9 @@ begin
   end if;
 
   select
-    coalesce(array_agg(a.id) filter (where a.status not in ('active', 'archived')), '{}'::uuid[]) as restricted,
+    coalesce(array_agg(a.id) filter (where a.status = 'restricted'), '{}'::uuid[]) as restricted,
+    coalesce(array_agg(a.id) filter (where a.status = 'ingesting'), '{}'::uuid[]) as ingesting,
+    coalesce(array_agg(a.id) filter (where a.status = 'tombstoned'), '{}'::uuid[]) as tombstoned,
     coalesce(array_agg(a.id) filter (where a.shoot_id is null), '{}'::uuid[]) as unshot,
     count(distinct a.shoot_id) as shoots,
     min(a.shoot_id::text)::uuid as shoot,
@@ -425,9 +509,19 @@ begin
   if frames.readable <> cardinality(wanted) then
     return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'not_matched');
   end if;
+  -- `active` and `archived` may enter (see the section comment); everything
+  -- else is refused under its own name rather than as a generic restriction.
   if cardinality(frames.restricted) > 0 then
     return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'restricted',
       'asset_ids', to_jsonb(frames.restricted));
+  end if;
+  if cardinality(frames.tombstoned) > 0 then
+    return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'tombstoned',
+      'asset_ids', to_jsonb(frames.tombstoned));
+  end if;
+  if cardinality(frames.ingesting) > 0 then
+    return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'ingesting',
+      'asset_ids', to_jsonb(frames.ingesting));
   end if;
   if cardinality(frames.unshot) > 0 then
     return jsonb_build_object('outcome', 'invalid_selection', 'reason', 'no_shoot',
@@ -507,9 +601,22 @@ begin
     when insufficient_privilege then
       return jsonb_build_object('outcome', 'forbidden');
     when unique_violation then
-      -- Only reachable if the lock did not serialize (it does); answered as
-      -- the repeat it is rather than as an error.
-      return jsonb_build_object('outcome', 'existing');
+      -- Only reachable if the lock did not serialize (it does), and only the
+      -- two handoff uniques mean "a concurrent confirmation won". Any other
+      -- unique violation -- package_assets, anything else the block touched
+      -- -- is a real failure and is rethrown as one.
+      get stacked diagnostics conflicted = constraint_name;
+      if conflicted not in
+        ('opportunity_handoffs_one_per_path', 'opportunity_handoffs_one_per_request') then
+        raise;
+      end if;
+      -- The block's own writes are rolled back; the winner's committed
+      -- handoff answers with the ids the person can continue with.
+      existing := private.handoff_existing_answer(path_id, org, handoff_archive_package.request_key);
+      if existing is null then
+        raise;
+      end if;
+      return existing;
   end;
 
   return jsonb_build_object(
@@ -573,6 +680,8 @@ declare
   notes text;
   shoot_id uuid;
   handoff_id uuid;
+  conflicted text;
+  existing jsonb;
 begin
   pre := private.handoff_preamble(target_opportunity, 'shoot_opportunity', evaluator, input_digest, request_key);
   if pre ? 'outcome' then return pre; end if;
@@ -652,7 +761,12 @@ begin
          'source', 'news_radar',
          'opportunityId', path_id,
          'handoffId', handoff_id,
-         'client_token', request_key));
+         -- Under its own name, NOT `client_token`: that key is the Create
+         -- Shoot screen's idempotency namespace (shootCreatedWithToken in
+         -- src/lib/data/shoots.ts reads it back), and the handoff's key must
+         -- never satisfy that lookup. The handoff's idempotency lives on
+         -- opportunity_handoffs.request_key; this copy is for the event trail.
+         'request_key', request_key));
 
     perform private.handoff_close_path(
       path_id, org, 'shoot_opportunity', signal_id, previous_status,
@@ -661,7 +775,18 @@ begin
     when insufficient_privilege then
       return jsonb_build_object('outcome', 'forbidden');
     when unique_violation then
-      return jsonb_build_object('outcome', 'existing');
+      -- Same narrowing as handoff_archive_package: only the two handoff
+      -- uniques are "a concurrent confirmation won"; anything else is real.
+      get stacked diagnostics conflicted = constraint_name;
+      if conflicted not in
+        ('opportunity_handoffs_one_per_path', 'opportunity_handoffs_one_per_request') then
+        raise;
+      end if;
+      existing := private.handoff_existing_answer(path_id, org, handoff_shoot_draft.request_key);
+      if existing is null then
+        raise;
+      end if;
+      return existing;
   end;
 
   return jsonb_build_object(
