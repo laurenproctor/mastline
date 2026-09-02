@@ -725,13 +725,26 @@ export class ImportQueue {
     clientFileId: string,
     failure: { code: ImportErrorCode | UploadFailureCode; message: unknown },
   ): Promise<QueueItemView> {
-    const record = await this.require(clientFileId);
     const message = sanitizeErrorMessage(failure.message);
 
-    const failed = await this.moveTo(record, "failed", {
-      errorCode: failure.code,
-      errorMessage: message,
-    });
+    // Aborting an upload is what cancelling one does, and the aborted run then
+    // reports a failure -- after the cancel has already been recorded. That
+    // failure is stale news from a run a person stopped, and it must not
+    // overrule their decision (nor a completion). Decided inside the write, so
+    // the answer is about the record as it is now, not as it was when the run
+    // began.
+    const failed = await this.update(clientFileId, (fresh) =>
+      fresh.status === "canceled" || fresh.status === "complete"
+        ? fresh
+        : {
+            ...fresh,
+            status: transition(fresh.status, "failed", fresh.clientFileId),
+            errorCode: failure.code,
+            errorMessage: message,
+            updatedAt: this.now,
+          },
+    );
+    if (failed.status !== "failed") return this.view(failed);
 
     if (failed.importFileId) {
       try {
@@ -766,14 +779,26 @@ export class ImportQueue {
     failure: { code: ImportErrorCode | UploadFailureCode; message: unknown },
     nextAttempt: string,
   ): Promise<QueueItemView> {
-    const record = await this.require(clientFileId);
     const message = sanitizeErrorMessage(failure.message);
 
-    const retrying = await this.moveTo(record, "retrying", {
-      errorCode: failure.code,
-      errorMessage: message,
-      nextAttemptAt: nextAttempt,
-    });
+    // The same stale-news rule as fail(): the run this failure came from may
+    // have been aborted *by* a cancel, and the retry it wants to schedule
+    // would resurrect an item a person deliberately stopped. The table allows
+    // canceled -> retrying because a person may restart a canceled file; a
+    // failure handler may not. A completed item likewise stays completed.
+    const retrying = await this.update(clientFileId, (fresh) =>
+      fresh.status === "canceled" || fresh.status === "complete"
+        ? fresh
+        : {
+            ...fresh,
+            status: transition(fresh.status, "retrying", fresh.clientFileId),
+            errorCode: failure.code,
+            errorMessage: message,
+            nextAttemptAt: nextAttempt,
+            updatedAt: this.now,
+          },
+    );
+    if (retrying.status !== "retrying") return this.view(retrying);
 
     if (retrying.importFileId) {
       try {

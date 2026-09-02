@@ -620,6 +620,43 @@ describe("cleaning up", () => {
     expect(h.transport.calls).toHaveLength(1);
   });
 
+  it("keeps a cancel canceled when the aborted upload reports its failure", async () => {
+    // Cancelling an active upload aborts it, and the aborted run then reports
+    // a failure -- after the cancel has been recorded. That failure must not
+    // reschedule the file: `canceled -> retrying` exists for a person pressing
+    // resume, not for the corpse of the run the person just stopped. Left
+    // unguarded, the resurrected item went on to fail as file_missing (the
+    // cancel had already discarded the bytes) and the server row read
+    // "failed" for a file the operator had deliberately canceled.
+    const h = harness();
+    let release!: () => void;
+    h.transport.gate = new Promise((resolve) => (release = resolve));
+
+    const batch = await h.enqueue("CANCEL_0001.ARW");
+    const clientFileId = batch.items[0].clientFileId;
+    h.runner.start();
+
+    // Wait for the upload to be genuinely in flight, parked at the gate.
+    for (let i = 0; i < 100; i += 1) {
+      if ((await h.queue.item(clientFileId))!.status === "uploading") break;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect((await h.queue.item(clientFileId))!.status).toBe("uploading");
+
+    await h.runner.cancelItem(clientFileId);
+    release();
+    await h.runner.idle();
+    await h.advance(120_000);
+
+    const item = await h.queue.item(clientFileId);
+    expect(item!.status).toBe("canceled");
+    const state = await h.server.batchState({ batchId: batch.batchId });
+    expect(state!.files[0].status).toBe("canceled");
+    // The aborted call is the only one there ever was.
+    expect(h.transport.calls).toHaveLength(1);
+    expect(h.server.assetsCreated).toBe(0);
+  });
+
   it("will not cancel a file that has already become an asset", async () => {
     const h = harness();
     const batch = await h.enqueue("a.ARW");

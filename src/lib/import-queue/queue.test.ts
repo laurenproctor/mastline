@@ -480,6 +480,33 @@ describe("cleaning up", () => {
     await expect(h.queue.cancel(clientFileId)).rejects.toThrow(/already been imported/);
   });
 
+  it("lets neither a late retry nor a late failure overrule a cancel", async () => {
+    // Cancelling an active upload aborts it, and the aborted run reports a
+    // failure a moment later. Both of the ways the runner records one --
+    // scheduling a retry, and failing outright -- must leave the cancel
+    // standing, locally and on the server, rather than resurrecting the file.
+    const h = harness();
+    const { batchId, clientFileId } = await importOne(h);
+    await h.queue.cancel(clientFileId);
+
+    const retried = await h.queue.scheduleRetry(
+      clientFileId,
+      { code: "offline", message: "Waiting for a connection." },
+      new Date("2026-08-29T09:01:00.000Z").toISOString(),
+    );
+    expect(retried.status).toBe("canceled");
+
+    const failed = await h.queue.fail(clientFileId, {
+      code: "file_missing",
+      message: "The local copy of this file is gone.",
+    });
+    expect(failed.status).toBe("canceled");
+    expect(failed.errorCode).toBe("canceled");
+
+    const state = await h.server.batchState({ batchId });
+    expect(state!.files[0].status).toBe("canceled");
+  });
+
   it("never removes a completed import as part of a cancellation sweep", async () => {
     const h = harness();
     const done = await importOne(h, "done.ARW");
