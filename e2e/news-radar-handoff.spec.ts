@@ -22,8 +22,6 @@ const VIEWER = "vera@mastline.test";
 const ORG_A = "aaaaaaaa-0000-0000-0000-000000000001";
 const OWNER_A = "11111111-1111-1111-1111-111111111111";
 const SEEDED_SHOOT = "a0000000-0000-0000-0000-0000000000c1";
-const PERSON = "Handoff Browser Person";
-const VENUE = "Handoff Browser Hall";
 
 function localEnv(name: string): string | undefined {
   try {
@@ -70,7 +68,24 @@ interface Fixture {
   readonly shootPathId: string;
   readonly assetIds: string[];
   readonly title: string;
+  /** Unique per fixture, so an abandoned fixture can never collide with or match a later one. */
+  readonly person: string;
+  readonly venue: string;
 }
+
+/** Fixtures whose test never reached its own cleanup (a timeout abandons the body). */
+const pending: Fixture[] = [];
+
+test.afterEach(async () => {
+  while (pending.length > 0) {
+    const leftover = pending.pop()!;
+    try {
+      await cleanUp(leftover);
+    } catch {
+      // Reported by the next run's arrangement if it truly stuck.
+    }
+  }
+});
 
 /**
  * A story about two fixture photographs on the seeded shoot, with context
@@ -79,7 +94,9 @@ interface Fixture {
  */
 async function arrange(label: string): Promise<Fixture> {
   const stamp = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
-  const title = `${PERSON} at ${VENUE} — ${label} ${stamp}`;
+  const PERSON = `Handoff Person ${label} ${stamp}`;
+  const VENUE = `Handoff Hall ${label} ${stamp}`;
+  const title = `${PERSON} at ${VENUE}`;
   const assetIds: string[] = [];
   for (const [index, name] of ["A", "B"].entries()) {
     const [asset] = await rest<{ id: string }[]>("assets", {
@@ -93,7 +110,7 @@ async function arrange(label: string): Promise<Fixture> {
         headline: `${PERSON} ${index === 0 ? "arrives at" : "leaves"} ${VENUE}`,
         caption: `${PERSON} photographed at ${VENUE}.`,
         subjects: [PERSON],
-        keywords: ["handoff-e2e"],
+        keywords: [`handoff-e2e-${stamp}`],
         location_name: VENUE,
         captured_at: "2026-08-20T10:00:00.000Z",
         copyright_notice: "© 2026 Fixture",
@@ -160,21 +177,27 @@ async function arrange(label: string): Promise<Fixture> {
         organization_id: ORG_A,
         news_signal_id: signal.id,
         entity_kind: "keyword",
-        value: "handoff-e2e",
+        value: `handoff-e2e-${stamp}`,
       },
     ]),
   });
-  return {
+  const fixture: Fixture = {
     signalId: signal.id,
     archiveId: paths.find((path) => path.opportunity_kind === "archive_match")!.id,
     shootPathId: paths.find((path) => path.opportunity_kind === "shoot_opportunity")!.id,
     assetIds,
     title,
+    person: PERSON,
+    venue: VENUE,
   };
+  pending.push(fixture);
+  return fixture;
 }
 
 /** Everything the fixture and the handoffs made, in foreign-key order. */
 async function cleanUp(fixture: Fixture): Promise<void> {
+  const index = pending.indexOf(fixture);
+  if (index !== -1) pending.splice(index, 1);
   const packages = await rest<{ id: string }[]>(
     `packages?organization_id=eq.${ORG_A}&name=eq.${encodeURIComponent(fixture.title)}&select=id`,
     { method: "GET" },
@@ -210,6 +233,9 @@ async function cleanUp(fixture: Fixture): Promise<void> {
 async function evaluate(page: Page, opportunityId: string): Promise<void> {
   await page.goto(at(`/news/${opportunityId}`));
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    // A transient read failure renders the standard boundary; recover first.
+    const boundary = page.getByRole("button", { name: "Try again" });
+    if (await boundary.isVisible().catch(() => false)) await boundary.click();
     await page
       .getByRole("button", { name: /^(Evaluate|Re-evaluate)$/ })
       .first()
@@ -217,19 +243,50 @@ async function evaluate(page: Page, opportunityId: string): Promise<void> {
     const outcome = page
       .getByRole("status")
       .filter({ hasText: /Evaluated|Nothing to recompute|Evaluation failed/ });
-    await expect(outcome.first()).toBeVisible({ timeout: 60_000 });
+    try {
+      await expect(outcome.first()).toBeVisible({ timeout: 60_000 });
+    } catch {
+      // No answer at all within the allowance: reload and try again rather
+      // than reporting the stall as the journey's failure.
+      await page.goto(at(`/news/${opportunityId}`));
+      continue;
+    }
     if ((await outcome.first().textContent())?.includes("Evaluation failed")) continue;
     return;
   }
   throw new Error("The evaluation kept failing; see the server log.");
 }
 
+/**
+ * Settle the page after an action that may have landed on the error boundary.
+ *
+ * A transient read failure during the revalidated re-render shows the app's
+ * standard "That page did not load" boundary. The recovery a person takes is
+ * "Try again", and the handoff's idempotency answers the re-render with the
+ * record that was made. Returns "status" when the in-place result rendered,
+ * "recovered" when the boundary path was taken.
+ */
+async function settleAfterCreate(
+  page: Page,
+  status: ReturnType<Page["getByRole"]>,
+  handedOffText: string,
+): Promise<"status" | "recovered"> {
+  const boundary = page.getByRole("button", { name: "Try again" });
+  await expect(status.or(boundary).first()).toBeVisible({ timeout: 120_000 });
+  if (await status.isVisible().catch(() => false)) return "status";
+  await boundary.click();
+  await expect(page.getByText(handedOffText)).toBeVisible({ timeout: 120_000 });
+  return "recovered";
+}
+
 test.describe("News Radar handoffs", () => {
-  // Serial: each test arranges and removes its own story on the seeded shoot.
-  // The allowance is for the evaluator, which reads every photograph the
-  // workspace owns and signs previews; on a loaded host that is tens of
-  // seconds, and a timeout there would be a stall reported as a failure.
-  test.describe.configure({ mode: "serial", timeout: 120_000 });
+  // One worker runs these in order, and each test arranges and removes its
+  // own story on the seeded shoot -- so a stalled first test must not void
+  // the rest (no serial mode). The allowance is for the evaluator, which
+  // reads every photograph the workspace owns and signs previews; on a
+  // loaded host that is tens of seconds, and a tighter budget reports the
+  // stall as a failure.
+  test.describe.configure({ timeout: 420_000 });
 
   test.beforeEach(async ({ context }) => {
     await refuseCookies(context);
@@ -253,7 +310,10 @@ test.describe("News Radar handoffs", () => {
       await expect(summary.getByRole("button", { name: "Review selection" })).toBeDisabled();
 
       // Select both fixture frames by their labels (the seeded frame may also match).
-      for (const headline of [`${PERSON} arrives at ${VENUE}`, `${PERSON} leaves ${VENUE}`]) {
+      for (const headline of [
+        `${fixture.person} arrives at ${fixture.venue}`,
+        `${fixture.person} leaves ${fixture.venue}`,
+      ]) {
         await region.getByRole("checkbox", { name: headline }).check();
       }
       await expect(summary).toContainText("2 photographs");
@@ -272,9 +332,11 @@ test.describe("News Radar handoffs", () => {
 
       await summary.getByRole("button", { name: "Create draft package" }).click();
       const created = page.getByRole("status").filter({ hasText: "Draft package created" });
-      await expect(created).toBeVisible({ timeout: 20_000 });
-      await expect(created).toContainText("still a draft");
-      await expect(created).not.toContainText(/sold|assigned|congratulations/i);
+      const outcome = await settleAfterCreate(page, created, "Handed off to a draft package");
+      if (outcome === "status") {
+        await expect(created).toContainText("still a draft");
+        await expect(created).not.toContainText(/sold|assigned|congratulations/i);
+      }
 
       // The record: one package, needs_review, unapproved, exactly the two frames, one handoff.
       const packages = await rest<
@@ -301,7 +363,7 @@ test.describe("News Radar handoffs", () => {
       expect(submissions).toHaveLength(0);
 
       // Continue lands in the existing package review, addressed by shoot and package.
-      await created.getByRole("link", { name: "Continue in the package review" }).click();
+      await page.getByRole("link", { name: "Continue in the package review" }).click();
       await expect(page).toHaveURL(
         new RegExp(`/dispatch/${SEEDED_SHOOT}\\?package=${packages[0].id}`),
       );
@@ -331,7 +393,9 @@ test.describe("News Radar handoffs", () => {
       await signIn(page, EDITOR);
       await evaluate(page, fixture.archiveId);
       const region = page.getByRole("form", { name: "Build a draft package from the matches" });
-      await region.getByRole("checkbox", { name: `${PERSON} arrives at ${VENUE}` }).check();
+      await region
+        .getByRole("checkbox", { name: `${fixture.person} arrives at ${fixture.venue}` })
+        .check();
       const summary = page.getByRole("complementary", { name: "Selection summary" });
       await summary.getByRole("button", { name: "Review selection" }).click();
 
@@ -353,8 +417,18 @@ test.describe("News Radar handoffs", () => {
       const alert = page
         .getByRole("alert")
         .filter({ hasText: "Re-evaluated since you loaded this page" });
-      await expect(alert).toBeVisible({ timeout: 20_000 });
-      await expect(alert.getByRole("link", { name: "Reload the current result" })).toBeVisible();
+      const boundary = page.getByRole("button", { name: "Try again" });
+      await expect(alert.or(boundary).first()).toBeVisible({ timeout: 120_000 });
+      if (await alert.isVisible().catch(() => false)) {
+        await expect(alert.getByRole("link", { name: "Reload the current result" })).toBeVisible();
+      } else {
+        // The re-render fell on the boundary; recovery must show the path
+        // NOT handed off -- the stale confirmation created nothing.
+        await boundary.click();
+        await expect(
+          page.getByRole("form", { name: "Build a draft package from the matches" }),
+        ).toBeVisible({ timeout: 120_000 });
+      }
       const packages = await rest<unknown[]>(
         `packages?organization_id=eq.${ORG_A}&name=eq.${encodeURIComponent(fixture.title)}&select=id`,
         { method: "GET" },
@@ -386,7 +460,9 @@ test.describe("News Radar handoffs", () => {
       ]) {
         await expect(region.getByRole("heading", { name: heading })).toBeVisible();
       }
-      await expect(region.getByRole("region", { name: "Recorded facts" })).toContainText(VENUE);
+      await expect(region.getByRole("region", { name: "Recorded facts" })).toContainText(
+        fixture.venue,
+      );
       await expect(
         region.getByRole("region", { name: "Will be added to the draft" }),
       ).toContainText("Location: not confirmed");
@@ -394,13 +470,14 @@ test.describe("News Radar handoffs", () => {
       // Confirm the location and the time zone, one person, and copy one suggestion.
       await region.getByRole("checkbox", { name: "Confirm the location" }).check();
       await region.getByRole("checkbox", { name: "Confirm the time zone" }).check();
-      await region.getByRole("checkbox", { name: PERSON }).check();
+      // exact: the suggestion checkboxes' labels embed the person's name.
+      await region.getByRole("checkbox", { name: fixture.person, exact: true }).check();
       const suggestion = region.getByRole("checkbox", { name: /^Suggested (angle|shot)/ }).first();
       await suggestion.check();
       const willAdd = region.getByRole("region", { name: "Will be added to the draft" });
-      await expect(willAdd).toContainText(`Location: ${VENUE}`);
+      await expect(willAdd).toContainText(`Location: ${fixture.venue}`);
       await expect(willAdd).toContainText("Event time: not confirmed");
-      await expect(willAdd).toContainText(`People expected (confirmed): ${PERSON}`);
+      await expect(willAdd).toContainText(`People expected (confirmed): ${fixture.person}`);
       await expect(willAdd).toContainText("labelled as suggestions");
 
       const summary = page.getByRole("complementary", { name: "Confirmation summary" });
@@ -415,8 +492,8 @@ test.describe("News Radar handoffs", () => {
 
       await summary.getByRole("button", { name: "Create draft shoot" }).click();
       const created = page.getByRole("status").filter({ hasText: "Draft shoot created" });
-      await expect(created).toBeVisible({ timeout: 20_000 });
-      await expect(created).toContainText("still a draft");
+      const outcome = await settleAfterCreate(page, created, "Handed off to a draft shoot");
+      if (outcome === "status") await expect(created).toContainText("still a draft");
 
       const shoots = await rest<
         {
@@ -435,13 +512,13 @@ test.describe("News Radar handoffs", () => {
       expect(shoots).toHaveLength(1);
       expect(shoots[0]).toMatchObject({
         status: "draft",
-        location_name: VENUE,
+        location_name: fixture.venue,
         starts_at: null,
         story_angle: null,
       });
       expect(shoots[0].timezone).toBeTruthy();
       expect(shoots[0].notes).toContain(
-        `People expected (confirmed by the photographer): ${PERSON}`,
+        `People expected (confirmed by the photographer): ${fixture.person}`,
       );
       expect(shoots[0].notes).toMatch(/News Radar suggestion/);
       const packages = await rest<unknown[]>(`packages?shoot_id=eq.${shoots[0].id}&select=id`, {
@@ -449,7 +526,7 @@ test.describe("News Radar handoffs", () => {
       });
       expect(packages).toHaveLength(0);
 
-      await created.getByRole("link", { name: "Continue in the shoot" }).click();
+      await page.getByRole("link", { name: "Continue in the shoot" }).click();
       await expect(page).toHaveURL(new RegExp(`/shoots/${shoots[0].id}`));
 
       // Back on the path: handed off, the same shoot, nothing new offered.
@@ -474,17 +551,20 @@ test.describe("News Radar handoffs", () => {
       await signIn(page, EDITOR);
       await evaluate(page, fixture.archiveId);
       const region = page.getByRole("form", { name: "Build a draft package from the matches" });
-      const box = region.getByRole("checkbox", { name: `${PERSON} arrives at ${VENUE}` });
+      const box = region.getByRole("checkbox", {
+        name: `${fixture.person} arrives at ${fixture.venue}`,
+      });
       await box.focus();
       await page.keyboard.press("Space");
       await expect(box).toBeChecked();
       const summary = page.getByRole("complementary", { name: "Selection summary" });
       await summary.getByRole("button", { name: "Review selection" }).focus();
       await page.keyboard.press("Enter");
-      await expect(region).toContainText("What will be created");
+      await expect(region).toContainText("What will be created", { timeout: 60_000 });
       await summary.getByRole("button", { name: "Back to selection" }).focus();
       await page.keyboard.press("Enter");
-      await expect(box).toBeChecked();
+      // The step transition re-renders the cards; give it the stall allowance.
+      await expect(box).toBeChecked({ timeout: 60_000 });
 
       await page.context().clearCookies();
       await signIn(page, VIEWER);

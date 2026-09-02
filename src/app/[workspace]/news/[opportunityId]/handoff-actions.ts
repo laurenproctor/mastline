@@ -68,6 +68,20 @@ async function resolve(workspaceSlug: string, opportunityId: string) {
   return { context, opportunity };
 }
 
+/**
+ * The neutral answer when a read the action depends on fails.
+ *
+ * A permission refusal is `forbidden`; anything else -- a timed-out read, a
+ * dropped connection -- is the classified `failed`, said in place by the
+ * screen. An action that throws instead would hand the person an error
+ * boundary with no state at all, which is neither neutral nor honest.
+ */
+function classifyResolveError(error: unknown, action: string): HandoffState {
+  if (error instanceof PermissionError) return { result: { outcome: "forbidden" } };
+  console.error(`news radar handoff (${action}): resolve_failed`);
+  return { result: { outcome: "failed" } };
+}
+
 function continueTo(
   routes: ReturnType<typeof workspaceRoutes>,
   result: HandoffResult,
@@ -105,8 +119,7 @@ export async function createArchivePackageAction(
   try {
     resolved = await resolve(workspaceSlug, opportunityId);
   } catch (error) {
-    if (error instanceof PermissionError) return { result: { outcome: "forbidden" }, requestKey };
-    throw error;
+    return { ...classifyResolveError(error, "package_draft"), requestKey };
   }
   const { context, opportunity } = resolved;
   if (!opportunity || opportunity.kind !== "archive_match") {
@@ -157,8 +170,7 @@ export async function createShootDraftAction(
   try {
     resolved = await resolve(workspaceSlug, opportunityId);
   } catch (error) {
-    if (error instanceof PermissionError) return { result: { outcome: "forbidden" }, requestKey };
-    throw error;
+    return { ...classifyResolveError(error, "shoot_draft"), requestKey };
   }
   const { context, opportunity } = resolved;
   if (!opportunity || opportunity.kind !== "shoot_opportunity") {
@@ -174,10 +186,17 @@ export async function createShootDraftAction(
   // What may be confirmed is bounded by the brief on record, read again here
   // rather than trusted from the form; and the brief must be the one the
   // person saw, which the database checks by evaluator and input hash.
-  const [brief, evaluation] = await Promise.all([
-    getShootBrief(context.organizationId, opportunity.id),
-    getEvaluation(context.organizationId, opportunity.id),
-  ]);
+  let brief;
+  let evaluation;
+  try {
+    [brief, evaluation] = await Promise.all([
+      getShootBrief(context.organizationId, opportunity.id),
+      getEvaluation(context.organizationId, opportunity.id),
+    ]);
+  } catch {
+    console.error("news radar handoff (shoot_draft): brief_read_failed");
+    return { result: { outcome: "failed" }, requestKey };
+  }
   if (!brief || !evaluation?.resultAt) {
     return { result: { outcome: "needs_context" }, requestKey };
   }
