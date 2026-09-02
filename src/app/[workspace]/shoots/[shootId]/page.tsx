@@ -231,6 +231,7 @@ export default async function ShootWorkspacePage({
         {mayEdit ? (
           <ImportDropzone
             workspaceSlug={workspaceSlug}
+            organizationId={organizationId}
             compact={assets.length > 0}
             shootId={shootId}
           />
