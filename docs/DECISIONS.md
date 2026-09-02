@@ -360,6 +360,46 @@ Item numbers below are permanent. Resolved items keep their number so older note
   with the reason recorded. Nothing is known yet about where a working
   photographer would put that line.
 
+## The five-stage delivery flow
+
+Approved 2026-08-31, from the eight reference screens, with the scope cuts
+recorded here so the interface cannot quietly outrun the system.
+
+- **Dispatch is walked as five stages: Photos → Details → Recipient →
+  Review & share → Shared.** One package, one recipient, one persistent
+  progression at `/dispatch/[shootId]`. This amends the earlier reading of
+  "document, not a wizard" **for dispatch only**: dispatch is a multi-session
+  piece of work whose stages are real states of the record, not sections of
+  one form. Create Shoot remains a single document with no wizard, and the
+  two-motion confirmation remains exactly where it was — at the point of
+  consequence, now labelled **Create private delivery**.
+- **The stages are a reading of the record, never a replacement for it.** The
+  seven delivery facts (approved, link created, shared, opened, viewed,
+  accepted, downloaded — `docs/DELIVERY_LINKS.md`) stay separate system facts
+  with separate evidence. The stage in the URL is clamped server-side against
+  those facts, and the working stages close at approval.
+- **Draft packages are reachable.** "Save draft" is real persistence: the
+  selection lives on a `draft` package and reconciles on every change.
+  Without a schema slot for an idempotency key, draft creation converges
+  deterministically — the earliest unapproved draft this operator holds on
+  this shoot is *the* draft, and a race deletes its own memberless loser.
+- **The dashboard's acid-green highlight is the flow's action signal**, per
+  the landed design system (`--ml-highlight`), amending the blue-primary
+  posture for migrated dashboard screens. Blue remains in unmigrated screens
+  until each moves; the marketing surface is unaffected.
+- **Still no email.** "Send by Mastline email" from the reference screens is
+  deferred with its provider dependency and `delivery_emails` table. The
+  per-delivery note is a plain-text note **on the delivery page**, stored on
+  the link, frozen at share — never represented as a sent message.
+- **Watermarks stay unconditional.** No "None" option; the photographer UI
+  states `Recipient watermark: On` as a fact. Unmarked previews would weaken
+  a control this workstream is not allowed to touch.
+- **One recipient at a time.** No multi-recipient staging in the wizard;
+  after sharing, **Share with another recipient** creates another distinct
+  tracked delivery, preserving one-link-per-recipient.
+- **Deferred with the email:** rich-text composition and the download-all ZIP
+  route.
+
 ## Strategic pushback
 
 Do not launch with a promise to discover every unauthorized use or predict every valuable news moment. Those promises depend on a trusted asset/license record that does not yet exist. The sequence is philosophical as well as practical: Mastline should first help a photographer remember their own work before claiming it can interpret the world around that work.

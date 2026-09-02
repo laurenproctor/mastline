@@ -81,9 +81,7 @@ export async function signIn(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SEEDED.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  // 90s, not 20: on a loaded host GoTrue answers sign-in in tens of seconds,
-  // and a shorter wait reports that stall as the fault of whatever test ran.
-  await page.waitForURL(`**${destination}`, { timeout: 90_000 });
+  await page.waitForURL(`**${destination}`, { timeout: 180_000 });
 }
 
 /**

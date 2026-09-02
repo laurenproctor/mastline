@@ -95,25 +95,24 @@ test.describe("building a package lands on the dispatch review", () => {
     built = packageId;
     expect(packageId).not.toBe(SEEDED_SHOOT);
 
-    // 4. The review screen rendered, rather than the not-found page.
-    await expect(page.getByRole("heading", { level: 1, name: "Package review" })).toBeVisible();
+    // 4. The delivery flow rendered, rather than the not-found page. Which
+    //    stage it opens on depends on how complete the new package is, so the
+    //    assertion is "one flow title and the progress strip", not one
+    //    hard-coded heading.
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+    await expect(page.getByRole("navigation", { name: "Delivery progress" })).toBeVisible();
     await expect(page.getByText(/does not exist in this workspace/i)).toHaveCount(0);
 
     /*
-     * 5. And it is reviewing the package that was just built, not some other
+     * 5. And it is working on the package that was just built, not some other
      *    package on the same shoot. The seed already puts two there, and the
      *    page falls back to "the first one that still needs work" when no
      *    package is named -- so without this the 404 fix could be declared
-     *    working by a screen showing the wrong package.
+     *    working by a screen showing the wrong package. The context line under
+     *    the header names the shoot, the package, and the frame count.
      */
-    // The subject line under the h1 names the shoot, the package, and the
-    // frame count; the review screen has carried it there since it was
-    // redesigned around the photographs.
-    await expect(page.locator("h1 + p")).toContainText(name);
-    const tabs = page.getByRole("navigation", { name: "Packages on this shoot" });
-    await expect(tabs.getByRole("link", { name: new RegExp(escapeRegExp(name)) })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await expect(page.locator(".ml-delivery-flow__context")).toContainText(
+      new RegExp(escapeRegExp(name)),
     );
 
     expect(errors).toEqual([]);
@@ -135,11 +134,10 @@ test.describe("building a package lands on the dispatch review", () => {
     // pasted link, a bookmark, or a back button does.
     const response = await page.reload();
     expect(response?.status()).toBeLessThan(400);
-    await expect(page.getByRole("heading", { level: 1, name: "Package review" })).toBeVisible();
-    // The subject line under the h1 names the shoot, the package, and the
-    // frame count; the review screen has carried it there since it was
-    // redesigned around the photographs.
-    await expect(page.locator("h1 + p")).toContainText(name);
+    await expect(page.getByRole("navigation", { name: "Delivery progress" })).toBeVisible();
+    // The context line under the header names the shoot, the package, and the
+    // frame count, so a reload provably shows the same package.
+    await expect(page.locator(".ml-delivery-flow__context")).toContainText(name);
   });
 });
 

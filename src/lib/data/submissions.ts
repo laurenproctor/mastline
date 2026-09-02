@@ -101,6 +101,34 @@ export async function getSubmission(
 }
 
 /**
+ * The submission a package's approval opened, if any.
+ *
+ * Approval creates exactly one submission per package, so this is how the
+ * delivery flow resumes after a partial failure: the approve succeeded, the
+ * link did not, and the retry must find the submission rather than approve
+ * again.
+ */
+export async function getSubmissionForPackage(
+  organizationId: Id,
+  packageId: Id,
+  client?: SupabaseClient,
+): Promise<Submission | null> {
+  if (!isRecordId(packageId)) return null;
+  const supabase = client ?? (await createClient());
+  const { data, error } = await supabase
+    .from("submissions")
+    .select(SUBMISSION_COLUMNS)
+    .eq("organization_id", organizationId)
+    .eq("package_id", packageId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(`Could not load the submission: ${error.message}`);
+  return data ? toSubmission(data as unknown as SubmissionRow) : null;
+}
+
+/**
  * A frame as it was approved: the exact version and object, and the editorial
  * facts frozen at that moment. Read from `submission_assets`, which is what a
  * recipient link renders and downloads from.
@@ -136,6 +164,9 @@ export interface SubmissionFrame {
    */
   readonly previewVersionId?: Id;
   readonly previewSha256?: string;
+  /** Where the frozen preview object lives, for the internal rehearsal only. */
+  readonly previewObjectKey?: string;
+  readonly previewStorageBucket?: string;
   /**
    * "approval": written by the approval transaction. "legacy_backfill": written
    * by the snapshot migration from the manifest, with the metadata as it stood
@@ -147,7 +178,7 @@ export interface SubmissionFrame {
 }
 
 const FRAME_COLUMNS =
-  "id, submission_id, asset_id, asset_version_id, position, filename_snapshot, headline_snapshot, caption_snapshot, people_snapshot, credit_line_snapshot, copyright_notice_snapshot, copyright_owner_snapshot, captured_at_snapshot, location_snapshot, usage_restrictions_snapshot, version_kind_snapshot, storage_bucket_snapshot, sha256_snapshot, mime_type_snapshot, bytes_snapshot, width_snapshot, height_snapshot, preview_asset_version_id, preview_sha256_snapshot, snapshot_origin, created_at";
+  "id, submission_id, asset_id, asset_version_id, position, filename_snapshot, headline_snapshot, caption_snapshot, people_snapshot, credit_line_snapshot, copyright_notice_snapshot, copyright_owner_snapshot, captured_at_snapshot, location_snapshot, usage_restrictions_snapshot, version_kind_snapshot, storage_bucket_snapshot, sha256_snapshot, mime_type_snapshot, bytes_snapshot, width_snapshot, height_snapshot, preview_asset_version_id, preview_sha256_snapshot, preview_object_key_snapshot, preview_storage_bucket_snapshot, snapshot_origin, created_at";
 
 const text = (value: unknown): string | undefined =>
   typeof value === "string" && value.length > 0 ? value : undefined;
@@ -178,6 +209,8 @@ function toFrame(row: Record<string, unknown>): SubmissionFrame {
     height: (row.height_snapshot as number | null) ?? undefined,
     previewVersionId: text(row.preview_asset_version_id),
     previewSha256: text(row.preview_sha256_snapshot),
+    previewObjectKey: text(row.preview_object_key_snapshot),
+    previewStorageBucket: text(row.preview_storage_bucket_snapshot),
     origin: row.snapshot_origin as SubmissionFrame["origin"],
     createdAt: row.created_at as string,
   };
@@ -309,6 +342,45 @@ export async function approvePackageAndCreateSubmission(input: {
   if (!row) throw new Error("Could not record the submission.");
 
   return { submissionId: row.submission_id, reference: row.reference };
+}
+
+/**
+ * Set or clear the follow-up reminder on a submission.
+ *
+ * The one field on the record that is expected to keep moving after the
+ * snapshot froze: it is about the photographer's own attention, not about
+ * what was sent, which is why the protect trigger leaves it alone.
+ */
+export async function setSubmissionFollowUp(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  submissionId: Id;
+  followUpAt: string | null;
+}): Promise<void> {
+  const { organizationId, actorId, submissionId, followUpAt } = input;
+  const supabase = input.client ?? (await createClient());
+
+  const { error } = await supabase
+    .from("submissions")
+    .update({ follow_up_at: followUpAt })
+    .eq("organization_id", organizationId)
+    .eq("id", submissionId);
+
+  if (error) throw new Error(`Could not set the follow-up: ${error.message}`);
+
+  await recordEventWith(supabase, {
+    organizationId,
+    actorId,
+    entityType: "submission",
+    entityId: submissionId,
+    action: "submission.follow_up_set",
+    data: {
+      summary: followUpAt
+        ? `Follow-up set for ${followUpAt.slice(0, 10)}`
+        : "Follow-up reminder cleared",
+    },
+  });
 }
 
 /**

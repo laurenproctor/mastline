@@ -288,6 +288,218 @@ export async function updatePackage(input: {
   });
 }
 
+/**
+ * The one live draft this operator has on this shoot, creating it if none
+ * exists.
+ *
+ * The delivery flow needs a persistent object from its first click, and it
+ * needs the same object back after a double-click, a retry, or a refresh --
+ * without a schema change to hang an idempotency key on. So the draft is
+ * addressed deterministically: the earliest unapproved `draft` package this
+ * operator created on this shoot. Two racing calls may both insert; both then
+ * re-read, agree on the earliest row, and the loser deletes its own memberless
+ * insert. Convergence rather than prevention, and safe because a draft that
+ * lost the race holds nothing.
+ *
+ * Scoped to the creator on purpose: two people preparing packages on one shoot
+ * are preparing two packages, and reusing a colleague's draft would hand one of
+ * them the other's selection.
+ */
+export async function ensureDraftPackage(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  shootId: Id;
+  name?: string;
+}): Promise<{ id: Id; shootId: Id; created: boolean }> {
+  const { organizationId, actorId, shootId } = input;
+  const supabase = input.client ?? (await createClient());
+
+  const earliest = () =>
+    supabase
+      .from("packages")
+      .select("id, shoot_id")
+      .eq("organization_id", organizationId)
+      .eq("shoot_id", shootId)
+      .eq("created_by", actorId)
+      .eq("status", "draft")
+      .is("approved_at", null)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+  const { data: existing, error: readError } = await earliest();
+  if (readError) throw new Error(`Could not look for a draft: ${readError.message}`);
+  if (existing) {
+    return { id: existing.id as string, shootId: existing.shoot_id as string, created: false };
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("packages")
+    .insert({
+      organization_id: organizationId,
+      shoot_id: shootId,
+      buyer_id: null,
+      name: input.name?.trim() || "Private delivery",
+      status: "draft",
+      created_by: actorId,
+    })
+    .select("id, shoot_id")
+    .single();
+
+  if (error || !inserted) throw new Error(`Could not start a draft: ${error?.message}`);
+
+  const { data: winner, error: rereadError } = await earliest();
+  if (rereadError || !winner) {
+    // The re-read failing does not undo the insert; the draft just made is real.
+    return { id: inserted.id as string, shootId: inserted.shoot_id as string, created: true };
+  }
+
+  if (winner.id !== inserted.id) {
+    // A concurrent call made the draft first. Ours holds nothing; remove it so
+    // a double-click leaves one draft, not two.
+    await supabase.from("packages").delete().eq("id", inserted.id).eq("status", "draft");
+    return { id: winner.id as string, shootId: winner.shoot_id as string, created: false };
+  }
+
+  await recordEventWith(supabase, {
+    organizationId,
+    actorId,
+    entityType: "package",
+    entityId: inserted.id as string,
+    action: "package.created",
+    data: { summary: "Draft package started for a private delivery", count: 0 },
+  });
+
+  return { id: inserted.id as string, shootId: inserted.shoot_id as string, created: true };
+}
+
+/**
+ * Make the package hold exactly these frames, in exactly this order.
+ *
+ * Reconciliation rather than a diff of add/remove calls, so retrying a save
+ * that half-landed converges on the same state -- sending the same list twice
+ * is the same selection. A frame already in the package keeps the version that
+ * was pinned when it entered; a new frame pins its version now (delivery
+ * derivative first, then the original), so the record of what is being offered
+ * cannot drift with later derivatives.
+ *
+ * Only an unapproved package can move. The database trigger refuses the write
+ * after approval whatever this function checks; the check here exists so the
+ * operator gets a sentence rather than a constraint violation.
+ */
+export async function setPackageSelection(input: {
+  client?: SupabaseClient;
+  organizationId: Id;
+  actorId: Id;
+  packageId: Id;
+  /** Asset ids in the order they should appear. Duplicates collapse. */
+  assetIds: readonly Id[];
+}): Promise<{ count: number }> {
+  const { organizationId, actorId, packageId } = input;
+  const supabase = input.client ?? (await createClient());
+  const orderedIds = [...new Set(input.assetIds)].filter((id) => isRecordId(id));
+
+  const { data: pkg, error: pkgError } = await supabase
+    .from("packages")
+    .select("id, shoot_id, status, approved_at")
+    .eq("organization_id", organizationId)
+    .eq("id", packageId)
+    .maybeSingle();
+
+  if (pkgError) throw new Error(`Could not read the package: ${pkgError.message}`);
+  if (!pkg) throw new Error("That package could not be found in this workspace.");
+  if (pkg.approved_at || ["approved", "sending", "delivered"].includes(pkg.status as string)) {
+    throw new Error(
+      "This package has been approved and its selection is frozen. Start a new delivery to send something different.",
+    );
+  }
+
+  // Keep the version pinned when each frame entered the package.
+  const { data: currentMembers, error: membersError } = await supabase
+    .from("package_assets")
+    .select("asset_id, asset_version_id")
+    .eq("organization_id", organizationId)
+    .eq("package_id", packageId);
+  if (membersError) throw new Error(`Could not read the selection: ${membersError.message}`);
+  const pinned = new Map(
+    (currentMembers ?? []).map((row) => [row.asset_id as string, row.asset_version_id as string]),
+  );
+
+  let rows: { asset_id: string; asset_version_id: string }[] = [];
+  if (orderedIds.length > 0) {
+    const { data: assets, error: assetError } = await supabase
+      .from("assets")
+      .select("id, status, shoot_id, canonical_filename, asset_versions(id, version_kind)")
+      .eq("organization_id", organizationId)
+      .eq("shoot_id", pkg.shoot_id as string)
+      .in("id", orderedIds);
+    if (assetError) throw new Error(`Could not read the frames: ${assetError.message}`);
+
+    const byId = new Map((assets ?? []).map((asset) => [asset.id as string, asset]));
+    rows = orderedIds.map((assetId) => {
+      const asset = byId.get(assetId);
+      if (!asset) {
+        throw new Error("A selected frame is not on this shoot or no longer exists.");
+      }
+      if (asset.status !== "active") {
+        throw new Error(`${asset.canonical_filename} is not active and cannot be packaged.`);
+      }
+      const kept = pinned.get(assetId);
+      if (kept) return { asset_id: assetId, asset_version_id: kept };
+      const versions = (asset.asset_versions ?? []) as { id: string; version_kind: string }[];
+      const chosen =
+        versions.find((version) => version.version_kind === "delivery") ??
+        versions.find((version) => version.version_kind === "original") ??
+        versions[0];
+      if (!chosen) throw new Error(`${asset.canonical_filename} has no stored file to send.`);
+      return { asset_id: assetId, asset_version_id: chosen.id };
+    });
+  }
+
+  /*
+   * Replace the membership wholesale. Two statements, not a diff: the position
+   * column is unique per package, and a reorder expressed as updates would
+   * collide with itself between statements. A draft's membership is working
+   * state, not evidence -- the frozen record is written at approval -- so the
+   * moment between delete and insert holds nothing that needs protecting.
+   */
+  const { error: clearError } = await supabase
+    .from("package_assets")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("package_id", packageId);
+  if (clearError) throw new Error(`Could not update the selection: ${clearError.message}`);
+
+  if (rows.length > 0) {
+    const { error: insertError } = await supabase.from("package_assets").insert(
+      rows.map((row, position) => ({
+        package_id: packageId,
+        organization_id: organizationId,
+        asset_id: row.asset_id,
+        asset_version_id: row.asset_version_id,
+        position,
+      })),
+    );
+    if (insertError) throw new Error(`Could not save the selection: ${insertError.message}`);
+  }
+
+  await recordEventWith(supabase, {
+    organizationId,
+    actorId,
+    entityType: "package",
+    entityId: packageId,
+    action: "package.selection_updated",
+    data: {
+      summary: `Selection saved: ${rows.length} ${rows.length === 1 ? "frame" : "frames"}`,
+      count: rows.length,
+    },
+  });
+
+  return { count: rows.length };
+}
+
 export async function removeFromPackage(input: {
   organizationId: Id;
   actorId: Id;

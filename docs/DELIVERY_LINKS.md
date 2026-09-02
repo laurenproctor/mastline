@@ -209,6 +209,33 @@ This is the hinge the commercial record was missing. A package went out and the
 next event was a photographer typing a licence in by hand; now there is a dated,
 attributed, evidenced moment to attach that licence and its payment to.
 
+## What a link may offer, decided per recipient
+
+Three options ride on the link row (migration `20260831120000`), chosen on the
+delivery flow's Recipient stage, frozen when the link is marked shared, and
+enforced where the existing controls are enforced — inside the
+security-definer functions, never in the page:
+
+- **A plain-text note** (`delivery_note`, ≤500 characters), shown on the
+  delivery page beside the photographs. It is a note, not an email: Mastline
+  still transmits nothing, and the interface never claims otherwise.
+- **Whether full-resolution files are offered at all**
+  (`allow_full_resolution`). Off means the marked previews are the whole
+  offer; a download attempt after acceptance is refused *and recorded* with
+  the detail `full-resolution download not offered on this link`, so the
+  photographer's record says which gate answered.
+- **Whether viewing waits for the yes** (`require_acceptance_to_view`). On, the
+  page is a front door — name, terms, one button — and `delivery_assets` and
+  `delivery_preview` return **no frames and no preview identity** until the
+  acceptance row exists. The photographs are not hidden by the page; they are
+  not there.
+
+Defaults reproduce the old behavior exactly (`true`, `false`, no note), so
+every link created before the migration keeps doing what it did. The
+watermark is deliberately not among the options: every preview a recipient
+sees carries their name, and the flow states that as a fact rather than
+offering it as a setting.
+
 ## What is not built
 
 - **The full-resolution download is not marked**, deliberately. A desk that
