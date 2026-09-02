@@ -1,0 +1,82 @@
+# Visual captures for the delivery flow, on a runner.
+#
+# The capture spec is deliberate about its environment: a real stack, a real
+# production build, nothing mocked. This development machine cannot hold a
+# quiet enough run to produce them (see docs/DECISIONS.md on the on-demand
+# suites), so the captures come from the same runner recipe the browser suite
+# uses, and land as an artifact to be reviewed and committed.
+#
+# TEMPORARY: push-triggered because workflow_dispatch needs the file on main.
+# Drop this workflow at merge — the captures it exists to produce will be
+# committed by then.
+name: Delivery captures
+
+on:
+  push:
+    branches:
+      - design/delivery-five-stage-flow
+
+jobs:
+  captures:
+    name: Delivery captures
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.101.0
+
+      - name: Start the local stack
+        run: supabase start
+
+      - name: Point the app and the specs at the runner's stack
+        run: |
+          eval "$(supabase status -o env \
+            | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' )"
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "SUPABASE_TEST_PASSWORD=mastline-dev-password"
+          } > .env.local
+
+      - name: Build the app
+        run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Record the delivery flow
+        run: CAPTURE_DELIVERY_FLOW=1 npx playwright test delivery-flow-capture --project=desktop
+
+      - name: Keep the captures
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: delivery-flow-captures
+          path: docs/design/verification/delivery-flow/
+          retention-days: 7
+
+      - name: Keep the failure traces
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: capture-traces
+          path: test-results/
+          retention-days: 7
+
+      - name: Stop the local stack
+        if: always()
+        run: supabase stop --no-backup
