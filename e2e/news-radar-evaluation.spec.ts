@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { at, hasHorizontalOverflow, refuseCookies, signIn } from "./helpers";
+import { at, hasHorizontalOverflow, refuseCookies, signIn, testBudget } from "./helpers";
 
 /**
  * News Radar evaluation, driven through the real interface.
@@ -138,7 +138,7 @@ test.beforeEach(async ({ context }) => {
   // The evaluator reads every photograph the workspace owns; on a loaded
   // host that is tens of seconds, and the default budget reports the stall
   // as a failure. The assertions themselves are unchanged.
-  test.setTimeout(300_000);
+  test.setTimeout(testBudget(180_000, 300_000));
 });
 
 test("the archive path evaluates to ranked real photographs with reasons and readiness facts", async ({

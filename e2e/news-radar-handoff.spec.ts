@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { at, hasHorizontalOverflow, refuseCookies, signIn } from "./helpers";
+import { at, hasHorizontalOverflow, refuseCookies, signIn, testBudget } from "./helpers";
 
 /**
  * News Radar handoffs, driven through the real interface.
@@ -286,7 +286,7 @@ test.describe("News Radar handoffs", () => {
   // reads every photograph the workspace owns and signs previews; on a
   // loaded host that is tens of seconds, and a tighter budget reports the
   // stall as a failure.
-  test.describe.configure({ timeout: 420_000 });
+  test.describe.configure({ timeout: testBudget(240_000, 420_000) });
 
   test.beforeEach(async ({ context }) => {
     await refuseCookies(context);

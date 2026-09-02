@@ -18,7 +18,13 @@ jobs:
   e2e:
     name: E2E suite
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 75, not 60: the suite has genuinely grown -- the delivery five-stage
+    # flow, the import queue, and the News Radar evaluation and handoff
+    # journeys all run three projects on one worker against one stack. A
+    # healthy run fits well inside this; the per-test budgets are CI-capped
+    # (see testBudget in e2e/helpers.ts) so a failing test cannot stretch to
+    # the ceiling the way an uncapped budget once did.
+    timeout-minutes: 75
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { at, hasHorizontalOverflow, refuseCookies, signIn } from "./helpers";
+import { at, hasHorizontalOverflow, refuseCookies, signIn, testBudget } from "./helpers";
 
 /**
  * News Radar, driven through the real interface.
@@ -156,7 +156,7 @@ async function deleteStoriesTitled(prefix: string): Promise<void> {
 test.beforeEach(async ({ context }) => {
   // A loaded host renders these pages in tens of seconds; the default budget
   // reports that stall as a failure. The assertions themselves are unchanged.
-  test.setTimeout(300_000);
+  test.setTimeout(testBudget(180_000, 300_000));
   await refuseCookies(context);
 });
 

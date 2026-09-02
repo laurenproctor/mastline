@@ -11,6 +11,7 @@ import {
   refuseCookies,
   shootIdByTitle,
   signIn,
+  testBudget,
 } from "./helpers";
 
 /**
@@ -45,7 +46,7 @@ test.describe("create shoot", () => {
   test.beforeEach(async ({ page }) => {
     // A loaded host renders these pages in tens of seconds; the default
     // budget reports that stall as a failure. Assertions are unchanged.
-    test.setTimeout(300_000);
+    test.setTimeout(testBudget(180_000, 300_000));
     await refuseCookies(page.context());
   });
 
