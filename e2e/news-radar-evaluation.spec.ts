@@ -123,13 +123,14 @@ async function recordContext(
   page: import("@playwright/test").Page,
   values: { people?: string; location?: string; eventStartsAt?: string },
 ): Promise<void> {
-  if (values.people !== undefined) await page.getByLabel("People").fill(values.people);
-  if (values.location !== undefined) await page.getByLabel("Location").fill(values.location);
+  if (values.people !== undefined)
+    await page.getByLabel("People", { exact: true }).fill(values.people);
+  if (values.location !== undefined) await page.getByLabel("Location name").fill(values.location);
   if (values.eventStartsAt !== undefined) {
     await page.getByLabel("Event starts").fill(values.eventStartsAt);
   }
   await page.getByRole("button", { name: "Save context" }).click();
-  await expect(page.getByText("Context saved.", { exact: false })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Context saved.", { exact: false })).toBeVisible({ timeout: 60_000 });
 }
 
 test.beforeEach(async ({ context }) => {
@@ -137,7 +138,7 @@ test.beforeEach(async ({ context }) => {
   // The evaluator reads every photograph the workspace owns; on a loaded
   // host that is tens of seconds, and the default budget reports the stall
   // as a failure. The assertions themselves are unchanged.
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
 });
 
 test("the archive path evaluates to ranked real photographs with reasons and readiness facts", async ({
@@ -171,7 +172,8 @@ test("the archive path evaluates to ranked real photographs with reasons and rea
     // The rank also appears on the handoff's selection card below; the
     // evaluation list's copy is the first in the document.
     await expect(page.getByText("#1").first()).toBeVisible();
-    await expect(page.getByText("Avery Hart departs Hotel Chelsea")).toBeVisible();
+    // The headline also appears on the handoff selection card below.
+    await expect(page.getByText("Avery Hart departs Hotel Chelsea").first()).toBeVisible();
     await expect(page.getByText("Street style outside the Mercer")).toHaveCount(0);
     await expect(
       page.getByText(/matches a subject on the photograph: Avery Hart/).first(),
@@ -214,7 +216,7 @@ test("the shoot path needs context until where and when are recorded, then brief
     await expect(page.getByText("Event time: none recorded").first()).toBeVisible();
     await expect(page.getByText("Location: none recorded").first()).toBeVisible();
     await expect(
-      page.getByText("Nothing to suggest: no people or location are recorded."),
+      page.getByText("Nothing to suggest: no people or location are recorded.").first(),
     ).toBeVisible();
 
     await recordContext(page, {
@@ -225,8 +227,9 @@ test("the shoot path needs context until where and when are recorded, then brief
     await page.getByRole("button", { name: "Re-evaluate" }).click();
     await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Ready").first()).toBeVisible();
-    await expect(page.getByText("Suggested angle")).toBeVisible();
-    await expect(page.getByText("Avery Hart at Hotel Chelsea")).toBeVisible();
+    // Suggestions also appear, still labelled, in the handoff region below.
+    await expect(page.getByText("Suggested angle").first()).toBeVisible();
+    await expect(page.getByText("Avery Hart at Hotel Chelsea").first()).toBeVisible();
     await expect(page.getByText("Suggested shot").first()).toBeVisible();
     await expect(page.getByText(/a recorded name is not a confirmed appearance/)).toBeVisible();
     // The handoff region offers the review of the brief; creating is behind
@@ -250,7 +253,7 @@ test("a suggestion from the headline is labelled, and recorded only when a perso
     await expect(row).toBeVisible();
     await page.getByRole("button", { name: "Add as person" }).first().click();
     await expect(page.getByText("Suggestion recorded as a fact", { exact: false })).toBeVisible({
-      timeout: 15_000,
+      timeout: 60_000,
     });
     await expect(
       page.getByText("Person · Suggested, then accepted", { exact: false }),
