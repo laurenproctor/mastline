@@ -21,6 +21,9 @@ describe("workspaceRoutes", () => {
       routes.commercial(),
       routes.opportunity("op-1"),
       routes.news(),
+      routes.requests(),
+      routes.newRequest(),
+      routes.request("req-1"),
       routes.newsOpportunity("op-1"),
       routes.newNewsStory(),
       routes.shoots(),
@@ -52,6 +55,9 @@ describe("workspaceRoutes", () => {
     expect(routes.opportunity("julian-cross-soho")).toBe(
       "/hale-studio/work/commercial/julian-cross-soho",
     );
+    expect(routes.requests()).toBe("/hale-studio/requests");
+    expect(routes.newRequest()).toBe("/hale-studio/requests/new");
+    expect(routes.request("abc")).toBe("/hale-studio/requests/abc");
     expect(routes.newShoot()).toBe("/hale-studio/shoots/new");
     expect(routes.newsOpportunity("op-1")).toBe("/hale-studio/news/op-1");
     expect(routes.newNewsStory()).toBe("/hale-studio/news/new");
@@ -151,6 +157,9 @@ describe("workspaceRoutes", () => {
       routes.archive(),
       routes.rights(),
       routes.news(),
+      routes.requests(),
+      routes.newRequest(),
+      routes.request("abc"),
       routes.settings(),
       routes.billing(),
       routes.commercial(),
@@ -168,6 +177,7 @@ describe("workspaceRoutes", () => {
         routes.dispatch({ shootId: "x" }),
         routes.money(),
         routes.news(),
+        routes.requests(),
         routes.rights(),
         routes.settings(),
         routes.shoots(),

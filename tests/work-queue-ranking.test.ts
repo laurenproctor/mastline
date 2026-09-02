@@ -107,6 +107,7 @@ const facts = (overrides: Partial<WorkQueueFacts>): WorkQueueFacts => ({
   submissions: [],
   deliveryCountBySubmission: new Map(),
   payments: [],
+  requests: [],
   now: NOW,
   ...overrides,
 });

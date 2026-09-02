@@ -23,6 +23,8 @@ The asset is the canonical center, but it is not isolated:
 | buyers | Agencies, publishers, picture desks, and direct licensees |
 | news_signals | The canonical News Radar story: source facts owned once per workspace, deduplicated per organization on the source URL |
 | opportunities | One evaluation path of a news signal — archive_match (may reactivate owned work) or shoot_opportunity (may justify a new shoot) — with its own labelled suggestion, window, and independent lifecycle |
+| buyer_requests | One piece of inbound demand: who asked, what for, by when, on what terms, and what became of it |
+| request_sensitive_notes | Source protection for a request. Owner and editor only, mirroring shoot_sensitive_notes |
 | shoots | Brief, place/time, assignment, confidentiality, workflow state |
 | assets | Canonical image/clip commercial record |
 | asset_versions | Original and derived file objects, hashes, dimensions, metadata |
@@ -51,6 +53,7 @@ Statuses should be database enums or checked text, changed only by an explicit m
 | --- | --- |
 | Opportunity | new, watching, pitching, acted, dismissed, expired — acted, dismissed, and expired are terminal; a dismissed or expired path is never treated as new again, and the other path of the same story is unaffected |
 | Opportunity kind | archive_match, shoot_opportunity — two evaluation paths of one canonical news signal, unique per (signal, kind); the story itself exists once |
+| Buyer request | draft, new, needs_clarification, qualified, matching, coverage_planned, preparing_response, submitted, negotiating, won, lost, expired, declined, cancelled |
 | Shoot | draft, scheduled, active, ingesting, preparing, ready, dispatched, completed, archived, cancelled |
 | Asset | ingesting, active, restricted, archived, tombstoned |
 | Package | draft, needs_review, ready, approved, sending, delivered, failed, recalled |
@@ -59,6 +62,65 @@ Statuses should be database enums or checked text, changed only by an explicit m
 | Payment | expected, invoiced, reported, partial, received, overdue, disputed, written_off |
 | Rights match | new, reviewing, licensed, ignored, monitoring, escalated, resolved |
 
+## Buyer requests
+
+A photographer's inbound demand, recorded by hand. A picture desk rings, texts,
+or sends three lines of WhatsApp; without this the request exists in a phone and
+nowhere else, so it is not on the work queue, cannot be assigned, and leaves no
+trace when it is missed.
+
+- `buyer_requests`. Unique on `(organization_id, idempotency_key)`, so a
+  resubmitted capture lands on the request it already made rather than a
+  duplicate. `reference` — `REQ-0828-4417` — is unique per workspace and is
+  drawn and redrawn by the data layer until the database says one is free, the
+  same way a dispatch reference is.
+- Cross-workspace references are refused structurally rather than by policy.
+  `(buyer_id, organization_id)` is a composite foreign key onto
+  `buyers (id, organization_id)`, and `(organization_id, assigned_to)` is one
+  onto the `memberships` primary key — so a request cannot point at another
+  studio's buyer, or be assigned to somebody who is not in the room.
+- `request_sensitive_notes` holds anything narrower than workspace-wide: a tip,
+  an address, whoever passed it on. Owner and editor only. A boolean on the
+  request would not have been a permission — the row still comes back over the
+  Data API to anyone who can read the request.
+- Roles: every active member reads. Owner, editor and dispatcher write. The
+  dispatcher is included because they are the person a desk actually rings, and
+  a role that can field the call but not write down what was said pushes the
+  record back into the phone. `src/lib/permissions.ts` spends `request.read` and
+  `request.write`, and `tests/permissions-match-policies.test.ts` probes the
+  latter against the live policy.
+- No delete grant for `authenticated`, and the default one is explicitly
+  revoked. A request that came to nothing is recorded as declined or cancelled
+  with a reason; making it disappear is how a workspace forgets that a desk
+  asked three times and got no answer.
+
+### What "not provided" means
+
+Most commercial columns are nullable and stay null. A desk that said nothing
+about territory has not asked for worldwide; one that mentioned no money has not
+offered zero. Budget is the sharp case, so it carries `budget_disclosed`
+alongside `budget_min_minor`/`budget_max_minor` and two check constraints:
+figures cannot exist without a disclosure, and a disclosure cannot be claimed
+without at least one figure. A **disclosed zero** — "we have no money for this,
+send it anyway" — is a real thing a desk says, and it is a different row from a
+budget nobody mentioned.
+
+### The lifecycle
+
+The transition table is `src/lib/requests.ts`. The database enforces the half
+that must hold whatever a client believes: identity is fixed at creation, a
+closed request cannot move at all, and `lost`/`declined` cannot be recorded
+without a reason. `qualified_at` and `closed_at` are stamped by trigger and are
+write-once.
+
+Two states need explaining, and both are in `docs/DECISIONS.md`:
+
+- **`won` is in the enum and unreachable.** Winning means connecting the request
+  to a license, and that connection is Phase 2. Offering it now would let
+  somebody record a win that points at no money.
+- **Nothing expires by itself.** There is no scheduler, so a passing deadline is
+  rendered as a derived "Past deadline" at read time and never written back.
+  `expired` is a transition somebody performs.
 ## News Radar: one signal, two paths
 
 `one news signal → archive opportunity path + shoot opportunity path`

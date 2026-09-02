@@ -24,6 +24,15 @@ export const CAPABILITIES = [
   "shoot.write",
   "shoot.status",
   "sensitive_note.read",
+  // Inbound demand. Every role reads it -- a request explains where a later
+  // license came from, so finance and rights have a reason to see one -- and
+  // the three roles that do the work may write and move it. Assignment is not
+  // a separate capability: a dispatcher who can record what a picture desk
+  // asked for can also say who is answering it, and splitting the two would
+  // put src/lib/permissions.ts out of step with buyer_requests_write, which is
+  // the one thing this table exists not to do.
+  "request.read",
+  "request.write",
   "asset.read",
   "asset.write",
   "asset.tombstone",
@@ -54,6 +63,7 @@ export type Capability = (typeof CAPABILITIES)[number];
 const READ_ONLY: readonly Capability[] = [
   "opportunity.read",
   "shoot.read",
+  "request.read",
   "asset.read",
   "package.read",
   "submission.read",
@@ -71,6 +81,7 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
     "shoot.write",
     "shoot.status",
     "sensitive_note.read",
+    "request.write",
     "asset.write",
     "asset.tombstone",
     "package.write",
@@ -80,7 +91,17 @@ const ROLE_CAPABILITIES: Record<AppRole, readonly Capability[]> = {
   // A dispatcher moves packages and submissions, and may advance a shoot's
   // status as part of dispatching. They do not rewrite briefs: shoot.write
   // covers the brief, and a database trigger enforces that boundary.
-  dispatcher: [...READ_ONLY, "package.write", "buyer.write", "submission.send", "shoot.status"],
+  // request.write because the dispatcher is the person a picture desk actually
+  // rings. A role that can field the call but not write down what was said
+  // pushes the record back into the phone this feature exists to get it out of.
+  dispatcher: [
+    ...READ_ONLY,
+    "package.write",
+    "buyer.write",
+    "submission.send",
+    "shoot.status",
+    "request.write",
+  ],
   // docs/DATA_MODEL.md puts exports under finance alongside revenue and
   // statements.
   finance: [

@@ -249,7 +249,7 @@ export async function freshTotp(secret: string, previous?: string): Promise<stri
  * Service role, so it works regardless of what the account can currently do.
  * Reads .env.local directly because Playwright does not load it.
  */
-function localEnv(name: string): string | undefined {
+export function localEnv(name: string): string | undefined {
   try {
     const file = readFileSync(".env.local", "utf8");
     return file

@@ -55,7 +55,7 @@ test.describe("a profile photo", () => {
 
       // It follows the person into the sidebar.
       await page.goto(at("/work"));
-      await expect(page.locator(".sidebar img.avatar")).toBeVisible();
+      await expect(page.locator(".ml-sidebar img.avatar")).toBeVisible();
     } finally {
       // Put the account back however the assertions went: a face left behind
       // would change what every later run of this file starts from.

@@ -1231,8 +1231,16 @@ button {
   }
 }
 @media (max-width: 680px) {
+  /*
+   * The bottom edge keeps the desktop rule's allowance for the consent
+   * banner -- a shorthand here used to reset it to 24px, leaving the last
+   * control on a phone underneath the banner -- and adds the home-indicator
+   * inset, as the bottom-navigation rule below already does. Both variables
+   * are 0px when there is no banner and no notch, so nothing is reserved
+   * that is not there.
+   */
   .page {
-    padding: 24px 16px;
+    padding: 24px 16px calc(24px + var(--consent-inset, 0px) + env(safe-area-inset-bottom, 0px));
   }
   /*
    * The header's action sits under the title rather than beside it. The
