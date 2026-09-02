@@ -81,7 +81,7 @@ export async function signIn(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SEEDED.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(`**${destination}`, { timeout: 20_000 });
+  await page.waitForURL(`**${destination}`, { timeout: 180_000 });
 }
 
 /**

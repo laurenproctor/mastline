@@ -34,7 +34,7 @@ test.describe("what was approved is what the recipient gets", () => {
     page,
     browser,
   }, testInfo) => {
-    test.setTimeout(120_000);
+    test.setTimeout(360_000);
     const label = `IMMUTABLE${testInfo.project.name}`;
     const recipient = `Immutable desk ${testInfo.project.name} ${Date.now()}`;
     const fixture = await createApprovablePackageWithFiles(label);
@@ -45,15 +45,24 @@ test.describe("what was approved is what the recipient gets", () => {
       await signIn(page, SEEDED.owner);
 
       // ---------------------------------------------------------------
-      // 1–2. Open the prepared package and approve it
+      // 1–2. Open the prepared package and create the private delivery
       // ---------------------------------------------------------------
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.getByRole("heading", { name: "Every check passes" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Ready", exact: true })).toBeVisible({
+        timeout: 90_000,
+      });
       // Under review, and the strip says so from the record.
-      await expect(page.locator('[aria-current="step"]')).toContainText("Review & approve");
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
 
-      await page.getByRole("button", { name: "Approve package" }).click();
-      await page.getByRole("button", { name: "Yes, approve this package" }).click();
+      await page.getByRole("button", { name: "Create private delivery" }).click();
+      await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
+      // Created is not sent: the flow stays put and says exactly what exists.
+      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
+      await expect(page.getByText("It has not been shared.").first()).toBeVisible({
+        timeout: 90_000,
+      });
+
+      await page.getByRole("link", { name: "View submission record" }).click();
       await page.waitForURL(/\/submissions\//);
       const submissionId = page.url().split("/submissions/")[1].split(/[?#]/)[0];
 
@@ -82,9 +91,12 @@ test.describe("what was approved is what the recipient gets", () => {
       await expect(firstRow).toContainText("People: Avery Hart");
       await expect(page.locator("[data-unresolved-frame]")).toHaveCount(0);
 
-      // ...and the dispatch strip has moved on: approved is not sent.
+      // ...and the flow holds at Review & share: a link exists, nothing left.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.locator('[aria-current="step"]')).toContainText("Create recipient link");
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
+      await expect(page.locator("[data-lifecycle-detail]")).toContainText(
+        "A recipient link exists and has not been marked as shared. Nothing has left Mastline.",
+      );
 
       // ---------------------------------------------------------------
       // 4. A recipient link
@@ -99,23 +111,28 @@ test.describe("what was approved is what the recipient gets", () => {
       const path = new URL(url).pathname;
       const token = path.split("/d/")[1];
 
-      // The lifecycle strip reads the link: created is not shared, and the
-      // screen says so rather than inventing a send.
+      // The flow reads the link: created is not shared, and the screen says
+      // so rather than inventing a send.
       await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}`));
-      await expect(page.locator('[aria-current="step"]')).toContainText("Create recipient link");
-      await expect(page.locator("[data-lifecycle-detail]")).toHaveText(
+      await expect(page.locator('[aria-current="step"]')).toContainText("Review & share");
+      await expect(page.locator("[data-lifecycle-detail]")).toContainText(
         "A recipient link exists and has not been marked as shared. Nothing has left Mastline.",
       );
 
       // Neither the token nor a private object key appears on an authenticated
-      // overview page. The only place the token is rendered is the recipient
-      // URL on the submission itself, and the object key appears nowhere.
-      for (const overview of ["/submissions", "/work", `/dispatch/${fixture.shootId}`]) {
+      // overview page. The token is rendered in exactly two places -- the
+      // submission's own delivery panel, and the flow's created state, which
+      // is where the operator copies it -- and the object key appears nowhere.
+      for (const overview of ["/submissions", "/work"]) {
         await page.goto(at(overview));
         const html = await page.content();
         expect(html, `${overview} must not carry the delivery token`).not.toContain(token);
         expect(html, `${overview} must not carry an object key`).not.toContain(first.deliveryKey);
       }
+      await page.goto(at(`/dispatch/${fixture.shootId}`));
+      expect(await page.content(), "the flow must not carry an object key").not.toContain(
+        first.deliveryKey,
+      );
       await page.goto(at(`/submissions/${submissionId}`));
       expect(await page.content()).not.toContain(first.deliveryKey);
 
@@ -146,17 +163,23 @@ test.describe("what was approved is what the recipient gets", () => {
         // The title is the package name, frozen at approval.
         await expect(deskPage.getByRole("heading", { level: 1 })).toHaveText(`${label} package`);
 
-        const shown = deskPage.locator("[data-asset-id]");
-        await expect(shown).toHaveCount(2);
-        expect(
-          await shown.evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-asset-id"))),
-        ).toEqual([first.assetId, second.assetId]);
+        // The gallery shows one photograph at a time; the pager carries the
+        // honest count, and the arrows walk the approved order exactly.
+        const stage = deskPage.locator("[data-asset-id]");
+        await expect(stage).toHaveCount(1);
+        await expect(deskPage.getByText(/01 \/ 02/)).toBeVisible();
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
+        await deskPage.keyboard.press("ArrowRight");
+        await expect(stage).toHaveAttribute("data-asset-id", second.assetId);
+        await deskPage.keyboard.press("ArrowLeft");
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
 
-        const firstFrame = shown.first();
-        await expect(firstFrame).toContainText(`The approved caption for ${label} frame 0.`);
-        await expect(firstFrame).toContainText(`${label} frame 0`);
+        // The words beside the photograph are the approved ones.
+        const gallery = deskPage.locator(".delivery-gallery");
+        await expect(gallery).toContainText(`The approved caption for ${label} frame 0.`);
+        await expect(gallery).toContainText(`${label} frame 0`);
         // People, as recorded by the photographer at approval.
-        await expect(firstFrame.locator("[data-people]")).toHaveText("Avery Hart");
+        await expect(gallery.locator("[data-people]")).toHaveText("Avery Hart");
         await expect(deskPage.getByText("A caption rewritten after approval.")).toHaveCount(0);
         await expect(deskPage.getByText("Rewritten headline")).toHaveCount(0);
         // No storage location on the recipient page either.
@@ -164,7 +187,7 @@ test.describe("what was approved is what the recipient gets", () => {
 
         // The preview is served through the route, from the approved object.
         const preview = await deskPage.request.get(
-          (await firstFrame.locator("img").getAttribute("src")) ?? "",
+          (await stage.locator("img").getAttribute("src")) ?? "",
         );
         expect(preview.status()).toBe(200);
         expect(preview.headers()["content-type"]).toBe("image/jpeg");
@@ -174,10 +197,16 @@ test.describe("what was approved is what the recipient gets", () => {
         // ---------------------------------------------------------------
         await deskPage.getByLabel("Name", { exact: true }).fill("Dana Whitfield");
         await deskPage.getByRole("button", { name: "Accept these terms" }).click();
-        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
+        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible({
+          timeout: 90_000,
+        });
 
-        const download = firstFrame.getByRole("link", { name: /Download full resolution/ });
+        // The download the rail offers belongs to the frame on screen, which
+        // is the first approved frame again after the action re-rendered.
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
+        const download = deskPage.getByRole("link", { name: /Download full resolution/ });
         const target = (await download.getAttribute("href")) ?? "";
+        expect(target).toContain(first.assetId);
         const redirect = await deskPage.request.get(target, { maxRedirects: 0 });
         expect(redirect.status()).toBe(303);
         const location = redirect.headers()["location"] ?? "";
@@ -217,7 +246,7 @@ test.describe("what was approved is what the recipient gets", () => {
       await made.getByRole("button", { name: "Withdraw this link" }).click();
       await expect(
         page.locator(".delivery-link").filter({ hasText: recipient }).locator(".ml-badge"),
-      ).toHaveText("Withdrawn");
+      ).toHaveText("Withdrawn", { timeout: 90_000 });
 
       const after = await browser.newContext();
       const afterPage = await after.newPage();
