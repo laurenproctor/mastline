@@ -1019,11 +1019,16 @@ test.describe("sending a package to a picture desk", () => {
       try {
         await deskPage.goto(path);
 
-        // Before accepting: the frame can be judged, but not taken.
-        await expect(deskPage.locator(".delivery-frame img").first()).toBeVisible();
+        // Before accepting: the frame can be judged, but not taken. The
+        // redesigned gallery shows the marked preview and says in words what
+        // the download waits for.
+        await expect(deskPage.locator("[data-asset-id] img").first()).toBeVisible();
         await expect(deskPage.getByRole("link", { name: /Download full resolution/ })).toHaveCount(
           0,
         );
+        await expect(
+          deskPage.getByText("Accept the terms above to download the full-resolution file."),
+        ).toBeVisible();
 
         const refused = await deskPage.request.get(`${path}/frame/${SEEDED_ASSET}`);
         expect(refused.status()).toBe(404);
@@ -1077,7 +1082,7 @@ test.describe("sending a package to a picture desk", () => {
       const deskPage = await desk.newPage();
       try {
         await deskPage.goto(path);
-        const image = deskPage.locator(".delivery-frame img").first();
+        const image = deskPage.locator("[data-asset-id] img").first();
         const source = await image.getAttribute("src");
 
         // The property that matters: the recipient is never handed a URL to the

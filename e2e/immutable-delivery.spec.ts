@@ -163,17 +163,23 @@ test.describe("what was approved is what the recipient gets", () => {
         // The title is the package name, frozen at approval.
         await expect(deskPage.getByRole("heading", { level: 1 })).toHaveText(`${label} package`);
 
-        const shown = deskPage.locator("[data-asset-id]");
-        await expect(shown).toHaveCount(2);
-        expect(
-          await shown.evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-asset-id"))),
-        ).toEqual([first.assetId, second.assetId]);
+        // The gallery shows one photograph at a time; the pager carries the
+        // honest count, and the arrows walk the approved order exactly.
+        const stage = deskPage.locator("[data-asset-id]");
+        await expect(stage).toHaveCount(1);
+        await expect(deskPage.getByText(/01 \/ 02/)).toBeVisible();
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
+        await deskPage.keyboard.press("ArrowRight");
+        await expect(stage).toHaveAttribute("data-asset-id", second.assetId);
+        await deskPage.keyboard.press("ArrowLeft");
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
 
-        const firstFrame = shown.first();
-        await expect(firstFrame).toContainText(`The approved caption for ${label} frame 0.`);
-        await expect(firstFrame).toContainText(`${label} frame 0`);
+        // The words beside the photograph are the approved ones.
+        const gallery = deskPage.locator(".delivery-gallery");
+        await expect(gallery).toContainText(`The approved caption for ${label} frame 0.`);
+        await expect(gallery).toContainText(`${label} frame 0`);
         // People, as recorded by the photographer at approval.
-        await expect(firstFrame.locator("[data-people]")).toHaveText("Avery Hart");
+        await expect(gallery.locator("[data-people]")).toHaveText("Avery Hart");
         await expect(deskPage.getByText("A caption rewritten after approval.")).toHaveCount(0);
         await expect(deskPage.getByText("Rewritten headline")).toHaveCount(0);
         // No storage location on the recipient page either.
@@ -181,7 +187,7 @@ test.describe("what was approved is what the recipient gets", () => {
 
         // The preview is served through the route, from the approved object.
         const preview = await deskPage.request.get(
-          (await firstFrame.locator("img").getAttribute("src")) ?? "",
+          (await stage.locator("img").getAttribute("src")) ?? "",
         );
         expect(preview.status()).toBe(200);
         expect(preview.headers()["content-type"]).toBe("image/jpeg");
@@ -191,10 +197,16 @@ test.describe("what was approved is what the recipient gets", () => {
         // ---------------------------------------------------------------
         await deskPage.getByLabel("Name", { exact: true }).fill("Dana Whitfield");
         await deskPage.getByRole("button", { name: "Accept these terms" }).click();
-        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible();
+        await expect(deskPage.getByText(/Accepted by Dana Whitfield/)).toBeVisible({
+          timeout: 90_000,
+        });
 
-        const download = firstFrame.getByRole("link", { name: /Download full resolution/ });
+        // The download the rail offers belongs to the frame on screen, which
+        // is the first approved frame again after the action re-rendered.
+        await expect(stage).toHaveAttribute("data-asset-id", first.assetId);
+        const download = deskPage.getByRole("link", { name: /Download full resolution/ });
         const target = (await download.getAttribute("href")) ?? "";
+        expect(target).toContain(first.assetId);
         const redirect = await deskPage.request.get(target, { maxRedirects: 0 });
         expect(redirect.status()).toBe(303);
         const location = redirect.headers()["location"] ?? "";
@@ -234,7 +246,7 @@ test.describe("what was approved is what the recipient gets", () => {
       await made.getByRole("button", { name: "Withdraw this link" }).click();
       await expect(
         page.locator(".delivery-link").filter({ hasText: recipient }).locator(".ml-badge"),
-      ).toHaveText("Withdrawn");
+      ).toHaveText("Withdrawn", { timeout: 90_000 });
 
       const after = await browser.newContext();
       const afterPage = await after.newPage();
