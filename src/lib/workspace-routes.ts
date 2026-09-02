@@ -90,6 +90,10 @@ export interface WorkspaceRoutes {
   readonly commercial: (options?: RouteOptions) => string;
   readonly opportunity: (opportunityId: string, options?: RouteOptions) => string;
   readonly news: (options?: RouteOptions) => string;
+  /** The buyer-request inbox. */
+  readonly requests: (options?: RouteOptions) => string;
+  readonly newRequest: (options?: RouteOptions) => string;
+  readonly request: (requestId: string, options?: RouteOptions) => string;
   /** One News Radar opportunity: /<workspace>/news/<opportunityId>. */
   readonly newsOpportunity: (opportunityId: string, options?: RouteOptions) => string;
   /** Manual story entry. "new" is a static segment, never a record id. */
@@ -136,6 +140,10 @@ export function workspaceRoutes(canonicalSlug: string): WorkspaceRoutes {
     opportunity: (opportunityId: string, options?: RouteOptions) =>
       build(slug, ["work", "commercial", opportunityId], options),
     news: (options?: RouteOptions) => build(slug, ["news"], options),
+    requests: (options?: RouteOptions) => build(slug, ["requests"], options),
+    newRequest: (options?: RouteOptions) => build(slug, ["requests", "new"], options),
+    request: (requestId: string, options?: RouteOptions) =>
+      build(slug, ["requests", requestId], options),
     newsOpportunity: (opportunityId: string, options?: RouteOptions) =>
       build(slug, ["news", opportunityId], options),
     newNewsStory: (options?: RouteOptions) => build(slug, ["news", "new"], options),

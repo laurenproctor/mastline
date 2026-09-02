@@ -8,7 +8,7 @@ import { workspaceRoutes } from "../src/lib/workspace-routes";
 import { ORG_A, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/supabase";
 
 /**
- * The whole Work Queue page costs nine round trips: the eight-call dashboard,
+ * The whole Work Queue page costs ten round trips: the nine-call dashboard,
  * which this must not widen, plus one for the recent activity feed. The
  * number is the same however many shoots the workspace holds, and there is
  * no storage call because the page does not ask for previews.
@@ -16,7 +16,9 @@ import { ORG_A, hasLocalSupabase, purgeShoot, serviceClient } from "./helpers/su
 const describeIf = hasLocalSupabase() ? describe : describe.skip;
 
 const OWNER = "11111111-1111-1111-1111-111111111111";
-const DASHBOARD_BUDGET = 8;
+// Nine since buyer requests joined the queue facts: inbound demand is one
+// more collection on the same load, never a query per request.
+const DASHBOARD_BUDGET = 9;
 const PAGE_BUDGET = DASHBOARD_BUDGET + 1;
 
 async function countCalls(run: () => Promise<unknown>): Promise<{ rest: number; storage: number }> {
@@ -38,7 +40,7 @@ async function countCalls(run: () => Promise<unknown>): Promise<{ rest: number; 
 }
 
 describeIf("work queue page cost", () => {
-  it("is nine round trips -- the eight-call dashboard plus recent activity -- however many shoots exist", async () => {
+  it("is ten round trips -- the nine-call dashboard plus recent activity -- however many shoots exist", async () => {
     const service = serviceClient();
     const routes = workspaceRoutes("marcus-hale-studio");
     const created: string[] = [];
@@ -75,7 +77,7 @@ describeIf("work queue page cost", () => {
       expect(dashboardAfter).toEqual(dashboardBefore);
       expect(pageAfter).toEqual(pageBefore);
       expect(dashboardBefore.rest).toBeLessThanOrEqual(DASHBOARD_BUDGET);
-      // Exactly one more than the dashboard, and never more than nine.
+      // Exactly one more than the dashboard, and never more than ten.
       expect(pageBefore.rest).toBe(dashboardBefore.rest + 1);
       expect(pageBefore.rest).toBeLessThanOrEqual(PAGE_BUDGET);
       expect(pageBefore.storage).toBe(0);

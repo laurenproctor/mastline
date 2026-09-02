@@ -1,7 +1,15 @@
-import type { Asset, DispatchPackage, Shoot, ShootStatus, Submission } from "../domain";
+import type {
+  Asset,
+  BuyerRequest,
+  DispatchPackage,
+  Shoot,
+  ShootStatus,
+  Submission,
+} from "../domain";
 import { type Money, formatMoney, sum, zero } from "../money";
 import { OUTSTANDING, type PaymentWithAllocations, RECEIVED } from "./money";
 import { reviewSelection } from "../metadata-rules";
+import { isPastDeadline, statusLabel } from "../requests";
 import type { WorkspaceRoutes } from "../workspace-routes";
 
 /**
@@ -40,7 +48,8 @@ export function isWorkQueueFilter(value: string | undefined): value is WorkQueue
  *
  * 1. Recorded delivery or submission failure
  * 2. Overdue payment
- * 3. Passed explicit follow-up date
+ * 3. Passed explicit follow-up date, or a buyer request whose stated
+ *    response deadline has gone by with nothing recorded
  * 4. Selected photographs blocked by required metadata
  * 5. Package ready for review or approval
  * 6. Submission without a recipient delivery link
@@ -55,7 +64,7 @@ export type WorkQueuePriority = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export interface WorkQueueItem {
   readonly id: string;
-  readonly kind: "Shoot" | "Dispatch" | "Submission" | "Money";
+  readonly kind: "Request" | "Shoot" | "Dispatch" | "Submission" | "Money";
   readonly category: WorkQueueCategory;
   readonly priority: WorkQueuePriority;
   readonly title: string;
@@ -203,6 +212,8 @@ export interface WorkQueueFacts {
   /** How many delivery links each submission carries. Never the links. */
   readonly deliveryCountBySubmission: ReadonlyMap<string, number>;
   readonly payments: readonly PaymentWithAllocations[];
+  /** Open buyer requests only. A closed request is not work. */
+  readonly requests: readonly BuyerRequest[];
   readonly now: Date;
 }
 
@@ -216,7 +227,7 @@ export function buildWorkQueue(
   facts: WorkQueueFacts,
   routes: WorkspaceRoutes,
 ): readonly WorkQueueItem[] {
-  const { shoots, selectedAssetsByShoot, packages, submissions, payments, now } = facts;
+  const { shoots, selectedAssetsByShoot, packages, submissions, payments, requests, now } = facts;
   const items: WorkQueueItem[] = [];
 
   const packagesByShoot = new Map<string, DispatchPackage[]>();
@@ -283,6 +294,56 @@ export function buildWorkQueue(
       rankingBasis: followUpPassed
         ? "The explicit follow-up date has passed"
         : "A submission with no recorded outcome",
+    });
+  }
+
+  // 3 and 9. Inbound demand. Four things about a request put it on this list,
+  //    and the reason travels with the item so the ranking can be argued with:
+  //    the buyer's deadline has gone by, it is due within a day, nobody has
+  //    looked at it yet, or it is waiting on an answer from the desk. A
+  //    request that is none of those is being worked and does not need
+  //    chasing. "Past deadline" is derived here, at read time, and never
+  //    written back as a status -- there is no scheduler, and a status that
+  //    changes while nobody is watching is one nobody can trust. Only the
+  //    passed deadline is urgent: it is the recorded, explicit date the
+  //    urgent contract above demands, and "due soon" is not.
+  for (const request of requests) {
+    const pastDeadline = isPastDeadline(request, now);
+    const dueSoon =
+      !pastDeadline &&
+      request.responseDeadline !== undefined &&
+      new Date(request.responseDeadline).getTime() - now.getTime() < 24 * 3_600_000;
+
+    let rankingBasis: string | null = null;
+    if (pastDeadline)
+      rankingBasis = "The buyer's deadline has passed and nothing has been recorded";
+    else if (dueSoon) rankingBasis = "The buyer needs an answer within a day";
+    else if (request.status === "new") rankingBasis = "Nobody has qualified this request yet";
+    else if (request.status === "needs_clarification") {
+      rankingBasis = "Waiting on an answer from the buyer";
+    }
+    if (!rankingBasis) continue;
+
+    items.push({
+      id: `wq_request_${request.id}`,
+      kind: "Request",
+      category: "in-preparation",
+      priority: pastDeadline ? 3 : 9,
+      title: `${request.reference}: ${request.title}`,
+      detail: [
+        request.buyerName ?? "Buyer not identified",
+        statusLabel(request.status),
+        pastDeadline ? "Past deadline" : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      // When the item became work -- not the deadline, which would order a
+      // week-old overdue request behind one that lapsed this morning.
+      occurredAt: request.createdAt,
+      urgent: pastDeadline,
+      actionLabel: pastDeadline ? "Answer" : "Open",
+      href: routes.request(request.id),
+      rankingBasis,
     });
   }
 

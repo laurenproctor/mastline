@@ -564,8 +564,12 @@ test.describe("the marketing site", () => {
     // whole panel of the home page is invisible and nothing says so.
     await page.goto("/");
     await page.locator("#rw").scrollIntoViewIfNeeded();
+    // The pitch check alone is weak -- opacity:0 still counts as visible -- so
+    // `done` is the assertion that matters, and it only lands after the whole
+    // typing-and-tiles sequence, about four seconds by design. A throttled
+    // end-of-run WebKit worker needs the patience; a blank panel still fails.
     await expect(page.locator(".rw-pitch")).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("#rw")).toHaveClass(/done/);
+    await expect(page.locator("#rw")).toHaveClass(/done/, { timeout: 20_000 });
   });
 
   /*

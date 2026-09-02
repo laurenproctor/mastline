@@ -1,26 +1,24 @@
-# The database suite, on demand.
+# The browser suite, on demand.
 #
-# The suites under tests/ verify tenancy, snapshots, delivery links, and the
-# access options against a real Postgres with the full migration chain and
-# seed applied. They stay out of the PR gate on purpose — they are a local and
-# pre-deploy check — but a development machine that cannot hold a healthy
-# Docker stack still needs a way to run them somewhere honest. This workflow
-# is that: trigger it by hand against a branch, and it runs the exact suite a
-# healthy laptop would.
+# The specs under e2e/ check what no amount of parsing HTML can: layouts at
+# the sizes ACCEPTANCE.md names, visible focus, and client-rendered states,
+# against a production build and a real local stack. Like the database suite,
+# they stay out of the PR gate and exist for a development machine that cannot
+# hold a healthy stack or a quiet browser run.
 #
 # Nothing here contacts a hosted project: `supabase start` is entirely local
 # to the runner, and the only secrets used are the CLI's local development
 # defaults, which are public knowledge.
-name: Database suite
+name: E2E suite
 
 on:
   workflow_dispatch:
 
 jobs:
-  database:
-    name: Database suite
+  e2e:
+    name: E2E suite
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,15 +41,14 @@ jobs:
           version: 2.101.0
 
       # The full local stack — database, PostgREST, GoTrue, Storage — with the
-      # whole migration chain applied from empty and supabase/seed.sql loaded,
-      # exactly what the suites assume.
+      # whole migration chain applied from empty and supabase/seed.sql loaded.
       - name: Start the local stack
         run: supabase start
 
-      # Written to .env.local rather than exported: the vitest config reads its
-      # Supabase facts through loadEnv, and a file is the one channel that
-      # behaves identically on a laptop and on a runner.
-      - name: Point the tests at the runner's stack
+      # Written before the build on purpose: `next build` inlines the
+      # NEXT_PUBLIC_* values, so the app must know its Supabase before it is
+      # compiled, not merely before it starts.
+      - name: Point the app and the specs at the runner's stack
         run: |
           eval "$(supabase status -o env \
             | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=' )"
@@ -62,8 +59,26 @@ jobs:
             echo "SUPABASE_TEST_PASSWORD=mastline-dev-password"
           } > .env.local
 
-      - name: Run the database suite
-        run: npx vitest run --project database
+      - name: Build the app
+        run: npm run build
+
+      # Chromium for the desktop and tablet projects; WebKit because the
+      # mobile project is the iPhone device descriptor, which runs WebKit.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      # The config starts `next start -p 4100` itself and refuses to reuse a
+      # stray server under CI, so the build above is exactly what is tested.
+      - name: Run the browser suite
+        run: npx playwright test
+
+      - name: Keep the failure traces
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
 
       - name: Stop the local stack
         if: always()

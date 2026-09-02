@@ -4,7 +4,7 @@ These specifications unify the prior visual concepts and product overview. Exact
 
 ## Global shell
 
-Primary navigation: Work, News Radar, Shoots, Submissions, Money, Rights, Archive. Settings and identity/workspace controls sit at the bottom.
+Primary navigation: Work, News Radar, Requests, Shoots, Submissions, Money, Rights, Archive. Settings and identity/workspace controls sit at the bottom.
 
 Global behavior:
 
@@ -64,6 +64,46 @@ path's decisions.
 **Not yet connected:** live monitoring, archive matching, shoot creation from
 a story, pitches, and estimated value. No buyer is contacted automatically and
 nothing outbound happens from this screen.
+
+## 2b. Requests — `/requests`
+
+Question answered: **What have buyers asked me for, and what happened to it?**
+
+Requests sits between News Radar and Shoots because that is where it sits in the
+day: a signal arrives, or a desk asks, and either one becomes a shoot.
+
+Phase 1 is manual capture only. A picture desk rings, texts, sends WhatsApp, or
+emails; the photographer writes it down here so it stops living in a phone.
+There is no buyer portal, no marketplace, no automated matching and no outbound
+message of any kind — and the interface says so on the form rather than leaving
+it to be assumed.
+
+Inbox columns: status, request title and reference, buyer, deliverables,
+deadline, budget or "Not provided", assigned owner, next action. Filters for
+status, buyer, deadline and assignee, as a plain GET form so every filtered view
+is a real, shareable address that works without JavaScript. Ordering is what is
+late, then what is nearly late, then what is newest — computed at read time.
+
+**Past deadline is derived, never written.** There is no scheduler, so a passing
+deadline is rendered as the words "Past deadline" beside a badge; nothing moves
+a request to Expired on its own. Colour is a second signal throughout.
+
+`/requests/new` records one: title and deadline first, because those are the two
+facts a desk always gives, and everything a desk may or may not have mentioned
+below them. A buyer can be selected or created inline through the existing buyer
+components. **Save as draft** writes a request with status `draft` — durable and
+server-side; unsent typing is additionally kept in the browser as a crash net.
+
+`/requests/[requestId]` shows the brief, commercial terms, deliverables, buyer,
+assignment, status and deadline, the activity history, and one clear next
+action. Editing is offered only to a role that may write and only while the
+request is open; a closed request says why its record is kept as it was.
+
+Any commercial term the buyer did not state is rendered as "Not provided" — not
+as worldwide, perpetual, unrestricted, or zero.
+
+Requests appear in the existing work queue when they are new, urgent, waiting on
+the buyer, or past deadline. There is no second task queue.
 
 ## Commercial Opportunities — `/work/commercial`
 

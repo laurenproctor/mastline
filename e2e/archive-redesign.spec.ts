@@ -4,6 +4,7 @@ import {
   at,
   createThrowawayWorkspace,
   focusRingIsVisible,
+  localEnv,
   overflowingElements,
   purgeWorkspace,
   refuseCookies,
@@ -304,7 +305,12 @@ test.describe("the archive", () => {
     expect(html).not.toMatch(/\/originals\//);
     expect(html).not.toMatch(/\/d\/[A-Za-z0-9_-]{16,}/);
     expect(html).not.toMatch(/service_role/);
-    expect(html).not.toContain(process.env.SUPABASE_SERVICE_ROLE_KEY ?? " ");
+    // Read the key the way the helpers do: on a runner it lives only in
+    // .env.local. The single-space fallback matched every page ever rendered.
+    const serviceKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+    expect(serviceKey, "the service key must be known, or this test checks nothing").toBeTruthy();
+    expect(html).not.toContain(serviceKey as string);
   });
 });
 
