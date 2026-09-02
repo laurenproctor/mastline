@@ -332,9 +332,14 @@ export class ImportQueueRunner {
   /**
    * Whether this file is work the runner may pick up right now.
    *
-   * A file needing its bytes back is not eligible however many times it is
-   * retried: only the operator can fix it, and spinning on it would push a real
-   * failure off the top of the list.
+   * A file that needs its bytes back is still eligible, exactly once in
+   * practice: run() is what converts "the bytes are gone" from a hint on the
+   * row into a settled fact. Either verification finds the server already
+   * holds them and the file finalizes, or uploadOne() finds bytes nowhere and
+   * fails it as file_missing -- a state that waits for the operator and is not
+   * eligible, so nothing spins. Skipping such files here is how a browser with
+   * no origin private file system left a reloaded upload saying "Retrying"
+   * for ever, for work no runner was ever going to touch.
    */
   private isEligible(item: QueueItemView, now: Date): boolean {
     if (this.active.has(item.clientFileId)) return false;
@@ -343,10 +348,8 @@ export class ImportQueueRunner {
     switch (item.status) {
       case "staged":
       case "retrying":
-        return !item.needsFile;
       case "pending":
-        // Never staged -- OPFS refused it -- but this tab still holds the File.
-        return !item.needsFile && item.stagingState !== "missing";
+        return true;
       case "uploaded":
         // The bytes are the server's. This is a finalization, and it does not
         // need a local copy at all.
@@ -546,6 +549,18 @@ export class ImportQueueRunner {
       return false;
     }
 
+    // The digest normally exists before anything moves. When enqueue could not
+    // read the file to compute one -- WebKit refuses File reads while offline
+    // -- it is taken here, from the same bytes that are about to travel.
+    const sha256 = item.sha256 ?? (await queue.ensureDigest(item.clientFileId, blob));
+    if (!sha256) {
+      await queue.fail(item.clientFileId, {
+        code: "unknown",
+        message: "This file could not be read from the device. Select it again to import it.",
+      });
+      return false;
+    }
+
     const uploading = await queue.markUploading(item.clientFileId);
     this.progress.set(item.clientFileId, { uploadedBytes: 0, totalBytes: blob.size });
     await this.emit();
@@ -585,7 +600,7 @@ export class ImportQueueRunner {
         durationMs: elapsed(),
         resumed: Boolean(resumeUrl),
       });
-      await queue.markUploaded(item.clientFileId, item.sha256);
+      await queue.markUploaded(item.clientFileId, sha256);
       return true;
     }
 

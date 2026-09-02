@@ -183,6 +183,29 @@ export class ImportQueue {
     return this.sessionFiles.get(clientFileId) ?? null;
   }
 
+  /**
+   * The digest for one item, computed now if enqueue could not.
+   *
+   * Normally the digest exists before anything moves -- see stageOne. The one
+   * case it cannot is a browser that refused to read the File at selection
+   * time (WebKit does, while offline), and for that file the digest is taken
+   * here, from the same bytes that are about to be uploaded. Returns undefined
+   * when the bytes still cannot be read, which the caller must treat as an
+   * upload that cannot proceed.
+   */
+  async ensureDigest(clientFileId: string, blob: Blob): Promise<string | undefined> {
+    const record = await this.require(clientFileId);
+    if (record.sha256) return record.sha256;
+    if (!this.options.hash) return undefined;
+    try {
+      const sha256 = await this.options.hash(blob);
+      await this.update(clientFileId, (fresh) => ({ ...fresh, sha256, updatedAt: this.now }));
+      return sha256;
+    } catch {
+      return undefined;
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Writing
   // -------------------------------------------------------------------------
@@ -419,8 +442,22 @@ export class ImportQueue {
      * -- uploaded perfectly and then failed at finalization, because there was
      * no digest to record against the original. Every such file reached 100%
      * and then went red.
+     *
+     * And a digest that cannot be computed right now is not a refused file.
+     * WebKit routes File reads through its network process, so reading the
+     * bytes fails while the browser is offline -- and a selection made with no
+     * signal is exactly the case this queue exists for. The record proceeds
+     * without a digest and ensureDigest() computes one from the same bytes
+     * just before they are uploaded.
      */
-    const sha256 = this.options.hash ? await this.options.hash(file) : record.sha256;
+    let sha256 = record.sha256;
+    if (this.options.hash) {
+      try {
+        sha256 = await this.options.hash(file);
+      } catch {
+        // Left undefined. The selection survives; the digest comes later.
+      }
+    }
     const hashed: QueueItemRecord = { ...record, sha256 };
 
     if (!staging?.available) {
@@ -487,11 +524,24 @@ export class ImportQueue {
     }
 
     this.sessionFiles.set(clientFileId, file);
-    const staged = await this.stageOne(
-      record.status === "pending" ? record : { ...record, status: "pending" },
-      file,
-      false,
-    );
+
+    // Back through the state machine, not around it. A failed or canceled
+    // import re-enters at `pending`; a paused one resumes through `retrying`;
+    // anything already pending, staged, or retrying is re-staged where it
+    // stands. The reset is persisted before staging, because stageOne moves
+    // the record as it is in the store, not as this method remembers it.
+    const reset =
+      record.status === "failed" || record.status === "canceled"
+        ? await this.moveTo(record, "pending", {
+            errorCode: undefined,
+            errorMessage: undefined,
+            nextAttemptAt: undefined,
+          })
+        : record.status === "paused"
+          ? await this.moveTo(record, "retrying", { resumeFrom: undefined })
+          : record;
+
+    const staged = await this.stageOne(reset, file, false);
     return this.view(staged);
   }
 

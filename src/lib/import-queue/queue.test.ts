@@ -42,6 +42,7 @@ function harness(
     server?: FakeImportServer;
     store?: QueueStore;
     durableMetadata?: boolean;
+    hash?: (blob: Blob) => Promise<string>;
   } = {},
 ): Harness {
   const staging = overrides.staging === undefined ? new MemoryStagingArea() : overrides.staging;
@@ -57,7 +58,7 @@ function harness(
       capacity,
       server,
       durableMetadata: overrides.durableMetadata ?? true,
-      hash: async () => DIGEST,
+      hash: overrides.hash ?? (async () => DIGEST),
       newId: uuids(),
       now: () => new Date("2026-08-29T09:00:00.000Z"),
     }),
@@ -176,6 +177,27 @@ describe("taking a selection into the queue", () => {
     const full = harness({ capacity: new FakeStorageCapacity(1024, 1000) });
     const tight = await full.queue.enqueue({ shootId: SHOOT, files: [fakeFile("b.jpg", "yy")] });
     expect(tight.items[0].sha256).toBe(DIGEST);
+  });
+
+  it("keeps a selection whose bytes cannot be read yet", async () => {
+    // WebKit routes File reads through its network process, so hashing fails
+    // while the browser is offline. The selection has to survive that: the
+    // record is written and visible, and the digest is computed later from
+    // the same bytes, just before they are uploaded (see the runner).
+    const unreadable = harness({
+      hash: async () => {
+        throw new Error("The I/O read operation failed.");
+      },
+    });
+    const result = await unreadable.queue.enqueue({
+      shootId: SHOOT,
+      files: [fakeFile("carpark.ARW", "raw")],
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].sha256).toBeUndefined();
+    // The copy itself still landed; only the digest is owed.
+    expect(result.items[0].status).toBe("staged");
   });
 
   it("does not call an item recoverable when only the tab remembers it", async () => {

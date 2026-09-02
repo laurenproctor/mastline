@@ -115,6 +115,12 @@ function build(input: { workspaceSlug: string; organizationId: Id }): ImportSess
     durableMetadata,
     hash: hashFile,
     telemetry,
+    // Every record the queue writes redraws the interface, not only the
+    // changes the runner announces. Without this, a file enqueued while the
+    // tab was offline stayed invisible until some network call resolved: the
+    // record was in IndexedDB, but nothing told the panel. The row has to
+    // come from the local record, because the local record is the truth.
+    onChange: () => void announce(),
   });
 
   const supabase = createClient();
@@ -147,6 +153,13 @@ function build(input: { workspaceSlug: string; organizationId: Id }): ImportSess
 
   const listeners = new Set<(snapshot: QueueSnapshot) => void>();
   let latest: QueueSnapshot | null = null;
+
+  /** A fresh snapshot to everyone listening, straight from the local records. */
+  async function announce(): Promise<void> {
+    const snapshot = await runner.snapshot();
+    latest = snapshot;
+    for (const listener of listeners) listener(snapshot);
+  }
 
   const runner = new ImportQueueRunner({
     queue,

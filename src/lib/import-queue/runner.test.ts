@@ -49,6 +49,7 @@ function harness(
     coordinator?: FakeCoordinator;
     concurrency?: number;
     maxAttempts?: number;
+    hash?: (blob: Blob) => Promise<string>;
   } = {},
 ) {
   const server = overrides.server ?? new FakeImportServer(ORG);
@@ -68,7 +69,7 @@ function harness(
     staging,
     capacity: new FakeStorageCapacity(),
     server,
-    hash: async () => DIGEST,
+    hash: overrides.hash ?? (async () => DIGEST),
     newId: uuids(),
     now: () => new Date(clock),
   });
@@ -669,6 +670,69 @@ describe("a file whose local copy is gone", () => {
     await after.runner.idle();
 
     expect(server.assetsCreated).toBe(1);
+  });
+
+  it("lands a reloaded upload on file_missing when the browser had no OPFS", async () => {
+    // A browser with no origin private file system stages nothing, so a reload
+    // loses the bytes with the page. The record it left behind says `retrying`,
+    // and a runner that skipped it as "needs its file" left it saying that for
+    // ever -- work nobody was ever going to pick up. It has to land on the
+    // honest failure instead, where the operator is asked for the file back.
+    const server = new FakeImportServer(ORG);
+    const staging = new MemoryStagingArea(false);
+    const store = new MemoryQueueStore();
+    const transport = new FakeUploadTransport(server);
+
+    const before = harness({ server, staging, store, transport });
+    const batch = await before.enqueue("MH_0819_BIG.ARW");
+    const clientFileId = batch.items[0].clientFileId;
+    transport.fail(clientFileId, {
+      code: "server_unavailable",
+      message: "The connection was reset.",
+      retryable: true,
+    });
+    await runAll(before);
+    expect((await before.queue.item(clientFileId))!.status).toBe("retrying");
+    await before.runner.stop();
+
+    // The reload: the same records, and no session File anywhere.
+    const after = harness({ server, staging, store, transport });
+    await after.queue.restore();
+    await runAll(after);
+    await after.advance(120_000);
+
+    const item = await after.queue.item(clientFileId);
+    expect(item!.status).toBe("failed");
+    expect(item!.errorCode).toBe("file_missing");
+    expect(item!.needsFile).toBe(true);
+    // Nothing further was sent: there were no bytes to send, and `failed`
+    // is not eligible, so it is not asked again.
+    expect(transport.calls).toHaveLength(1);
+  });
+
+  it("computes the digest at upload time when enqueue could not read the file", async () => {
+    // WebKit refuses to read a File while the browser is offline, so a
+    // selection made with no signal carries no digest. The import must still
+    // complete once the bytes can be read again -- hashed from the same blob
+    // that is about to travel, not refused for want of a number.
+    let readable = false;
+    const h = harness({
+      staging: new MemoryStagingArea(false),
+      hash: async () => {
+        if (!readable) throw new Error("The I/O read operation failed.");
+        return DIGEST;
+      },
+    });
+
+    const batch = await h.enqueue("OFFLINE_0001.ARW");
+    expect(batch.items[0].sha256).toBeUndefined();
+
+    readable = true;
+    await runAll(h);
+
+    const state = await h.server.batchState({ batchId: batch.batchId });
+    expect(state!.files[0].status).toBe("complete");
+    expect(h.server.assetsCreated).toBe(1);
   });
 });
 

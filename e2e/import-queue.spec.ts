@@ -208,6 +208,21 @@ test.describe("importing a field shoot", () => {
 
     // The queue comes back on its own, with the file still in it.
     await expect(rowFor(page, "MH_0819_BIG.ARW")).toBeVisible({ timeout: 30_000 });
+
+    // Whether the bytes came back with it depends on the browser. Playwright's
+    // WebKit has no origin private file system, so the staged copy never
+    // existed and the reloaded page holds nothing to resume with. The honest
+    // degraded behaviour is to ask for the file back -- and handing it back
+    // must still resume the server-side session rather than starting a second
+    // upload, which the assertions below hold both branches to.
+    const opfs = await page.evaluate(() => typeof navigator.storage?.getDirectory === "function");
+    if (!opfs) {
+      const row = rowFor(page, "MH_0819_BIG.ARW");
+      await expect(row).toContainText(/File needed/, { timeout: 30_000 });
+      await row.getByRole("button", { name: /Choose file/ }).click();
+      await page.setInputFiles("#import-replacement", [jpeg("MH_0819_BIG.ARW", LARGE)]);
+    }
+
     await expectState(page, "MH_0819_BIG.ARW", /Imported/, 90_000);
 
     // It resumed rather than restarting. Two things say so: the second page
@@ -399,8 +414,12 @@ test.describe("importing a field shoot", () => {
     await expect(rowFor(page, "LOST_0001.ARW")).toBeVisible();
     await expect.poll(async () => (await importRows(shootId)).length, { timeout: 30_000 }).toBe(1);
 
-    // The browser evicted the origin's storage while the tab was closed.
+    // The browser evicted the origin's storage while the tab was closed. On a
+    // browser with no origin private file system (Playwright's WebKit) there
+    // is nothing to evict: the bytes only ever lived in the page, and the
+    // reload below is what loses them. Both roads lead to the same premise.
     await page.evaluate(async () => {
+      if (typeof navigator.storage?.getDirectory !== "function") return;
       const root = await navigator.storage.getDirectory();
       await root.removeEntry("mastline-imports", { recursive: true }).catch(() => {});
     });
@@ -459,15 +478,21 @@ test.describe("importing a field shoot", () => {
     // A browser that reports almost no free space. The queue has to warn, and
     // it must not describe the file as recoverable, because it is not.
     await page.addInitScript(() => {
-      const storage = navigator.storage;
+      const storage: StorageManager | undefined = navigator.storage;
       Object.defineProperty(navigator, "storage", {
         configurable: true,
         value: {
-          ...storage,
           estimate: async () => ({ quota: 1024 * 1024, usage: 1020 * 1024 }),
-          persisted: () => storage.persisted.call(storage),
-          persist: () => storage.persist.call(storage),
-          getDirectory: () => storage.getDirectory.call(storage),
+          // Delegated only where the browser has anything to delegate to:
+          // Playwright's WebKit has no navigator.storage at all, and a wrapper
+          // over undefined would throw from inside the app's guarded calls.
+          ...(storage
+            ? {
+                persisted: () => storage.persisted.call(storage),
+                persist: () => storage.persist.call(storage),
+                getDirectory: () => storage.getDirectory.call(storage),
+              }
+            : {}),
         },
       });
     });
