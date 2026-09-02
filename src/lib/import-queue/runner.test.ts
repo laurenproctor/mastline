@@ -620,6 +620,63 @@ describe("cleaning up", () => {
     expect(h.transport.calls).toHaveLength(1);
   });
 
+  it("keeps a cancel that raced registration, and carries it to the server", async () => {
+    // The ordering the mobile trace showed: on a slow machine the operator
+    // cancels before registration has returned. The cancel finds no
+    // importFileId to send -- there is no server row yet -- and registration
+    // holds a pre-cancel snapshot of every record. Written back, that snapshot
+    // resurrected the file as pending, the runner's honest pass reported it
+    // failed, and the server row read "failed" for a deliberately canceled
+    // file. Registration must merge into the record as it stands, and must
+    // deliver the cancel it finds there.
+    const server = new FakeImportServer(ORG);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const registerFiles = server.registerFiles.bind(server);
+    server.registerFiles = async (input) => {
+      await gate;
+      return registerFiles(input);
+    };
+
+    // No OPFS, as on the browser that caught this.
+    const h = harness({ server, staging: new MemoryStagingArea(false) });
+    const enqueued = h.queue.enqueue({
+      shootId: SHOOT,
+      files: [fakeFile("CANCEL_0001.ARW", "raw bytes")],
+    });
+
+    // Wait for the local record to exist and settle, with registration still
+    // parked at the gate.
+    let clientFileId: string | undefined;
+    for (let i = 0; i < 100; i += 1) {
+      const [item] = await h.queue.items();
+      if (item?.errorCode === "staging_unavailable") {
+        clientFileId = item.clientFileId;
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(clientFileId).toBeTruthy();
+
+    await h.runner.cancelItem(clientFileId!);
+    release();
+    const result = await enqueued;
+    expect(result.registered).toBe(true);
+
+    // Canceled locally, registered, and canceled on the server too.
+    const item = await h.queue.item(clientFileId!);
+    expect(item!.status).toBe("canceled");
+    expect(item!.importFileId).toBeTruthy();
+    const state = await h.server.batchState({ batchId: result.batchId });
+    expect(state!.files[0].status).toBe("canceled");
+
+    // And the runner never resurrects it.
+    await runAll(h);
+    await h.advance(120_000);
+    expect((await h.queue.item(clientFileId!))!.status).toBe("canceled");
+    expect(h.transport.calls).toHaveLength(0);
+  });
+
   it("keeps a cancel canceled when the aborted upload reports its failure", async () => {
     // Cancelling an active upload aborts it, and the aborted run then reports
     // a failure -- after the cancel has been recorded. That failure must not

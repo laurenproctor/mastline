@@ -458,24 +458,45 @@ export class ImportQueue {
         // Left undefined. The selection survives; the digest comes later.
       }
     }
-    const hashed: QueueItemRecord = { ...record, sha256 };
+
+    /*
+     * Every outcome below is merged into the record as it is *now*, through
+     * the per-file write chain -- never written back from the snapshot this
+     * method was handed. Hashing a card-sized file takes real time, and the
+     * operator can act in that window: a snapshot written back over a cancel
+     * once resurrected the file as pending. A record that has since been
+     * canceled or completed keeps its status and its message; only the digest
+     * is still worth recording against it.
+     */
+    const settled = (fresh: QueueItemRecord) =>
+      fresh.status === "canceled" || fresh.status === "complete";
 
     if (!staging?.available) {
-      return this.write({
-        ...hashed,
-        errorCode: "staging_unavailable" satisfies ImportErrorCode,
-        errorMessage: UNSTAGED_WARNING,
+      return this.update(record.clientFileId, (fresh) => ({
+        ...fresh,
+        ...(sha256 ? { sha256 } : {}),
+        ...(settled(fresh)
+          ? {}
+          : {
+              errorCode: "staging_unavailable" satisfies ImportErrorCode,
+              errorMessage: UNSTAGED_WARNING,
+            }),
         updatedAt: this.now,
-      });
+      }));
     }
 
     if (skipBecauseFull) {
-      return this.write({
-        ...hashed,
-        errorCode: "quota_exceeded" satisfies ImportErrorCode,
-        errorMessage: `There is not enough free storage to keep a recoverable copy. ${UNSTAGED_WARNING}`,
+      return this.update(record.clientFileId, (fresh) => ({
+        ...fresh,
+        ...(sha256 ? { sha256 } : {}),
+        ...(settled(fresh)
+          ? {}
+          : {
+              errorCode: "quota_exceeded" satisfies ImportErrorCode,
+              errorMessage: `There is not enough free storage to keep a recoverable copy. ${UNSTAGED_WARNING}`,
+            }),
         updatedAt: this.now,
-      });
+      }));
     }
 
     try {
@@ -490,20 +511,25 @@ export class ImportQueue {
 
       return this.moveTo(record, "staged", {
         stagingState: "staged",
-        sha256,
+        ...(sha256 ? { sha256 } : {}),
         errorCode: undefined,
         errorMessage: undefined,
       });
     } catch (error) {
       const message = sanitizeErrorMessage(error);
       const quota = /quota|space|storage/i.test(message);
-      return this.write({
-        ...hashed,
+      return this.update(record.clientFileId, (fresh) => ({
+        ...fresh,
+        ...(sha256 ? { sha256 } : {}),
         stagingState: "none",
-        errorCode: (quota ? "quota_exceeded" : "staging_failed") satisfies ImportErrorCode,
-        errorMessage: `${message} ${UNSTAGED_WARNING}`,
+        ...(settled(fresh)
+          ? {}
+          : {
+              errorCode: (quota ? "quota_exceeded" : "staging_failed") satisfies ImportErrorCode,
+              errorMessage: `${message} ${UNSTAGED_WARNING}`,
+            }),
         updatedAt: this.now,
-      });
+      }));
     }
   }
 
@@ -585,31 +611,58 @@ export class ImportQueue {
       });
 
       const byClientId = new Map(registered.map((row) => [row.clientFileId, row]));
+      // Files the operator canceled while this registration was in flight.
+      // Their cancel had no server row to land on -- there was no importFileId
+      // yet -- so registering is the first moment the server can be told.
+      const canceledMeanwhile: Id[] = [];
+
       for (const record of pending) {
         const row = byClientId.get(record.clientFileId);
         if (!row) continue;
-        await this.write({
-          ...record,
-          importFileId: row.importFileId,
-          // The server's path is authoritative: it is immutable there, and a
-          // disagreement means this client computed it from stale ids.
-          storagePath: row.storagePath,
-          assetId: row.assetId ?? record.assetId,
-          errorCode: record.errorCode === "registration_failed" ? undefined : record.errorCode,
-          errorMessage:
-            record.errorCode === "registration_failed" ? undefined : record.errorMessage,
-          updatedAt: this.now,
-        });
+        try {
+          // Merged into the record as it is *now*, through the per-file write
+          // chain -- never written back from the snapshot this method read.
+          // Registration takes long enough for the operator to act in the
+          // meantime, and writing the snapshot back once overwrote a cancel
+          // with the pending record it had been taken from.
+          const merged = await this.update(record.clientFileId, (fresh) => ({
+            ...fresh,
+            importFileId: row.importFileId,
+            // The server's path is authoritative: it is immutable there, and a
+            // disagreement means this client computed it from stale ids.
+            storagePath: row.storagePath,
+            assetId: row.assetId ?? fresh.assetId,
+            errorCode: fresh.errorCode === "registration_failed" ? undefined : fresh.errorCode,
+            errorMessage:
+              fresh.errorCode === "registration_failed" ? undefined : fresh.errorMessage,
+            updatedAt: this.now,
+          }));
+          if (merged.status === "canceled") canceledMeanwhile.push(row.importFileId);
+        } catch {
+          // The record is gone -- a cleanup swept it mid-registration. There
+          // is nothing local left to reconcile it against.
+        }
+      }
+
+      if (canceledMeanwhile.length > 0) {
+        try {
+          await this.options.server.cancel({ importFileIds: canceledMeanwhile });
+        } catch {
+          // The local record already says canceled, which is what the operator
+          // sees; the server learns on the next reconciliation.
+        }
       }
       return true;
     } catch (error) {
       const message = sanitizeErrorMessage(error);
       for (const record of pending) {
-        await this.write({
-          ...record,
+        await this.update(record.clientFileId, (fresh) => ({
+          ...fresh,
           errorCode: "registration_failed" satisfies ImportErrorCode,
           errorMessage: message,
           updatedAt: this.now,
+        })).catch(() => {
+          // Gone since the snapshot was taken. Nothing to mark.
         });
       }
       return false;
