@@ -9,6 +9,15 @@ import { ShootWorkspace } from "@/components/shoot-workspace";
 import type { InspectorAsset } from "@/components/asset-inspector";
 import type { SheetAsset } from "@/components/contact-sheet";
 import { listAssets, listCaptionHistory } from "@/lib/data/assets";
+import { listMetadata } from "@/lib/data/asset-metadata";
+import { countPendingJobs, generationIsAvailable } from "@/lib/data/metadata-jobs";
+import {
+  describeStatus,
+  resolveMetadata,
+  reviewProgress,
+  technicalRows,
+} from "@/lib/asset-metadata";
+import type { MetadataPanelData } from "@/components/metadata-panel";
 import { listPackages } from "@/lib/data/packages";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { suggestionsAreConfigured } from "@/lib/data/metadata-suggestions";
@@ -62,8 +71,15 @@ export default async function ShootWorkspacePage({
   if (!shoot) notFound();
 
   const assets = await listAssets(organizationId, { shootId });
+  const metadata = await listMetadata(
+    organizationId,
+    assets.map((asset) => asset.id),
+  );
   const selected = assets.filter((asset) => asset.selected);
-  const selectionReport = reviewSelection(selected);
+  // The selection report consults the metadata records, so "dispatch ready"
+  // on this header means the same thing as the gate on the approve screen.
+  const selectionReport = reviewSelection(selected, undefined, metadata);
+  const progress = reviewProgress(assets.map((asset) => metadata.get(asset.id) ?? null));
 
   // Preview objects for the contact sheet, signed briefly. Nothing is public.
   const previewKeys = assets
@@ -72,7 +88,7 @@ export default async function ShootWorkspacePage({
   const previewUrls = await signedUrlsFor(await createClient(), "derivatives", previewKeys, 600);
 
   const sheetAssets: SheetAsset[] = assets.map((asset) => {
-    const report = reviewAsset(asset);
+    const report = reviewAsset(asset, undefined, metadata.get(asset.id) ?? null);
     const previewKey = asset.versions.find(
       (version) => version.versionKind === "preview",
     )?.objectKey;
@@ -98,7 +114,7 @@ export default async function ShootWorkspacePage({
   ]);
 
   const inspectorAssets: InspectorAsset[] = assets.map((asset, index) => {
-    const report = reviewAsset(asset);
+    const report = reviewAsset(asset, undefined, metadata.get(asset.id) ?? null);
     return {
       id: asset.id,
       filename: asset.canonicalFilename,
@@ -126,6 +142,53 @@ export default async function ShootWorkspacePage({
   // here rather than in the metric so the number and the sentence beneath it
   // come from the same pass over the same assets.
   const awaitingCaptionReview = assets.filter((asset) => asset.captionAwaitsReview).length;
+
+  /*
+   * Everything the metadata panel renders, assembled here.
+   *
+   * Inheritance is resolved on the server because that is where the shoot is,
+   * and because a second implementation of "where did this value come from" in
+   * the browser would eventually disagree with this one. The client receives
+   * values and provenance, never the rules.
+   */
+  const panels: Record<string, MetadataPanelData> = {};
+  for (const asset of assets) {
+    const record = metadata.get(asset.id) ?? null;
+    const resolved = resolveMetadata(record, shoot);
+    const previewKey = asset.versions.find(
+      (version) => version.versionKind === "preview",
+    )?.objectKey;
+    const generated = (record?.generatedValues ?? {}) as { uncertaintyNote?: string };
+
+    panels[asset.id] = {
+      photograph: {
+        id: asset.id,
+        filename: asset.canonicalFilename,
+        previewUrl: previewKey ? previewUrls.get(previewKey) : undefined,
+        isVideo: asset.assetKind === "video",
+      },
+      fields: resolved.fields as MetadataPanelData["fields"],
+      status: describeStatus(record),
+      technical: technicalRows(record?.technical ?? null, (iso) => formatDateTime(iso)),
+      version: record?.version ?? 1,
+      generatedAt: record?.generatedAt,
+      aiModel: record?.aiModel,
+      overallConfidence: record?.overallConfidence,
+      uncertaintyNote: generated.uncertaintyNote,
+      failureDetail: record?.failureDetail,
+      confirmedAt: record?.confirmedAt,
+    };
+  }
+
+  const pendingCount = await countPendingJobs(
+    organizationId,
+    assets.map((asset) => asset.id),
+    await createClient(),
+  );
+  const ungeneratedCount = assets.filter((asset) => {
+    const status = metadata.get(asset.id)?.generationStatus;
+    return status === undefined || status === "not_generated" || status === "failed";
+  }).length;
 
   const sensitiveNote = shoot.hasSensitiveNote
     ? await getSensitiveNote(organizationId, shootId)
@@ -201,6 +264,19 @@ export default async function ShootWorkspacePage({
               {awaitingCaptionReview > 0 ? "Drafted at import, not yet yours" : "No unread drafts"}
             </small>
           </div>
+          <div className="metric">
+            <span>Metadata reviewed</span>
+            <strong>
+              {progress.confirmed} of {progress.total}
+            </strong>
+            <small className={progress.needsReview > 0 ? "danger" : "good"}>
+              {progress.needsReview > 0
+                ? `${progress.needsReview} waiting on you`
+                : progress.inFlight > 0
+                  ? `${progress.inFlight} being read`
+                  : "Nothing waiting"}
+            </small>
+          </div>
         </div>
 
         {assets.length > 0 && (
@@ -215,11 +291,16 @@ export default async function ShootWorkspacePage({
             </div>
             <ShootWorkspace
               workspaceSlug={workspaceSlug}
+              canEdit={mayEdit}
+              generationAvailable={generationIsAvailable()}
               inspectorAssets={inspectorAssets}
+              panels={panels}
+              pendingCount={pendingCount}
               sheetAssets={sheetAssets}
               shootId={shootId}
               shootLocationName={shoot.locationName}
               suggestionsAvailable={mayEdit && suggestionsAreConfigured()}
+              ungeneratedCount={ungeneratedCount}
             />
           </>
         )}
