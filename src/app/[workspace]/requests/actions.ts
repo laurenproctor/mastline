@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   assignRequest,
+  connectLicense,
   createRequest,
   getRequest,
   transitionRequest,
@@ -282,4 +283,67 @@ export async function transitionRequestAction(
   revalidatePath(routes.requests());
   revalidatePath(routes.work());
   redirect(routes.request(requestId, { query: { moved: requestedStatus } }));
+}
+
+/**
+ * Record a win by connecting the license that closed the request.
+ *
+ * This is the only way a request reaches `won`: a person picks the license,
+ * confirms that winning closes the request permanently, and one act writes the
+ * connection and performs the move. Nothing is automatic -- there is no
+ * matching, no suggestion, and no path from a license existing to a request
+ * closing without somebody choosing it. The license itself is read, never
+ * written: money is recorded on the Money screen and only pointed at here.
+ */
+export async function connectLicenseAction(
+  workspaceSlug: string,
+  _previous: RequestActionState,
+  formData: FormData,
+): Promise<RequestActionState> {
+  const requestId = String(formData.get("requestId") ?? "");
+  const licenseId = String(formData.get("licenseId") ?? "");
+  const expectedUpdatedAt = String(formData.get("expectedUpdatedAt") ?? "");
+  const confirmed = formData.get("confirmed") === "yes";
+
+  if (!isRecordId(requestId)) {
+    return { error: "That request is not in this workspace.", reason: "not_found" };
+  }
+  if (!isRecordId(licenseId)) {
+    return { error: "Choose the license that closed this request.", reason: "not_found" };
+  }
+  if (!expectedUpdatedAt) {
+    return {
+      error: "Reload the request and try again: this form no longer knows which version you read.",
+      reason: "conflict",
+    };
+  }
+
+  // Won is a closing decision like lost or declined, and gets the same second
+  // look before it is recorded.
+  if (!confirmed) {
+    return {
+      error: "Recording a win closes this request permanently. Confirm before recording it.",
+      reason: "unconfirmed",
+    };
+  }
+
+  let context;
+  try {
+    context = await requireWorkspaceContext(workspaceSlug, "request.write");
+  } catch (error) {
+    return asActionState(error);
+  }
+  const { organizationId, actorId, canonicalSlug } = context;
+
+  try {
+    await connectLicense({ organizationId, actorId, requestId, licenseId, expectedUpdatedAt });
+  } catch (error) {
+    return asActionState(error);
+  }
+
+  const routes = workspaceRoutes(canonicalSlug);
+  revalidatePath(routes.requests());
+  revalidatePath(routes.request(requestId));
+  revalidatePath(routes.work());
+  redirect(routes.request(requestId, { query: { moved: "won" } }));
 }

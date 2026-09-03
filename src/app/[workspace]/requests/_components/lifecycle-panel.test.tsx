@@ -95,11 +95,15 @@ describe("what the control offers", () => {
     expect(select).not.toContainHTML("Submitted");
   });
 
-  it("never offers a win, and says why rather than leaving a gap", () => {
+  it("never offers a win, and points at the connection that performs it", () => {
+    // Won is not a dropdown entry: it is performed by connecting the license
+    // that closed the request, in the Record the win panel, and this note is
+    // what stops an operator concluding the feature is broken.
     render(<LifecyclePanel {...BASE} request={request({ status: "submitted" })} />);
 
     expect(screen.getByLabelText(/move this request to/i)).not.toContainHTML(">Won<");
-    expect(screen.getByText(/connecting this request to a license/i)).toBeInTheDocument();
+    expect(screen.getByText(/record the win/i)).toBeInTheDocument();
+    expect(screen.getByText(/connecting the license/i)).toBeInTheDocument();
   });
 
   it("tells a read-only role where the request is without offering controls", () => {

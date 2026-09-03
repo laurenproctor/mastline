@@ -138,13 +138,15 @@ export function LifecyclePanel({
 
       {/*
         Won is absent from the list above and named here instead, because an
-        operator who is looking for it deserves to be told why it is missing
-        rather than left to conclude the feature is broken.
+        operator who is looking for it deserves to be told where it lives
+        rather than left to conclude the feature is broken. It is not a state
+        somebody selects: connecting the license that closed the request is
+        what performs the move, in the Record the win panel.
       */}
       {(request.status === "submitted" || request.status === "negotiating") && (
         <p className="section-note">
-          Recording a win is not available yet: it means connecting this request to a license, and
-          that connection does not exist in Mastline so far.
+          Recording a win happens in <strong>Record the win</strong>: connecting the license that
+          closed this request is what performs that move, so a win always points at money.
         </p>
       )}
 

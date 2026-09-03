@@ -2,6 +2,8 @@ import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import type {
   BuyerRequest,
   Id,
+  IsoTimestamp,
+  LicenseStatus,
   RequestChannel,
   RequestOrientation,
   RequestSensitiveNote,
@@ -9,7 +11,7 @@ import type {
   RequestStatus,
   RequestType,
 } from "../domain";
-import { type CurrencyCode, money } from "../money";
+import { type CurrencyCode, type Money, money } from "../money";
 import { RequestError, checkTransition, isClosed } from "../requests";
 import { createClient } from "../supabase/server";
 import { isRecordId } from "../validation";
@@ -760,6 +762,205 @@ export async function assignRequest(input: AssignRequestInput): Promise<BuyerReq
   return saved;
 }
 
+/** One connected license, as the request screen renders it. */
+export interface ConnectedLicense {
+  readonly id: Id;
+  readonly licenseId: Id;
+  readonly linkedAt: IsoTimestamp;
+  readonly licenseeName: string;
+  readonly licenseStatus: LicenseStatus;
+  readonly saleBase: Money;
+}
+
+/**
+ * The licenses connected to a request -- for a won request, the answer to
+ * "which sale closed this". The money figures come from the license row
+ * itself: the connection carries none, deliberately, so there is exactly one
+ * answer to what a license earned.
+ */
+export async function listConnectedLicenses(
+  organizationId: Id,
+  requestId: Id,
+  client?: SupabaseClient,
+): Promise<readonly ConnectedLicense[]> {
+  if (!isRecordId(requestId)) return [];
+  const supabase = client ?? (await createClient());
+
+  const { data, error } = await supabase
+    .from("request_licenses")
+    .select("id, license_id, linked_at, licenses(licensee_name, status, sale_base_minor, currency)")
+    .eq("organization_id", organizationId)
+    .eq("request_id", requestId)
+    .order("linked_at", { ascending: true });
+
+  if (error) throw new Error(`Could not load the connected licenses: ${error.message}`);
+
+  return (data ?? []).map((row) => {
+    const license = row.licenses as unknown as {
+      licensee_name: string;
+      status: string;
+      sale_base_minor: number | string;
+      currency: string;
+    };
+    return {
+      id: row.id as string,
+      licenseId: row.license_id as string,
+      linkedAt: row.linked_at as string,
+      licenseeName: license.licensee_name,
+      licenseStatus: license.status as LicenseStatus,
+      saleBase: money(minorUnits(license.sale_base_minor) ?? 0, license.currency as CurrencyCode),
+    };
+  });
+}
+
+export interface ConnectLicenseInput {
+  readonly organizationId: Id;
+  readonly actorId: Id;
+  readonly requestId: Id;
+  readonly licenseId: Id;
+  readonly expectedUpdatedAt: string;
+  readonly client?: SupabaseClient;
+}
+
+/**
+ * Record a win: connect the license that closed the request, then move it.
+ *
+ * One human act, two writes. The connection row names the license; the status
+ * change is the same audited transition every other move goes through, with
+ * the database's evidence gate underneath re-checking that a qualifying
+ * connected license really exists. Nothing here creates or edits a license --
+ * money is recorded on the money screen and only pointed at from here.
+ *
+ * If the transition loses a concurrency race after the link is written, the
+ * link stands and the caller is told what happened; retrying converges,
+ * because the insert is idempotent per (request, license). A connection
+ * without a won status is an ordinary open state, not a corruption.
+ */
+export async function connectLicense(input: ConnectLicenseInput): Promise<BuyerRequest> {
+  const { organizationId, actorId, requestId, licenseId, expectedUpdatedAt } = input;
+  const supabase = input.client ?? (await createClient());
+
+  if (!isRecordId(licenseId)) {
+    throw new RequestError("not_found", "That license is not in this workspace.");
+  }
+
+  const current = await getRequest(organizationId, requestId, supabase);
+  if (!current) throw new RequestError("not_found", "That request is not in this workspace.");
+
+  // Refuse before writing anything: a closed request, or one that has not been
+  // submitted, gets the same typed refusal the generic move control would get.
+  const check = checkTransition({ from: current.status, to: "won", connectedLicenseId: licenseId });
+  if (!check.ok) throw check.error;
+
+  const { data: license, error: licenseError } = await supabase
+    .from("licenses")
+    .select("id, status, licensee_name, sale_base_minor")
+    .eq("organization_id", organizationId)
+    .eq("id", licenseId)
+    .maybeSingle();
+
+  if (licenseError) throw new RequestError("unknown", "That license could not be read.");
+  // The same answer for a license in another workspace and one that never
+  // existed, for the same reason getRequest gives it.
+  if (!license) throw new RequestError("not_found", "That license is not in this workspace.");
+
+  /*
+   * Mirror the database's qualifying rule so the refusal lands next to the
+   * control instead of surfacing as an opaque trigger error: a cancelled
+   * license is not a win, and a proposed license with no figure is an offer.
+   * An active license qualifies even at zero -- a rights-for-credit deal is a
+   * real outcome somebody negotiated.
+   */
+  const base = minorUnits(license.sale_base_minor as number | string) ?? 0;
+  const status = license.status as LicenseStatus;
+  if (status === "cancelled" || (base <= 0 && status !== "active")) {
+    throw new RequestError(
+      "license_ineligible",
+      status === "cancelled"
+        ? "That license was cancelled, and a cancelled license cannot record a win."
+        : "That license is a proposal with no figure on it -- an offer, not a win. Record the agreed sale on it first.",
+    );
+  }
+
+  const { error: linkError } = await supabase.from("request_licenses").insert({
+    organization_id: organizationId,
+    request_id: requestId,
+    license_id: licenseId,
+    linked_by: actorId,
+  });
+
+  // 23505 is this exact pair already connected -- a retry, a double click, a
+  // second tab. The connection it wants exists, which is what it asked for.
+  const alreadyConnected = linkError?.code === "23505";
+  if (linkError && !alreadyConnected) {
+    if (linkError.code === "23503") {
+      throw new RequestError("cross_workspace", "That license is not in this workspace.");
+    }
+    if (linkError.code === "42501") {
+      throw new RequestError("denied", "Your role may not change requests.");
+    }
+    throw new RequestError("unknown", "That connection could not be recorded.");
+  }
+
+  if (!alreadyConnected) {
+    await recordEventWith(supabase, {
+      organizationId,
+      actorId,
+      entityType: "buyer_request",
+      entityId: requestId,
+      action: "request.license_connected",
+      data: {
+        summary: `Connected a license to ${current.reference}: ${license.licensee_name as string}`,
+        reference: current.reference,
+        licenseId,
+      },
+    });
+  }
+
+  return transitionRequest({
+    organizationId,
+    actorId,
+    requestId,
+    status: "won",
+    connectedLicenseId: licenseId,
+    expectedUpdatedAt,
+    client: supabase,
+  });
+}
+
+/**
+ * How often the workspace turns work down, as the two numbers that make the
+ * rate readable: requests declined, out of requests ever recorded.
+ *
+ * DECISIONS.md keeps cancelled and declined separate precisely so this can be
+ * answered; the inbox surfaces it because a number nobody sees moves nobody.
+ * Both are HEAD count queries -- no rows travel -- so the inbox pays two round
+ * trips of a few bytes, not a scan it renders nothing from.
+ */
+export async function countRequestOutcomes(
+  organizationId: Id,
+  client?: SupabaseClient,
+): Promise<{ declined: number; recorded: number }> {
+  const supabase = client ?? (await createClient());
+
+  const [declined, recorded] = await Promise.all([
+    supabase
+      .from("buyer_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "declined"),
+    supabase
+      .from("buyer_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId),
+  ]);
+
+  if (declined.error) throw new Error(`Could not count requests: ${declined.error.message}`);
+  if (recorded.error) throw new Error(`Could not count requests: ${recorded.error.message}`);
+
+  return { declined: declined.count ?? 0, recorded: recorded.count ?? 0 };
+}
+
 export interface TransitionRequestInput {
   readonly organizationId: Id;
   readonly actorId: Id;
@@ -767,6 +968,13 @@ export interface TransitionRequestInput {
   readonly status: RequestStatus;
   /** Required for `lost` and `declined`; optional elsewhere. */
   readonly reason?: string | null;
+  /**
+   * The license whose connection this move rides on. Supplied only by
+   * `connectLicense`, which has just written the connection; a `won` without
+   * it is refused here, and a `won` without the actual row is refused by the
+   * database's evidence gate whatever this field claims.
+   */
+  readonly connectedLicenseId?: Id;
   readonly expectedUpdatedAt: string;
   readonly client?: SupabaseClient;
 }
@@ -790,7 +998,12 @@ export async function transitionRequest(input: TransitionRequestInput): Promise<
   const current = await getRequest(organizationId, requestId, supabase);
   if (!current) throw new RequestError("not_found", "That request is not in this workspace.");
 
-  const check = checkTransition({ from: current.status, to: status, reason: input.reason });
+  const check = checkTransition({
+    from: current.status,
+    to: status,
+    reason: input.reason,
+    connectedLicenseId: input.connectedLicenseId,
+  });
   if (!check.ok) throw check.error;
 
   const { data, error } = await supabase
@@ -825,6 +1038,9 @@ export async function transitionRequest(input: TransitionRequestInput): Promise<
       // The reason itself stays on the request. An event stream is read by
       // every member; a closing note can name a desk or a person.
       reasonRecorded: check.reason !== undefined,
+      // A win names the license it rode in on, so the history answers "which
+      // sale" without a second lookup.
+      ...(input.connectedLicenseId ? { licenseId: input.connectedLicenseId } : {}),
     },
   });
 
