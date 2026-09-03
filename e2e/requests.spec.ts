@@ -163,6 +163,63 @@ test("a past-deadline request says so in words, not only in colour", async ({ co
   await expect(row).toContainText("New");
 });
 
+test("a win is recorded by connecting the license that closed it", async ({ context, page }) => {
+  /*
+   * The request is arranged in `negotiating` out of band: walking there
+   * through the interface needs a linked shoot, package and shared submission,
+   * which is the dispatch suite's journey, not this one. What only a browser
+   * can answer is the act itself: that winning is not a dropdown entry but a
+   * connection -- pick the license, see what the act does, confirm, and find
+   * the request closed with its sale named and linked to the money screen.
+   */
+  const { url, key } = service();
+  const response = await fetch(`${url}/rest/v1/buyer_requests`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      organization_id: ORG_A,
+      created_by: "11111111-1111-1111-1111-111111111111",
+      idempotency_key: `e2e-won-${Date.now()}`,
+      reference: `REQ-WON-E2E-${Date.now() % 100000}`,
+      title: `${TITLE_PREFIX} — won by connection`,
+      status: "negotiating",
+    }),
+  });
+  if (!response.ok) throw new Error(`Could not arrange a request: ${await response.text()}`);
+  const [{ id }] = (await response.json()) as [{ id: string }];
+
+  await refuseCookies(context);
+  await signIn(page);
+  await page.goto(at(`/requests/${id}`));
+
+  // The generic move control does not offer Won; the panel names where it lives.
+  await expect(
+    page.getByLabel(/move this request to/i).locator("option", { hasText: "Won" }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/recording a win happens in/i)).toBeVisible();
+
+  // The seeded Sales Engine license, named with its money as the basis.
+  await page
+    .getByLabel(/license that closed it/i)
+    .selectOption("a0000000-0000-0000-0000-00000000b001");
+  await expect(page.getByText(/nothing is suggested or matched for you/i)).toBeVisible();
+
+  await page.getByLabel(/closes it permanently/i).check();
+  await page.getByRole("button", { name: /connect license and record the win/i }).click();
+
+  await expect(page.getByRole("status")).toContainText(/won/i);
+  // The request is closed, its sale is named, and the money is one click away.
+  await expect(page.getByText(/cannot be reopened/i)).toBeVisible();
+  await expect(page.getByText("The City Paper").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /see it on money/i })).toBeVisible();
+  await expect(page.getByLabel(/move this request to/i)).toHaveCount(0);
+});
+
 test("a read-only colleague can read the inbox and is offered no controls", async ({
   context,
   page,

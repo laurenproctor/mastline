@@ -424,6 +424,20 @@ names the absence rather than leaving a gap. It is in the enum so that Phase 2
 adds a foreign key rather than a migration that rewrites an enum every row,
 policy and index depends on.
 
+*Resolved 2026-09-03 exactly as pre-decided:* `request_licenses`
+(20260903090000) is that foreign key, and no enum, policy or index moved. A win
+is performed by a person connecting the license that closed the request — one
+act writing the connection and the transition together — and the generic move
+control still never offers `won`. The connection carries no money: what the
+license earned lives on the license, which is why the earlier note that "there
+must not be a request_licenses table" does not apply to this one — that note
+guarded against a second edge carrying figures, and this row only names the
+sale. The pre-connection derivation through `request_submissions` no longer
+unlocks `won` on its own, because a win that cannot name its license is not a
+commercial memory. The license end of the link is `on delete restrict`;
+unlinking a closed request's connection is refused outside the audited purge
+path.
+
 **Nothing moves to `expired` on its own.** There is no scheduler in this system,
 and a status that becomes true while nobody is watching is one nobody can trust
 — the same reasoning that keeps `sent_at` and `delivered_at` write-once and
