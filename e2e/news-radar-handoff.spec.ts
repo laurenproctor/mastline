@@ -278,7 +278,10 @@ async function settleAfterCreate(
   handedOffText: string,
 ): Promise<"status" | "recovered"> {
   const boundary = page.getByRole("button", { name: "Try again" });
-  const refusal = page.getByRole("alert");
+  // Scoped to main and required to say something: the framework keeps an
+  // always-present, usually empty route-announcer alert at the top of the
+  // page, and an unscoped role=alert would satisfy this union on sight.
+  const refusal = page.getByRole("main").getByRole("alert").filter({ hasText: /\S/ });
   await expect(status.or(boundary).or(refusal).first()).toBeVisible({ timeout: 120_000 });
   if (await status.isVisible().catch(() => false)) return "status";
   if (!(await boundary.isVisible().catch(() => false))) {
@@ -287,6 +290,21 @@ async function settleAfterCreate(
   await boundary.click();
   await expect(page.getByText(handedOffText)).toBeVisible({ timeout: 120_000 });
   return "recovered";
+}
+
+/**
+ * Click a create button whose success replaces or renames it.
+ *
+ * Trace-proven on the runner: the click dispatches, the action's POST lands
+ * within a second, and the success re-render swaps the button for the result
+ * (or renames it to "Creating draft…") while Playwright is still verifying
+ * the click -- which then retries forever against a button that no longer
+ * exists, even though the draft was created. The click gets a short leash,
+ * and the caller asserts the OUTCOME, which is the journey's contract; a
+ * click that truly never landed surfaces there instead.
+ */
+async function clickCreate(button: ReturnType<Page["getByRole"]>): Promise<void> {
+  await button.click({ timeout: 15_000 }).catch(() => {});
 }
 
 test.describe("News Radar handoffs", () => {
@@ -340,7 +358,7 @@ test.describe("News Radar handoffs", () => {
       await expect(confirmation).toContainText("must still be reviewed");
       expect(await hasHorizontalOverflow(page)).toBe(false);
 
-      await summary.getByRole("button", { name: "Create draft package" }).click();
+      await clickCreate(summary.getByRole("button", { name: "Create draft package" }));
       const created = page.getByRole("status").filter({ hasText: "Draft package created" });
       const outcome = await settleAfterCreate(page, created, "Handed off to a draft package");
       if (outcome === "status") {
@@ -423,7 +441,7 @@ test.describe("News Radar handoffs", () => {
       await evaluate(other, fixture.archiveId);
       await other.close();
 
-      await summary.getByRole("button", { name: "Create draft package" }).click();
+      await clickCreate(summary.getByRole("button", { name: "Create draft package" }));
       const alert = page
         .getByRole("alert")
         .filter({ hasText: "Re-evaluated since you loaded this page" });
@@ -500,7 +518,7 @@ test.describe("News Radar handoffs", () => {
       await expect(region).toContainText("Event time (recorded, not confirmed)");
       expect(await hasHorizontalOverflow(page)).toBe(false);
 
-      await summary.getByRole("button", { name: "Create draft shoot" }).click();
+      await clickCreate(summary.getByRole("button", { name: "Create draft shoot" }));
       const created = page.getByRole("status").filter({ hasText: "Draft shoot created" });
       const outcome = await settleAfterCreate(page, created, "Handed off to a draft shoot");
       if (outcome === "status") await expect(created).toContainText("still a draft");

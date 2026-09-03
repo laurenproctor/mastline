@@ -403,8 +403,15 @@ export function ArchiveHandoff({
             link is created, nothing is approved or priced.
           </p>
           <div className={styles.actions}>
+            {/* Keyed, so the step change MOUNTS a fresh button instead of
+                morphing the reviewed one in place. Without the keys, React
+                reuses the DOM node, and the trailing half of the click or
+                Enter that pressed "Review selection" lands on what has
+                silently become the submit button -- creating the draft
+                without the person ever pressing Create. */}
             {step === "select" ? (
               <button
+                key="review"
                 className="button blue"
                 disabled={!canReview || pending}
                 onClick={() => setStep("confirm")}
@@ -414,10 +421,16 @@ export function ArchiveHandoff({
               </button>
             ) : (
               <>
-                <button className="button blue" disabled={pending || !canReview} type="submit">
+                <button
+                  key="create"
+                  className="button blue"
+                  disabled={pending || !canReview}
+                  type="submit"
+                >
                   {pending ? "Creating draft…" : "Create draft package"}
                 </button>
                 <button
+                  key="back"
                   className="button"
                   disabled={pending}
                   onClick={() => setStep("select")}

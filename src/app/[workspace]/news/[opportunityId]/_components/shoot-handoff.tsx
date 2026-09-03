@@ -304,7 +304,7 @@ export function ShootHandoff({
           </p>
         )}
 
-        {step === "confirm" ? (
+        {step === "confirm" && (
           <div className={styles.result}>
             <h4>What will be created</h4>
             <ul className={styles.summaryList}>
@@ -332,295 +332,293 @@ export function ShootHandoff({
               </>
             )}
           </div>
-        ) : (
-          <div className={styles.registers}>
-            <section
-              aria-labelledby={`recorded-facts-${opportunityId}`}
-              className={styles.register}
-            >
-              <h4 id={`recorded-facts-${opportunityId}`}>Recorded facts</h4>
-              <ul>
-                <li>Story: {storyTitle}</li>
-                <li>Location: {brief.knownLocation ?? "none recorded"}</li>
-                <li>
-                  Event:{" "}
-                  {brief.eventStartsAt
-                    ? formatDateTime(brief.eventStartsAt, timeZone)
-                    : "no time recorded"}
-                  {brief.eventEndsAt ? ` → ${formatDateTime(brief.eventEndsAt, timeZone)}` : ""}
-                </li>
-                <li>
-                  People:{" "}
-                  {brief.knownPeople.length > 0 ? brief.knownPeople.join(", ") : "none recorded"}
-                </li>
-                <li>
-                  Organizations:{" "}
-                  {brief.knownOrganizations.length > 0
-                    ? brief.knownOrganizations.join(", ")
-                    : "none recorded"}
-                </li>
-                {brief.whyNow.map((line) => (
-                  <li key={line}>Why now: {line}</li>
-                ))}
-              </ul>
-            </section>
+        )}
 
-            <section
-              aria-labelledby={`needs-confirmation-${opportunityId}`}
-              className={styles.register}
-            >
-              <h4 id={`needs-confirmation-${opportunityId}`}>Needs confirmation</h4>
-              <ul>
-                <li>
-                  <label htmlFor={`title-${opportunityId}`}>Shoot title</label>
-                  <input
-                    aria-describedby={errors.title ? `title-error-${opportunityId}` : undefined}
-                    aria-invalid={errors.title ? true : undefined}
-                    id={`title-${opportunityId}`}
-                    maxLength={SHOOT_TITLE_MAX}
-                    name="title"
-                    onChange={(event) => setTitle(event.target.value)}
-                    type="text"
-                    value={title}
-                  />
-                  {errors.title && (
-                    <small className="auth-error" id={`title-error-${opportunityId}`} role="alert">
-                      {errors.title}
-                    </small>
-                  )}
-                </li>
-                <li className={styles.confirmRow}>
-                  <input
-                    checked={confirmLocation}
-                    id={`confirm-location-${opportunityId}`}
-                    name="confirmLocation"
-                    onChange={(event) => setConfirmLocation(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <div>
-                    <label htmlFor={`confirm-location-${opportunityId}`}>
-                      Confirm the location
-                    </label>
-                    <small>
-                      {brief.knownLocation
-                        ? `Recorded: ${brief.knownLocation}`
-                        : "Not recorded on the story."}
-                    </small>
-                    <input
-                      aria-label="Location"
-                      disabled={!confirmLocation}
-                      maxLength={SHOOT_LOCATION_MAX}
-                      name="locationName"
-                      onChange={(event) => setLocationName(event.target.value)}
-                      type="text"
-                      value={locationName}
-                    />
-                    {errors.locationName && (
-                      <small className="auth-error" role="alert">
-                        {errors.locationName}
-                      </small>
-                    )}
-                  </div>
-                </li>
-                <li className={styles.confirmRow}>
-                  <input
-                    checked={confirmTime}
-                    id={`confirm-time-${opportunityId}`}
-                    name="confirmTime"
-                    onChange={(event) => setConfirmTime(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <div>
-                    <label htmlFor={`confirm-time-${opportunityId}`}>
-                      Confirm the event date and time
-                    </label>
-                    <small>
-                      {brief.eventStartsAt
-                        ? `Recorded: ${formatDateTime(brief.eventStartsAt, timeZone)}`
-                        : "Not recorded on the story."}
-                    </small>
-                    <input
-                      aria-label="Starts"
-                      disabled={!confirmTime}
-                      name="startsAt"
-                      onChange={(event) => setStartsAt(event.target.value)}
-                      type="datetime-local"
-                      value={startsAt}
-                    />
-                    <input
-                      aria-label="Ends"
-                      disabled={!confirmTime}
-                      name="endsAt"
-                      onChange={(event) => setEndsAt(event.target.value)}
-                      type="datetime-local"
-                      value={endsAt}
-                    />
-                    {(errors.startsAt || errors.endsAt) && (
-                      <small className="auth-error" role="alert">
-                        {errors.startsAt ?? errors.endsAt}
-                      </small>
-                    )}
-                  </div>
-                </li>
-                <li className={styles.confirmRow}>
-                  <input
-                    checked={confirmTimezone}
-                    id={`confirm-timezone-${opportunityId}`}
-                    name="confirmTimezone"
-                    onChange={(event) => setConfirmTimezone(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <div>
-                    <label htmlFor={`confirm-timezone-${opportunityId}`}>
-                      Confirm the time zone
-                    </label>
-                    <small>Workspace default: {timeZone}</small>
-                    <input
-                      aria-label="Time zone"
-                      disabled={!confirmTimezone}
-                      name="timezone"
-                      onChange={(event) => setTimezone(event.target.value)}
-                      type="text"
-                      value={timezone}
-                    />
-                    {errors.timezone && (
-                      <small className="auth-error" role="alert">
-                        {errors.timezone}
-                      </small>
-                    )}
-                  </div>
-                </li>
-                <li>
-                  <span id={`people-${opportunityId}`}>People expected to appear</span>
-                  <small className="section-note">
-                    {brief.knownPeople.length > 0
-                      ? " Tick only those you have reason to expect. Nobody is confirmed to appear by the story alone."
-                      : " None recorded on the story."}
+        {/* Hidden, not unmounted, at the confirm step: the confirmed fields
+            are real inputs, and the form action serializes only what is in
+            the DOM -- an unmounted register posts a confirmation with no
+            title, no location and no people, which the server refuses.
+            Hiding also keeps the person's entries when they step back. */}
+        <div className={styles.registers} hidden={step === "confirm"}>
+          <section aria-labelledby={`recorded-facts-${opportunityId}`} className={styles.register}>
+            <h4 id={`recorded-facts-${opportunityId}`}>Recorded facts</h4>
+            <ul>
+              <li>Story: {storyTitle}</li>
+              <li>Location: {brief.knownLocation ?? "none recorded"}</li>
+              <li>
+                Event:{" "}
+                {brief.eventStartsAt
+                  ? formatDateTime(brief.eventStartsAt, timeZone)
+                  : "no time recorded"}
+                {brief.eventEndsAt ? ` → ${formatDateTime(brief.eventEndsAt, timeZone)}` : ""}
+              </li>
+              <li>
+                People:{" "}
+                {brief.knownPeople.length > 0 ? brief.knownPeople.join(", ") : "none recorded"}
+              </li>
+              <li>
+                Organizations:{" "}
+                {brief.knownOrganizations.length > 0
+                  ? brief.knownOrganizations.join(", ")
+                  : "none recorded"}
+              </li>
+              {brief.whyNow.map((line) => (
+                <li key={line}>Why now: {line}</li>
+              ))}
+            </ul>
+          </section>
+
+          <section
+            aria-labelledby={`needs-confirmation-${opportunityId}`}
+            className={styles.register}
+          >
+            <h4 id={`needs-confirmation-${opportunityId}`}>Needs confirmation</h4>
+            <ul>
+              <li>
+                <label htmlFor={`title-${opportunityId}`}>Shoot title</label>
+                <input
+                  aria-describedby={errors.title ? `title-error-${opportunityId}` : undefined}
+                  aria-invalid={errors.title ? true : undefined}
+                  id={`title-${opportunityId}`}
+                  maxLength={SHOOT_TITLE_MAX}
+                  name="title"
+                  onChange={(event) => setTitle(event.target.value)}
+                  type="text"
+                  value={title}
+                />
+                {errors.title && (
+                  <small className="auth-error" id={`title-error-${opportunityId}`} role="alert">
+                    {errors.title}
                   </small>
-                  <ul aria-labelledby={`people-${opportunityId}`}>
-                    {brief.knownPeople.map((name) => (
-                      <li className={styles.confirmRow} key={name}>
-                        <input
-                          checked={people.includes(name)}
-                          id={`person-${opportunityId}-${name}`}
-                          name="people"
-                          onChange={(event) => togglePerson(name, event.target.checked)}
-                          type="checkbox"
-                          value={name}
-                        />
-                        <label htmlFor={`person-${opportunityId}-${name}`}>{name}</label>
-                      </li>
-                    ))}
-                  </ul>
-                  {errors.people && (
+                )}
+              </li>
+              <li className={styles.confirmRow}>
+                <input
+                  checked={confirmLocation}
+                  id={`confirm-location-${opportunityId}`}
+                  name="confirmLocation"
+                  onChange={(event) => setConfirmLocation(event.target.checked)}
+                  type="checkbox"
+                />
+                <div>
+                  <label htmlFor={`confirm-location-${opportunityId}`}>Confirm the location</label>
+                  <small>
+                    {brief.knownLocation
+                      ? `Recorded: ${brief.knownLocation}`
+                      : "Not recorded on the story."}
+                  </small>
+                  <input
+                    aria-label="Location"
+                    disabled={!confirmLocation}
+                    maxLength={SHOOT_LOCATION_MAX}
+                    name="locationName"
+                    onChange={(event) => setLocationName(event.target.value)}
+                    type="text"
+                    value={locationName}
+                  />
+                  {errors.locationName && (
                     <small className="auth-error" role="alert">
-                      {errors.people}
+                      {errors.locationName}
                     </small>
                   )}
-                </li>
-                <li>
-                  <label htmlFor={`priority-${opportunityId}`}>Priority</label>
-                  <select
-                    id={`priority-${opportunityId}`}
-                    name="priority"
-                    onChange={(event) =>
-                      setPriority(event.target.value as (typeof SHOOT_PRIORITIES)[number])
-                    }
-                    value={priority}
-                  >
-                    {SHOOT_PRIORITIES.map((value) => (
-                      <option key={value} value={value}>
-                        {PRIORITY_LABELS[value]}
-                      </option>
-                    ))}
-                  </select>
-                </li>
-                {brief.missingConfirmations.length > 0 && (
-                  <li>
-                    <span>The evaluator listed as missing:</span>
-                    <ul className={styles.summaryList}>
-                      {brief.missingConfirmations.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </li>
-                )}
-              </ul>
-            </section>
-
-            <section aria-labelledby={`suggestions-${opportunityId}`} className={styles.register}>
-              <h4 id={`suggestions-${opportunityId}`}>Suggestions — not facts</h4>
-              {suggestionKeys.length === 0 ? (
-                <p className="section-note">
-                  Nothing to suggest: no people or location are recorded.
-                </p>
-              ) : (
-                <ul>
-                  {suggestionKeys.map((suggestion) => (
-                    <li className={styles.confirmRow} key={suggestion.key}>
+                </div>
+              </li>
+              <li className={styles.confirmRow}>
+                <input
+                  checked={confirmTime}
+                  id={`confirm-time-${opportunityId}`}
+                  name="confirmTime"
+                  onChange={(event) => setConfirmTime(event.target.checked)}
+                  type="checkbox"
+                />
+                <div>
+                  <label htmlFor={`confirm-time-${opportunityId}`}>
+                    Confirm the event date and time
+                  </label>
+                  <small>
+                    {brief.eventStartsAt
+                      ? `Recorded: ${formatDateTime(brief.eventStartsAt, timeZone)}`
+                      : "Not recorded on the story."}
+                  </small>
+                  <input
+                    aria-label="Starts"
+                    disabled={!confirmTime}
+                    name="startsAt"
+                    onChange={(event) => setStartsAt(event.target.value)}
+                    type="datetime-local"
+                    value={startsAt}
+                  />
+                  <input
+                    aria-label="Ends"
+                    disabled={!confirmTime}
+                    name="endsAt"
+                    onChange={(event) => setEndsAt(event.target.value)}
+                    type="datetime-local"
+                    value={endsAt}
+                  />
+                  {(errors.startsAt || errors.endsAt) && (
+                    <small className="auth-error" role="alert">
+                      {errors.startsAt ?? errors.endsAt}
+                    </small>
+                  )}
+                </div>
+              </li>
+              <li className={styles.confirmRow}>
+                <input
+                  checked={confirmTimezone}
+                  id={`confirm-timezone-${opportunityId}`}
+                  name="confirmTimezone"
+                  onChange={(event) => setConfirmTimezone(event.target.checked)}
+                  type="checkbox"
+                />
+                <div>
+                  <label htmlFor={`confirm-timezone-${opportunityId}`}>Confirm the time zone</label>
+                  <small>Workspace default: {timeZone}</small>
+                  <input
+                    aria-label="Time zone"
+                    disabled={!confirmTimezone}
+                    name="timezone"
+                    onChange={(event) => setTimezone(event.target.value)}
+                    type="text"
+                    value={timezone}
+                  />
+                  {errors.timezone && (
+                    <small className="auth-error" role="alert">
+                      {errors.timezone}
+                    </small>
+                  )}
+                </div>
+              </li>
+              <li>
+                <span id={`people-${opportunityId}`}>People expected to appear</span>
+                <small className="section-note">
+                  {brief.knownPeople.length > 0
+                    ? " Tick only those you have reason to expect. Nobody is confirmed to appear by the story alone."
+                    : " None recorded on the story."}
+                </small>
+                <ul aria-labelledby={`people-${opportunityId}`}>
+                  {brief.knownPeople.map((name) => (
+                    <li className={styles.confirmRow} key={name}>
                       <input
-                        checked={copied.includes(suggestion.key)}
-                        id={`copy-${opportunityId}-${suggestion.key}`}
-                        name="copiedSuggestions"
-                        onChange={(event) => toggleCopied(suggestion.key, event.target.checked)}
+                        checked={people.includes(name)}
+                        id={`person-${opportunityId}-${name}`}
+                        name="people"
+                        onChange={(event) => togglePerson(name, event.target.checked)}
                         type="checkbox"
-                        value={suggestion.key}
+                        value={name}
                       />
-                      <div>
-                        <label htmlFor={`copy-${opportunityId}-${suggestion.key}`}>
-                          <span className={styles.suggested}>{suggestion.label}</span>
-                          {suggestion.text}
-                        </label>
-                        <small>
-                          Ticked: copied into the notes, labelled as a suggestion. It never becomes
-                          the story angle here.
-                        </small>
-                      </div>
+                      <label htmlFor={`person-${opportunityId}-${name}`}>{name}</label>
                     </li>
                   ))}
                 </ul>
-              )}
-              <div
-                className={styles.confirmRow}
-                style={{ gridTemplateColumns: "minmax(0, 1fr)", marginTop: 10 }}
-              >
-                <label htmlFor={`own-notes-${opportunityId}`}>Your own notes</label>
-                <textarea
-                  id={`own-notes-${opportunityId}`}
-                  maxLength={SHOOT_NOTES_MAX}
-                  name="ownNotes"
-                  onChange={(event) => setOwnNotes(event.target.value)}
-                  rows={3}
-                  value={ownNotes}
-                />
-                {errors.ownNotes && (
+                {errors.people && (
                   <small className="auth-error" role="alert">
-                    {errors.ownNotes}
+                    {errors.people}
                   </small>
                 )}
-              </div>
-            </section>
-
-            <section aria-labelledby={`will-add-${opportunityId}`} className={styles.register}>
-              <h4 id={`will-add-${opportunityId}`}>Will be added to the draft</h4>
-              <ul className={styles.summaryList}>
-                {willAdd.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-              {unconfirmed.length > 0 && (
-                <>
-                  <h4>Still unconfirmed</h4>
-                  <ul className={`${styles.summaryList} ${styles.warn}`}>
-                    {unconfirmed.map((item) => (
+              </li>
+              <li>
+                <label htmlFor={`priority-${opportunityId}`}>Priority</label>
+                <select
+                  id={`priority-${opportunityId}`}
+                  name="priority"
+                  onChange={(event) =>
+                    setPriority(event.target.value as (typeof SHOOT_PRIORITIES)[number])
+                  }
+                  value={priority}
+                >
+                  {SHOOT_PRIORITIES.map((value) => (
+                    <option key={value} value={value}>
+                      {PRIORITY_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+              </li>
+              {brief.missingConfirmations.length > 0 && (
+                <li>
+                  <span>The evaluator listed as missing:</span>
+                  <ul className={styles.summaryList}>
+                    {brief.missingConfirmations.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
-                </>
+                </li>
               )}
-            </section>
-          </div>
-        )}
+            </ul>
+          </section>
+
+          <section aria-labelledby={`suggestions-${opportunityId}`} className={styles.register}>
+            <h4 id={`suggestions-${opportunityId}`}>Suggestions — not facts</h4>
+            {suggestionKeys.length === 0 ? (
+              <p className="section-note">
+                Nothing to suggest: no people or location are recorded.
+              </p>
+            ) : (
+              <ul>
+                {suggestionKeys.map((suggestion) => (
+                  <li className={styles.confirmRow} key={suggestion.key}>
+                    <input
+                      checked={copied.includes(suggestion.key)}
+                      id={`copy-${opportunityId}-${suggestion.key}`}
+                      name="copiedSuggestions"
+                      onChange={(event) => toggleCopied(suggestion.key, event.target.checked)}
+                      type="checkbox"
+                      value={suggestion.key}
+                    />
+                    <div>
+                      <label htmlFor={`copy-${opportunityId}-${suggestion.key}`}>
+                        <span className={styles.suggested}>{suggestion.label}</span>
+                        {suggestion.text}
+                      </label>
+                      <small>
+                        Ticked: copied into the notes, labelled as a suggestion. It never becomes
+                        the story angle here.
+                      </small>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div
+              className={styles.confirmRow}
+              style={{ gridTemplateColumns: "minmax(0, 1fr)", marginTop: 10 }}
+            >
+              <label htmlFor={`own-notes-${opportunityId}`}>Your own notes</label>
+              <textarea
+                id={`own-notes-${opportunityId}`}
+                maxLength={SHOOT_NOTES_MAX}
+                name="ownNotes"
+                onChange={(event) => setOwnNotes(event.target.value)}
+                rows={3}
+                value={ownNotes}
+              />
+              {errors.ownNotes && (
+                <small className="auth-error" role="alert">
+                  {errors.ownNotes}
+                </small>
+              )}
+            </div>
+          </section>
+
+          <section aria-labelledby={`will-add-${opportunityId}`} className={styles.register}>
+            <h4 id={`will-add-${opportunityId}`}>Will be added to the draft</h4>
+            <ul className={styles.summaryList}>
+              {willAdd.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {unconfirmed.length > 0 && (
+              <>
+                <h4>Still unconfirmed</h4>
+                <ul className={`${styles.summaryList} ${styles.warn}`}>
+                  {unconfirmed.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </section>
+        </div>
       </div>
 
       <aside aria-label="Confirmation summary" className={styles.rail}>
@@ -635,8 +633,15 @@ export function ShootHandoff({
             allowed; what is unconfirmed stays unconfirmed on it.
           </p>
           <div className={styles.actions}>
+            {/* Keyed, so the step change MOUNTS a fresh button instead of
+                morphing the reviewed one in place. Without the keys, React
+                reuses the DOM node, and the trailing half of the click or
+                Enter that pressed "Review the draft" lands on what has
+                silently become the submit button -- creating the draft
+                without the person ever pressing Create. */}
             {step === "review" ? (
               <button
+                key="review"
                 className="button blue"
                 disabled={!canReview || pending}
                 onClick={() => setStep("confirm")}
@@ -646,10 +651,16 @@ export function ShootHandoff({
               </button>
             ) : (
               <>
-                <button className="button blue" disabled={pending || !canReview} type="submit">
+                <button
+                  key="create"
+                  className="button blue"
+                  disabled={pending || !canReview}
+                  type="submit"
+                >
                   {pending ? "Creating draft…" : "Create draft shoot"}
                 </button>
                 <button
+                  key="back"
                   className="button"
                   disabled={pending}
                   onClick={() => setStep("review")}
