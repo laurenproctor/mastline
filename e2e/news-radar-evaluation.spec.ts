@@ -231,7 +231,10 @@ test("the shoot path needs context until where and when are recorded, then brief
     await expect(page.getByText("Suggested angle").first()).toBeVisible();
     await expect(page.getByText("Avery Hart at Hotel Chelsea").first()).toBeVisible();
     await expect(page.getByText("Suggested shot").first()).toBeVisible();
-    await expect(page.getByText(/a recorded name is not a confirmed appearance/)).toBeVisible();
+    // The appearance caveat is also repeated by the handoff region below.
+    await expect(
+      page.getByText(/a recorded name is not a confirmed appearance/).first(),
+    ).toBeVisible();
     // The handoff region offers the review of the brief; creating is behind
     // an explicit confirmation step and never on this screen's first click.
     await expect(page.getByRole("button", { name: "Review the draft" })).toBeVisible();

@@ -265,6 +265,12 @@ async function evaluate(page: Page, opportunityId: string): Promise<void> {
  * "Try again", and the handoff's idempotency answers the re-render with the
  * record that was made. Returns "status" when the in-place result rendered,
  * "recovered" when the boundary path was taken.
+ *
+ * A REFUSAL is a third possibility: the action can answer with a classified
+ * outcome (stale evaluation, invalid selection, failed) rendered as an
+ * in-place alert -- neither the status nor the boundary. Waiting past it
+ * turned a named refusal into a silent two-minute timeout, so instead it
+ * fails the journey immediately, with the refusal's own words in the error.
  */
 async function settleAfterCreate(
   page: Page,
@@ -272,8 +278,12 @@ async function settleAfterCreate(
   handedOffText: string,
 ): Promise<"status" | "recovered"> {
   const boundary = page.getByRole("button", { name: "Try again" });
-  await expect(status.or(boundary).first()).toBeVisible({ timeout: 120_000 });
+  const refusal = page.getByRole("alert");
+  await expect(status.or(boundary).or(refusal).first()).toBeVisible({ timeout: 120_000 });
   if (await status.isVisible().catch(() => false)) return "status";
+  if (!(await boundary.isVisible().catch(() => false))) {
+    throw new Error(`The handoff was refused: ${await refusal.first().innerText()}`);
+  }
   await boundary.click();
   await expect(page.getByText(handedOffText)).toBeVisible({ timeout: 120_000 });
   return "recovered";
