@@ -10,6 +10,7 @@ import {
   setSubmissionFollowUp,
 } from "@/lib/data/submissions";
 import { listAssets } from "@/lib/data/assets";
+import { listMetadata } from "@/lib/data/asset-metadata";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { DEFAULT_DELIVERY_WINDOW, isDeliveryWindow } from "@/lib/delivery";
 import { reviewDispatch } from "@/lib/dispatch-rules";
@@ -152,12 +153,16 @@ export async function createPrivateDeliveryAction(
   if (!pkg.approvedAt) {
     // The last gate re-runs the checks; the page that rendered the button may
     // be stale.
-    const [assets, buyers] = await Promise.all([
+    const [assets, buyers, metadata] = await Promise.all([
       listAssets(organizationId, { shootId: pkg.shootId }),
       listWorkspaceBuyers(organizationId),
+      listMetadata(
+        organizationId,
+        pkg.assets.map((entry) => entry.assetId),
+      ),
     ]);
     const buyer = buyers.find((candidate) => candidate.id === pkg.buyerId) ?? null;
-    const review = reviewDispatch({ pkg, assets, buyer });
+    const review = reviewDispatch({ pkg, assets, buyer, metadata });
     if (!review.isApprovable) {
       return {
         error: `Not ready: ${review.blocking.map((check) => check.title.toLowerCase()).join(", ")}.`,

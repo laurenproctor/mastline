@@ -22,6 +22,10 @@ vi.mock("@/lib/session-context", () => ({
     canonicalSlug: "studio",
   })),
 }));
+// Reached through data/imports, which now creates the photograph metadata
+// record at registration; the module carries "server-only", which a jsdom
+// import would throw on.
+vi.mock("@/lib/data/asset-metadata", () => ({ ensureMetadataRecord: vi.fn(async () => {}) }));
 vi.mock("@/lib/data/work-queue-page", () => ({
   loadWorkQueuePage: vi.fn(async () => ({ dashboard: state.dashboard, activity: state.activity })),
 }));

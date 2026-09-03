@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PhotographMetadata } from "./asset-metadata";
 import type { Asset } from "./domain";
 import { money } from "./money";
 import { BASELINE_RULES, reviewAsset, reviewSelection } from "./metadata-rules";
@@ -24,6 +25,40 @@ function asset(overrides: Partial<Asset> = {}): Asset {
     captionHistory: [],
     lifetimeEarnings: money(0),
     ...overrides,
+  };
+}
+
+/** A metadata record at one stage, for the rule that reads one. */
+function metadataRecord(
+  generationStatus: PhotographMetadata["generationStatus"],
+): PhotographMetadata {
+  return {
+    assetId: "ast_1",
+    organizationId: "org_1",
+    generationStatus,
+    generationAttempts: 1,
+    fieldConfidence: {},
+    generatedValues: {},
+    technical: { raw: {} },
+    editorial: {
+      subjects: [],
+      objects: [],
+      clothing: [],
+      brands: [],
+      keywords: [],
+      sensitivity: "none",
+    },
+    rights: {
+      editorialUseOnly: true,
+      commercialUseEligible: "unknown",
+      modelReleaseStatus: "unknown",
+      propertyReleaseStatus: "unknown",
+      sensitiveOrMinor: false,
+    },
+    manualOverrides: [],
+    metadataSource: "ai_generated",
+    version: 2,
+    updatedAt: "2026-08-19T10:00:00.000Z",
   };
 }
 
@@ -62,9 +97,38 @@ describe("required metadata", () => {
   });
 
   it("scores required completion without counting recommendations", () => {
-    // 4 required rules; one missing.
+    // Derived rather than hard-coded: a rule added to the baseline changes this
+    // figure, and a test that had to be re-typed each time would eventually be
+    // re-typed wrongly.
+    const required = BASELINE_RULES.filter((rule) => rule.severity === "required").length;
     const report = reviewAsset(asset({ caption: undefined }));
-    expect(report.requiredCompletionPercent).toBe(75);
+    expect(report.requiredCompletionPercent).toBe(Math.round(((required - 1) / required) * 100));
+    expect(report.missingRequired.map((rule) => rule.field)).toEqual(["caption"]);
+  });
+
+  it("counts an unconfirmed generated record as a required gap", () => {
+    // The rule that connects this module to the metadata record: a machine's
+    // words may not reach a desk unread, however complete the asset looks.
+    const report = reviewAsset(asset(), undefined, metadataRecord("needs_review"));
+    expect(report.isDispatchReady).toBe(false);
+    expect(report.missingRequired.map((rule) => rule.field)).toEqual(["metadataConfirmed"]);
+  });
+
+  it("holds a frame while its metadata is still being generated", () => {
+    expect(reviewAsset(asset(), undefined, metadataRecord("queued")).isDispatchReady).toBe(false);
+  });
+
+  it("passes a confirmed record", () => {
+    const record = {
+      ...metadataRecord("confirmed"),
+      confirmedAt: "2026-08-27T09:00:00.000Z",
+      confirmedBy: "usr_1",
+    };
+    expect(reviewAsset(asset(), undefined, record).isDispatchReady).toBe(true);
+  });
+
+  it("passes a photograph with no metadata record, which is a hand-captioned one", () => {
+    expect(reviewAsset(asset(), undefined, null).isDispatchReady).toBe(true);
   });
 });
 

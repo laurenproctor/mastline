@@ -38,6 +38,19 @@ export function supabaseServiceRoleKey(): string {
 }
 
 /**
+ * Whether this deployment holds a service role key at all.
+ *
+ * Read without throwing, because the caller is asking a capability question --
+ * "can a worker run here?" -- and the honest answer for a deployment without
+ * the key is no, not an exception. Returns false in the browser rather than
+ * throwing: the question has an answer there too, and it is no.
+ */
+export function hasServiceRoleKey(): boolean {
+  if (typeof window !== "undefined") return false;
+  return Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+/**
  * Where a resumable upload is created.
  *
  * Supabase asks for the direct storage hostname rather than the API gateway:

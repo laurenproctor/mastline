@@ -10,6 +10,7 @@
  * is never dropped because a particular buyer did not ask for it.
  */
 
+import { type PhotographMetadata, blockingMetadataReasons, describeStatus } from "./asset-metadata";
 import type { Asset, Buyer, DispatchPackage } from "./domain";
 import { reviewSelection } from "./metadata-rules";
 
@@ -22,6 +23,11 @@ export interface DispatchCheck {
   readonly status: CheckStatus;
   /** What to do about it. Empty when the check passes. */
   readonly remedy?: string;
+  /**
+   * The photographs this check is about, named so the interface can link
+   * straight to them rather than telling somebody to go and find them.
+   */
+  readonly assetIds?: readonly string[];
 }
 
 export interface DispatchReview {
@@ -36,9 +42,17 @@ export interface DispatchInput {
   readonly pkg: DispatchPackage;
   readonly assets: readonly Asset[];
   readonly buyer: Buyer | null;
+  /**
+   * Structured metadata by asset id, where it has been loaded.
+   *
+   * Absent means "not loaded", not "none exists", so an omitted map produces
+   * the review this function always produced. Every caller that gates a real
+   * dispatch passes it -- the action does, and the action is the last gate.
+   */
+  readonly metadata?: ReadonlyMap<string, PhotographMetadata>;
 }
 
-export function reviewDispatch({ pkg, assets, buyer }: DispatchInput): DispatchReview {
+export function reviewDispatch({ pkg, assets, buyer, metadata }: DispatchInput): DispatchReview {
   const checks: DispatchCheck[] = [];
 
   // Selection ---------------------------------------------------------------
@@ -118,19 +132,22 @@ export function reviewDispatch({ pkg, assets, buyer }: DispatchInput): DispatchR
   const packaged = pkg.assets
     .map((entry) => byId.get(entry.assetId))
     .filter((asset): asset is Asset => Boolean(asset));
-  const metadata = reviewSelection(packaged);
+  const completeness = reviewSelection(packaged, undefined, metadata);
 
-  if (metadata.blocked > 0) {
+  if (completeness.blocked > 0) {
     const fields = new Set<string>();
-    for (const report of metadata.reports) {
+    for (const report of completeness.reports) {
       for (const rule of report.missingRequired) fields.add(rule.label.toLowerCase());
     }
     checks.push({
       id: "metadata",
       title: "Captions and attribution",
-      detail: `${metadata.blocked} of ${metadata.total} ${metadata.blocked === 1 ? "asset is" : "assets are"} missing required metadata.`,
+      detail: `${completeness.blocked} of ${completeness.total} ${completeness.blocked === 1 ? "asset is" : "assets are"} missing required metadata.`,
       status: "blocked",
       remedy: `Complete ${[...fields].join(", ")} on the affected frames.`,
+      assetIds: completeness.reports
+        .filter((report) => !report.isDispatchReady)
+        .map((report) => report.assetId),
     });
   } else {
     checks.push({
@@ -141,8 +158,49 @@ export function reviewDispatch({ pkg, assets, buyer }: DispatchInput): DispatchR
     });
   }
 
+  /*
+   * The metadata review, named separately from completeness.
+   *
+   * "Missing a caption" and "carrying a caption a machine wrote that nobody has
+   * read" are different problems with different remedies, and rolling them into
+   * one line would tell a photographer to write a caption that is already
+   * there. Both block; only this one names confirmation.
+   */
+  if (metadata) {
+    const unreviewed = packaged
+      .map((asset) => ({ asset, record: metadata.get(asset.id) ?? null }))
+      .filter((entry) => blockingMetadataReasons(entry.record).length > 0);
+
+    if (unreviewed.length > 0) {
+      const reasons = new Set<string>();
+      for (const entry of unreviewed) {
+        for (const reason of blockingMetadataReasons(entry.record)) reasons.add(reason);
+      }
+      const stillRunning = unreviewed.filter((entry) => describeStatus(entry.record).inFlight);
+
+      checks.push({
+        id: "metadata_review",
+        title: "Metadata review",
+        detail: `${unreviewed.length} ${unreviewed.length === 1 ? "photograph is" : "photographs are"} not cleared: ${[...reasons].join("; ")}.`,
+        status: "blocked",
+        remedy:
+          stillRunning.length === unreviewed.length
+            ? "Generation is still running. This clears itself once it finishes and you confirm."
+            : "Open each photograph, read the metadata, and confirm it describes the frame.",
+        assetIds: unreviewed.map((entry) => entry.asset.id),
+      });
+    } else {
+      checks.push({
+        id: "metadata_review",
+        title: "Metadata review",
+        detail: "Every photograph's metadata has been confirmed by a person.",
+        status: "pass",
+      });
+    }
+  }
+
   const recommendations = new Set<string>();
-  for (const report of metadata.reports) {
+  for (const report of completeness.reports) {
     for (const rule of report.missingRecommended) recommendations.add(rule.label.toLowerCase());
   }
   if (recommendations.size > 0) {

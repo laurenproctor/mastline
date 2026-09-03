@@ -405,6 +405,59 @@ export async function applyMetadataToMany(input: {
   return { updated };
 }
 
+/**
+ * Push a confirmed metadata record's words onto the asset row.
+ *
+ * Called by the confirm step in src/lib/data/asset-metadata.ts, because the
+ * asset's own caption fields are what a dispatch actually sends. Fields the
+ * record does not carry keep their current values -- confirming a record with
+ * no headline must not blank one somebody typed.
+ *
+ * `captionReviewed` is passed only when the record carries a caption of its
+ * own: the photographer read that sentence in the panel and put their name to
+ * it, which is exactly what the caption-review gate asks for. A record with no
+ * caption asserts nothing about the caption already on the asset, so a model
+ * draft sitting there stays unread and keeps blocking dispatch -- confirming
+ * structured metadata must never launder an unread caption through the gate.
+ */
+export async function publishConfirmedMetadata(input: {
+  organizationId: Id;
+  actorId: Id;
+  assetId: Id;
+  editorial: {
+    headline?: string;
+    caption?: string;
+    subjects: readonly string[];
+    keywords: readonly string[];
+  };
+  client?: SupabaseClient;
+}): Promise<void> {
+  const { organizationId, actorId, assetId, editorial } = input;
+  const current = await getAsset(organizationId, assetId, input.client);
+  if (!current) return;
+
+  const confirmedCaption =
+    typeof editorial.caption === "string" && editorial.caption.trim().length > 0;
+
+  await updateAssetMetadata({
+    organizationId,
+    actorId,
+    assetId,
+    client: input.client,
+    metadata: {
+      headline: editorial.headline ?? current.headline,
+      caption: editorial.caption ?? current.caption,
+      subjects: editorial.subjects.length > 0 ? [...editorial.subjects] : [...current.subjects],
+      locationName: current.locationName,
+      keywords: editorial.keywords.length > 0 ? [...editorial.keywords] : [...current.keywords],
+      creditLine: current.creditLine,
+      copyrightNotice: current.copyrightNotice,
+      usageRestrictions: current.usageRestrictions,
+    },
+    ...(confirmedCaption ? { captionReviewed: true } : {}),
+  });
+}
+
 export async function setSelection(input: {
   organizationId: Id;
   actorId: Id;
