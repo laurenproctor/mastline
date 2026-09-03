@@ -1068,3 +1068,42 @@ export async function purgeApprovedShoot(
     });
   }
 }
+
+/**
+ * Remove the money records one journey created: the payment first, whose
+ * allocations go with it by cascade, then the license.
+ *
+ * Addressed by the run's own unique reference and licensee rather than by id,
+ * because the ids belong to the server actions and the test never sees them.
+ * Failures are surfaced for the same reason clearDeliveryLinks surfaces them:
+ * money a cleanup quietly leaves behind inflates every later run's figures.
+ */
+export async function purgeMoneyRecords(input: {
+  paymentReference?: string;
+  licenseeName?: string;
+}): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up money records.");
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
+  const ORG = "aaaaaaaa-0000-0000-0000-000000000001";
+
+  async function remove(table: string, filter: string): Promise<void> {
+    const response = await fetch(`${url}/rest/v1/${table}?organization_id=eq.${ORG}&${filter}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Could not clean up ${table} (HTTP ${response.status}): ${await response.text()}`,
+      );
+    }
+  }
+
+  if (input.paymentReference) {
+    await remove("payments", `external_reference=eq.${encodeURIComponent(input.paymentReference)}`);
+  }
+  if (input.licenseeName) {
+    await remove("licenses", `licensee_name=eq.${encodeURIComponent(input.licenseeName)}`);
+  }
+}
