@@ -1,13 +1,17 @@
 # News Radar
 
-One canonical news signal, two independent evaluation paths, and — since
-migration `20260831100000` — a deterministic evaluator that answers both
-paths' standing questions from recorded facts alone.
+One canonical news signal, two independent evaluation paths, a deterministic
+evaluator that answers both paths' standing questions from recorded facts
+alone (migration `20260831100000`), and — since `20260831110000` — two
+controlled handoffs that turn an evaluation into a draft the photographer
+then works through the existing package and shoot workflows.
 
 ```text
 news_signal ─┬─ opportunity (archive_match) ─── opportunity_evaluations ─── opportunity_asset_matches ─── assets
+             │                └── opportunity_handoffs (package_draft) ─── packages ─── package_assets
              │
              └─ opportunity (shoot_opportunity) ─ opportunity_evaluations ─── opportunity_shoot_briefs
+                              └── opportunity_handoffs (shoot_draft) ───── shoots
 
 news_signal ─┬─ news_signal_context   (one typed row: location, event time, window)
              └─ news_signal_entities  (people, organizations, topics, keywords)
@@ -174,8 +178,10 @@ confirmed appearance, buyer demand, expected value.
   stack: the only findings on the new objects are `unused_index` (fresh
   database) and `pg_graphql_authenticated_table_exposed`, which every
   member-readable table in the schema shares.
-- Nothing writes `assets` (not `selected`), and no package, shoot,
-  submission, buyer, license or delivery record is created. Tests prove both.
+- The evaluator writes nothing to `assets` (not `selected`) and creates no
+  package, shoot, submission, buyer, license or delivery record. The handoffs
+  (below) create exactly one draft package or one draft shoot, and nothing
+  else. Tests prove both.
 
 ## Migration order
 
@@ -184,10 +190,131 @@ confirmed appearance, buyer demand, expected value.
 `20260831090000_submission_asset_snapshots.sql` (PR #16), which must merge
 first.
 
+## Handoffs: from evaluation to draft
+
+An evaluated path can be acted on once, from its own screen, through one
+database function per path (`src/lib/data/news-radar-handoffs.ts`,
+`src/lib/news-radar-handoff.ts` for the pure rules). Both create a **draft**
+and nothing else, and both leave the evaluation, its matches, and its brief
+exactly as they were.
+
+### Archive → draft package
+
+The screen groups the recorded matches by the shoot they sit on and lets the
+person tick photographs one by one. Nothing is pre-selected. A photograph that
+cannot proceed says why in place and cannot be ticked: *restricted* (approval
+would refuse it later), *not on a shoot*, *no stored file*. Incomplete
+metadata and a recorded usage restriction are said, not refused. A
+confirmation step repeats the count, the story, the shoot, every warning, and
+the promises — draft package only, no recipient contacted, no delivery link,
+nothing approved or priced, metadata / rights / terms / recipient still to be
+reviewed — before the one button that writes.
+
+`handoff_archive_package(opportunity, evaluator, input_hash, asset_ids,
+request_key)` then, in one transaction:
+
+1. reads the path as the caller (another workspace's path does not exist);
+   refuses a role below owner/editor (`forbidden`), the wrong kind
+   (`not_found`), a path already handed off (`existing`), a closed path
+   (`path_closed`), a path with no result (`needs_context`), or an evaluation
+   identity other than the one on record (`stale_evaluation`);
+2. locks the path row, so two simultaneous confirmations serialize and the
+   second reads the first's handoff;
+3. checks the selection: non-empty, every id a recorded match of this path,
+   every frame readable in this workspace, none restricted, all on one shoot
+   (`invalid_selection` with `reason` and the offending ids; nothing is
+   trimmed on the person's behalf);
+4. creates the package exactly as the dispatch builder does — `draft`, one
+   `package_assets` row per frame in canonical-filename order naming the
+   delivery version where one exists and the original otherwise, then
+   `needs_review`; no buyer, no terms, `approved_at` null;
+5. writes the provenance row, records `package.created` on the package and
+   `opportunity.acted` on the path, and moves the path to `acted`.
+
+**Why one shoot.** A package belongs to a shoot and the package review reads
+its frames through that shoot. Widening that is a package-review change, not
+a radar change, so a selection across shoots (or a frame on no shoot) is
+refused with the reason. The screen locks the other shoots' checkboxes once a
+shoot is chosen and says so.
+
+### Shoot → draft shoot
+
+Four registers, visibly apart: **recorded facts** (story, location, event
+time, people, organizations, why-now), **needs confirmation** (title;
+location, event time and time zone each behind its own checkbox beside a
+value; people expected, one checkbox per recorded name; priority),
+**suggestions — not facts** (the brief's angle and shots, each behind a
+checkbox that copies it into the notes *as a suggestion*), and **will be
+added to the draft** (a live summary, with what remains unconfirmed listed).
+A confirmation step repeats the summary, what will remain unconfirmed, and
+the promises — no package, recipient, submission, delivery link or buyer; no
+access, credential, appearance or demand claimed — before the one button.
+
+`handoff_shoot_draft(opportunity, evaluator, input_hash, confirmed,
+request_key)` applies the same preamble, validates the confirmed fields
+(title 1..200, location ≤200, priority in the vocabulary, times readable and
+ordered, time zone present in `pg_timezone_names`), and creates one `draft`
+shoot with `opportunity_id` set, `story_angle` null, and notes assembled only
+from confirmed people ("People expected (confirmed by the photographer)") and
+deliberately copied suggestions ("… (News Radar suggestion, not confirmed)").
+An unconfirmed location, time, or time zone is left empty on the draft even
+when the brief knows it. The Server Action re-reads the brief and accepts
+only names and suggestions the brief offered, so the browser cannot smuggle a
+fact in through the confirm step.
+
+### Human-confirmation boundaries
+
+Never copied without a tick: location, event date/time, time zone, people
+expected, any suggestion. Never written anywhere: a confirmed appearance,
+access, credentials, buyer demand, expected value, rights clearance. Never
+done by the handoff: approval, submission, snapshot, recipient, delivery
+link, message, price, license, `assets.selected`.
+
+### Provenance and idempotency
+
+`opportunity_handoffs` — append-only — proves organization, path (composite
+foreign key including the kind), signal (composite), action type (checked
+against the kind: an archive path cannot carry a shoot handoff, a shoot path
+cannot carry a package handoff), evaluator version and input hash, exactly
+one of `(organization_id, package_id)` / `(organization_id, shoot_id)`
+(composite foreign keys; `shoots` gained `unique (organization_id, id)` for
+it), the confirmed details, the acting user (`created_by` pinned to
+`auth.uid()` by the insert policy), the time, and the request key. RLS is
+enabled and forced; members read; owner and editor insert; no update or
+delete policy or grant for any client, and a trigger refuses updates from
+the service role too. `unique (opportunity_id)` makes a path a one-time
+handoff; `unique (organization_id, request_key)` makes a retry a retry. The
+row lock makes concurrent duplicates serialize into one result. Every
+foreign key has a covering index.
+
+The confirmation form mints one request key per render; a double click, a
+retried request, or a re-posted form carries the same key and is answered
+`existing` with the original package or shoot. A second confirmation on a
+path that already has a handoff is answered the same way: the draft it made
+is authoritative from then on.
+
+### Stale evaluation
+
+The form carries the `result_evaluator_version` and `result_input_hash` it
+was rendered from. If either differs from the record at confirm time — the
+story gained context and was re-evaluated, or a newer evaluator ran — the
+function answers `stale_evaluation` and writes nothing; the screen says so
+and offers a reload. No database text reaches the interface: every answer is
+one of `created`, `existing`, `stale_evaluation`, `invalid_selection`,
+`needs_context`, `path_closed`, `forbidden`, `not_found`, `failed`.
+
+### Explicit non-actions
+
+A handoff never approves a package, creates a submission, snapshot, recipient
+or delivery link, sends anything, publishes, licenses, prices or submits a
+photograph, marks a shoot anything but `draft`, writes an asset, or changes
+the evaluation it was made from. Tests in `tests/news-radar-handoff.test.ts`
+and `e2e/news-radar-handoff.spec.ts` prove each of these.
+
 ## Deferred
 
-- Package handoff from archive matches (Build package stays disabled).
-- Shoot handoff carrying confirmed brief facts (Create shoot stays disabled).
+- Cross-shoot archive packages, once the package review reads frames through
+  `package_assets` rather than through the shoot.
 - Any ingestion: RSS, provider feeds, scraping, scheduled runs.
 - Enrichment from `asset_metadata` (city, venue, event name) once the
   generation job populates it; the scorer reads `assets` columns only today.

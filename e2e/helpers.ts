@@ -85,6 +85,21 @@ export async function signIn(
 }
 
 /**
+ * A per-test budget that depends on where the suite runs.
+ *
+ * The development machine is the loaded host: it sleeps, swaps, and serves
+ * pages in tens of seconds, so locally the long journeys get a generous
+ * allowance. The CI runner is quiet, and there the generous allowance is a
+ * hazard instead of a kindness: a genuinely failing test burns its whole
+ * budget on every attempt -- budget × three attempts × three projects -- which
+ * is how one bad locator can eat the workflow's entire ceiling. CI gets what
+ * a quiet runner needs and no more, so a failure is reported, not stretched.
+ */
+export function testBudget(quietRunnerMs: number, loadedHostMs: number): number {
+  return process.env.CI ? quietRunnerMs : loadedHostMs;
+}
+
+/**
  * Does the page scroll sideways?
  *
  * The most common responsive failure is a table or a grid that will not shrink,

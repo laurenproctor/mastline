@@ -214,15 +214,10 @@ export function ArchiveMatches({
         </ol>
       )}
 
-      <div className="actions">
-        <button className="button" disabled type="button">
-          Build package
-        </button>
-      </div>
       <p className="section-note">
-        Building a package from these matches is not wired in this phase: a match is a suggestion
-        with a stated basis, and the package handoff will select from it deliberately, on the
-        dispatch screen. Nothing here writes to a photograph or marks it selected.
+        A match is a suggestion with a stated basis. Building a draft package from these matches
+        happens below, by explicit selection and confirmation; nothing here writes to a photograph
+        or marks it selected.
       </p>
     </div>
   );

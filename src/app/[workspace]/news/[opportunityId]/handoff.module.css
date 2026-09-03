@@ -1,0 +1,368 @@
+/*
+ * The handoff regions of one opportunity's screen: an action-review layout
+ * with the reviewed content in the main column and the selection or
+ * confirmation summary in a right rail that stays in view. Page-local: it
+ * composes the existing tokens (--line, --radius, --surface, --muted, the
+ * type scale) and adds no global rule.
+ *
+ * Desktop: two columns. Tablet (<= 1100px): one wide column, the rail below
+ * the content. Mobile (<= 680px): full-width cards and a compact bar pinned
+ * above the consent inset, only while a selection is in progress.
+ */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+  align-items: start;
+  margin: 0 0 18px;
+}
+
+.main {
+  min-width: 0;
+}
+
+.rail {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+}
+
+.railCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px 16px;
+}
+
+.railCard h4 {
+  margin: 0 0 8px;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.railCard p {
+  margin: 0 0 10px;
+}
+
+.count {
+  font-family: var(--font-display, inherit);
+  font-size: 28px;
+  line-height: 1.1;
+  margin: 0 0 4px;
+}
+
+.groups {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group {
+  min-width: 0;
+}
+
+.groupHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+}
+
+.groupHead h4 {
+  margin: 0;
+  font-size: var(--fs-body);
+}
+
+.groupHead small {
+  color: var(--muted);
+  font-size: var(--fs-note);
+}
+
+.cards {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  grid-template-columns: 28px 132px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px;
+  min-width: 0;
+}
+
+.card:has(input:checked) {
+  border-color: var(--ink, #111);
+  box-shadow: inset 0 0 0 1px var(--ink, #111);
+}
+
+.card:has(input:focus-visible) {
+  outline: 2px solid var(--blue, #1d4ed8);
+  outline-offset: 2px;
+}
+
+.cardIneligible {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2px;
+}
+
+.check input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.check input:disabled {
+  cursor: not-allowed;
+}
+
+.thumb {
+  width: 132px;
+  aspect-ratio: 4 / 3;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  background: var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  text-align: center;
+}
+
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.body {
+  min-width: 0;
+}
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0 0 4px;
+}
+
+.cardHead label {
+  font-weight: 600;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.cardHead .score {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-note);
+  white-space: nowrap;
+}
+
+.why {
+  color: var(--muted);
+  font-size: var(--fs-note);
+  margin: 4px 0 0;
+}
+
+.bar {
+  display: none;
+}
+
+.registers {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 14px;
+}
+
+.register {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  min-width: 0;
+}
+
+.register h4 {
+  margin: 0 0 8px;
+  font-size: var(--fs-label);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.register ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.register li {
+  overflow-wrap: anywhere;
+}
+
+.confirmRow {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.confirmRow input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+}
+
+.confirmRow label {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmRow small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+}
+
+.confirmRow input[type="text"],
+.confirmRow input[type="datetime-local"],
+.confirmRow select,
+.confirmRow textarea {
+  width: 100%;
+  margin-top: 6px;
+  min-height: 40px;
+}
+
+.suggested {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.summaryList {
+  margin: 0 0 10px;
+  padding: 0 0 0 18px;
+  display: grid;
+  gap: 4px;
+  font-size: var(--fs-note);
+}
+
+.summaryList li {
+  overflow-wrap: anywhere;
+}
+
+.warn {
+  border-left: 3px solid var(--amber, #b7791f);
+  padding-left: 10px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.actions > * {
+  min-height: 44px;
+}
+
+.result {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+.result h4 {
+  margin: 0 0 6px;
+}
+
+.result p {
+  margin: 0 0 8px;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail {
+    position: static;
+  }
+
+  .registers {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .card {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .thumb {
+    grid-column: 2;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .body {
+    grid-column: 2;
+  }
+
+  /* A compact bar while selecting: count and one verb, above the consent
+     banner and the safe area. It never covers the rail, which is below the
+     content at this width and is where the bar scrolls the reader to. */
+  .bar {
+    position: sticky;
+    bottom: calc(10px + var(--consent-inset, 0px) + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    z-index: 2;
+  }
+
+  .bar strong {
+    font-size: var(--fs-body);
+  }
+}
