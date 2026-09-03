@@ -328,6 +328,10 @@ describeIf("statement import", () => {
     // Even an exact reference match is only a suggestion until confirmed.
     expect(matched?.matchStatus).toBe("suggested");
 
+    // And a suggestion is only a suggestion: importing turned nothing into
+    // money. No line carries a payment until a person confirms it.
+    expect(statement!.lines.every((line) => !line.paymentId)).toBe(true);
+
     const unmatched = statement!.lines.find((line) => line.externalReference === "UNKNOWN-1");
     expect(unmatched?.matchedSubmissionId).toBeUndefined();
     expect(unmatched?.matchStatus).toBe("unmatched");
@@ -436,13 +440,22 @@ describeIf("statement import", () => {
     const service = serviceClient();
     const { data: payment } = await service
       .from("payments")
-      .select("gross_minor, deductions_minor, net_minor, source")
+      .select(
+        "gross_minor, deductions_minor, net_minor, source, status, buyer_id, statement_payload",
+      )
       .eq("id", paymentId)
       .single();
     expect(Number(payment!.gross_minor)).toBe(84_000);
     expect(Number(payment!.deductions_minor)).toBe(33_600);
     expect(Number(payment!.net_minor)).toBe(50_400);
     expect(payment!.source).toBe("statement");
+    expect(payment!.status).toBe("received");
+    // The payment inherits the statement's buyer and points back at the line
+    // that produced it, so the chain is walkable in both directions.
+    expect(payment!.buyer_id).toBe(BACKGRID);
+    expect((payment!.statement_payload as { statement_line_id?: string }).statement_line_id).toBe(
+      line.id,
+    );
 
     const { data: allocations } = await service
       .from("payment_allocations")
@@ -452,6 +465,14 @@ describeIf("statement import", () => {
     expect(allocations![0].submission_id).toBe(submissionId);
     // The allocation divides the NET that arrived, not the gross.
     expect(Number(allocations![0].allocated_minor)).toBe(50_400);
+
+    // The line itself now records the confirmation: matched, and carrying the
+    // payment it became -- which is exactly what refuses a second confirm.
+    const after = (await listStatementImports(ORG_A, finance))
+      .find((entry) => entry.id === result.importId)!
+      .lines.find((entry) => entry.id === line.id)!;
+    expect(after.matchStatus).toBe("matched");
+    expect(after.paymentId).toBe(paymentId);
   });
 
   it("refuses to confirm the same line twice", async () => {

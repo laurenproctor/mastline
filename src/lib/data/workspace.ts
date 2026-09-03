@@ -7,11 +7,10 @@ import { createClient } from "../supabase/server";
 import { getProfiles, signAvatarUrls } from "./profiles";
 
 /**
- * Real, database-backed workspace queries.
- *
- * These replace the equivalents in src/lib/mock/queries.ts. Business records
- * (shoots, assets, submissions, money) stay on the mock layer until Phase 2, so
- * this file only covers what tenancy and auth own.
+ * Workspace-level queries: who is in the workspace, which buyers it deals
+ * with, and how big it is at a glance. The business records themselves
+ * (shoots, assets, submissions, money) live in their own modules alongside
+ * this one; what belongs here is what tenancy and auth own.
  *
  * Every query is organization-scoped in SQL as well as by row level security.
  * The explicit filter is not the protection; it keeps the intent visible and
