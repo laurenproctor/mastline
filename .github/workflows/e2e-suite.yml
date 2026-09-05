@@ -63,6 +63,12 @@ jobs:
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "SUPABASE_TEST_PASSWORD=mastline-dev-password"
+            # The password-recovery suite follows a link the auth server puts in an
+            # email, and that link is built from SITE_URL at compile time. Left unset it
+            # resolves to https://mastline.co, so the emailed link would leave the runner
+            # entirely. :4100 is the port playwright.config.ts serves the build on, and
+            # supabase/config.toml allows a return to it.
+            echo "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:4100"
           } > .env.local
 
       - name: Build the app
