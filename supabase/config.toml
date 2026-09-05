@@ -155,7 +155,11 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# The e2e suite builds the app with NEXT_PUBLIC_SITE_URL=http://127.0.0.1:4100 and serves it
+# there, so the recovery link the auth server emails has to be allowed to return to that
+# origin. Without this entry GoTrue silently substitutes site_url and the emailed link
+# lands on :3000, where the caller's PKCE code verifier cookie does not exist.
+additional_redirect_urls = ["https://127.0.0.1:3000", "http://127.0.0.1:4100/auth/recovery"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
