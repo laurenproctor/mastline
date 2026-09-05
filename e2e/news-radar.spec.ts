@@ -355,16 +355,20 @@ test("a read-only role reads everything and is offered nothing", async ({ page }
   }
 });
 
-test("the radar holds at this project's viewport without sideways scroll", async ({ page }) => {
-  const fixture = await createStory(`Radar E2E layout ${Date.now()}`);
-  try {
-    await signIn(page);
-    for (const path of ["/news", "/news?mode=shoot", `/news/${fixture.archiveId}`, "/news/new"]) {
-      await page.goto(at(path));
-      await page.waitForLoadState("networkidle");
-      expect(await hasHorizontalOverflow(page), `${path} scrolls sideways`).toBe(false);
+test(
+  "the radar holds at this project's viewport without sideways scroll",
+  { tag: "@responsive" },
+  async ({ page }) => {
+    const fixture = await createStory(`Radar E2E layout ${Date.now()}`);
+    try {
+      await signIn(page);
+      for (const path of ["/news", "/news?mode=shoot", `/news/${fixture.archiveId}`, "/news/new"]) {
+        await page.goto(at(path));
+        await page.waitForLoadState("networkidle");
+        expect(await hasHorizontalOverflow(page), `${path} scrolls sideways`).toBe(false);
+      }
+    } finally {
+      await deleteStory(fixture);
     }
-  } finally {
-    await deleteStory(fixture);
-  }
-});
+  },
+);

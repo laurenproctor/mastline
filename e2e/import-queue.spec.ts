@@ -121,7 +121,17 @@ async function expectState(page: Page, filename: string, state: RegExp, timeout 
   await expect(rowFor(page, filename).locator(".import-state")).toHaveText(state, { timeout });
 }
 
-test.describe("importing a field shoot", () => {
+/*
+ * Tagged for the engine, not the width. Nothing here is about layout, so it
+ * would otherwise run on desktop alone -- but the mobile project is the suite's
+ * only WebKit one, and Playwright's WebKit has no navigator.storage at all. The
+ * queue's whole persistence story takes a different road there: files that
+ * cannot be written to an origin private file system live only in the page, and
+ * "a queue whose local copies were cleared" below is the same premise reached
+ * by losing them to a reload instead of an eviction. Running this on Chromium
+ * only would have left that road untested.
+ */
+test.describe("importing a field shoot", { tag: "@webkit" }, () => {
   let shootId: string;
 
   test.beforeEach(async ({ page, context }) => {
