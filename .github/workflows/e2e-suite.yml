@@ -1,22 +1,56 @@
-# The browser suite, on demand.
+# The browser suite.
 #
 # The specs under e2e/ check what no amount of parsing HTML can: layouts at
 # the sizes ACCEPTANCE.md names, visible focus, and client-rendered states,
-# against a production build and a real local stack. Like the database suite,
-# they stay out of the PR gate and exist for a development machine that cannot
-# hold a healthy stack or a quiet browser run.
+# against a production build and a real local stack.
 #
 # Nothing here contacts a hosted project: `supabase start` is entirely local
 # to the runner, and the only secrets used are the CLI's local development
-# defaults, which are public knowledge.
+# defaults, which are public knowledge. That is also why it is safe on a
+# pull request from a fork, where the token is read-only and secrets are not
+# handed over: this workflow needs neither.
 #
-# It runs as three parallel jobs, one per viewport project. They share nothing
-# -- not a stack, not a database, not a server -- which is what makes running
-# them at the same time safe despite `workers: 1` inside each.
+# TWO SHAPES, ONE WORKFLOW:
+#
+#   pull_request      desktop alone. It runs every spec -- only layout and
+#                     engine coverage lives in the other two -- so it is the
+#                     job that answers "did this break the application", and
+#                     it measured 14 minutes end to end (10.6 of tests, the
+#                     rest npm ci, supabase start, next build, browsers).
+#
+#   workflow_dispatch all three projects, in parallel. Run this before a
+#                     release, or on anything touching layout, navigation,
+#                     the consent banner or the import queue -- the things
+#                     tablet and mobile exist to catch. Tablet adds 4.8
+#                     minutes and mobile 6.9, both alongside desktop rather
+#                     than after it.
+#
+# The projects share nothing -- not a stack, not a database, not a server --
+# which is what makes running them at the same time safe despite `workers: 1`
+# inside each.
+#
+# GATING THIS AT ALL was argued from measurement rather than taste. The
+# suite's reputation for flakiness was a development machine running three
+# Supabase stacks at load average 16; on a quiet runner the tests that failed
+# there pass. And the tag-based selection means the matrix costs fewer runner
+# minutes than the old single sequential job, not more.
 name: E2E suite
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
+# Read-only. Nothing here comments, labels, publishes, or deploys.
+permissions:
+  contents: read
+
+# A new push to the same pull request makes the run already in flight
+# obsolete. Without this, a branch pushed three times in a minute holds three
+# stacks and three builds open at once.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e:
@@ -32,27 +66,30 @@ jobs:
       # sequence.
       fail-fast: false
       matrix:
-        include:
-          # Desktop runs every spec; tablet and mobile run only what carries
-          # @responsive, and mobile also what carries @webkit. The projects in
-          # playwright.config.ts hold that gate and explain it.
-          - project: desktop
-            browsers: chromium
-          - project: tablet
-            browsers: chromium
-          # Two, and both are needed. The iPhone device descriptor is WebKit --
-          # which is the whole reason the import queue is tagged to reach this
-          # project -- but the setup project it depends on signs the seeded
-          # roles in through Chromium. A saved session is a JSON file of
-          # cookies and carries across engines perfectly well; the browser that
-          # writes it still has to exist.
-          - project: mobile
-            browsers: chromium webkit
-    # 45, not the 75 one sequential job needed. The heaviest single project is
-    # desktop, which now carries the long journeys alone rather than behind two
-    # other projects' worth of work. Per-test budgets stay CI-capped (see
-    # testBudget in e2e/helpers.ts) so a failing test cannot stretch to the
-    # ceiling the way an uncapped budget once did.
+        # Built as JSON rather than written as a list, because a pull request
+        # gets one entry and a dispatch gets three, and a job-level `if` would
+        # instead leave two permanently skipped checks sitting on every pull
+        # request pretending to be results.
+        #
+        # Desktop runs every spec; tablet and mobile run only what carries
+        # @responsive, and mobile also what carries @webkit. The projects in
+        # playwright.config.ts hold that gate and explain it.
+        #
+        # Mobile asks for two browsers and needs both. The iPhone device
+        # descriptor is WebKit -- which is the whole reason the import queue is
+        # tagged to reach that project -- but the setup project it depends on
+        # signs the seeded roles in through Chromium. A saved session is a JSON
+        # file of cookies and carries across engines perfectly well; the
+        # browser that writes it still has to exist.
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '[{"project":"desktop","browsers":"chromium"}]'
+          || '[{"project":"desktop","browsers":"chromium"},{"project":"tablet","browsers":"chromium"},{"project":"mobile","browsers":"chromium webkit"}]') }}
+    # 45, not the 75 one sequential job needed. The heaviest project is
+    # desktop, measured at 14 minutes on a runner, so this is three times the
+    # observed cost rather than a number picked to feel safe. Per-test budgets
+    # stay CI-capped (see testBudget in e2e/helpers.ts) so a failing test
+    # cannot stretch to the ceiling the way an uncapped budget once did.
     timeout-minutes: 45
     steps:
       - name: Check out

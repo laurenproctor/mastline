@@ -71,16 +71,34 @@ the full loop, and the permission-to-policy agreement stay a local check
 schema *applies* is not the same as CI proving the schema *behaves*; do not
 read a green build as the latter.
 
-The browser suite (`npm run test:e2e`) does not run here either. It needs a
-real stack, a production build and a server, so it lives in its own
-`workflow_dispatch` workflow (`.github/workflows/e2e-suite.yml`) and is
-launched by hand.
+The browser suite (`npm run test:e2e`) is not part of `Verify`. It needs a
+real stack, a production build and a server, so it has its own workflow
+(`.github/workflows/e2e-suite.yml`) — which does now gate pull requests, in a
+narrower shape than a dispatch.
 
-**It runs as three parallel jobs, one per viewport project.** The specs share
-one database and so cannot share a worker — `playwright.config.ts` pins
-`workers: 1` — but they can share nothing at all instead: each job starts its
-own Supabase stack, builds its own app and serves its own `next start`. The
-run is now as long as its slowest job rather than the sum of three.
+**On a pull request: desktop alone, ~14 minutes.** Desktop runs every spec —
+only layout and engine coverage lives in the other two projects — so it is the
+job that answers "did this break the application". Of those 14 minutes, 10.6
+are tests and the rest is `npm ci`, `supabase start`, `next build` and the
+browser install.
+
+**On a dispatch: all three projects, in parallel.** Run one before a release,
+or on anything touching layout, navigation, the consent banner or the import
+queue, which is what tablet and mobile exist to catch. Tablet adds 4.8 minutes
+and mobile 6.9, both alongside desktop rather than after it.
+
+The specs share one database and so cannot share a worker —
+`playwright.config.ts` pins `workers: 1` — but they can share nothing at all
+instead: each job starts its own Supabase stack, builds its own app and serves
+its own `next start`. A run is as long as its slowest job rather than the sum
+of three, and because the tag-based selection removes so much duplicated work,
+the matrix costs *fewer* runner minutes than the old single sequential job.
+
+This suite spent a long time with a reputation for flakiness that it turned
+out not to deserve. The tests that failed repeatedly on a development machine
+running three Supabase stacks at load average 16 pass on a quiet runner. Do
+not diagnose a red browser suite from a local run; dispatch it and read the
+runner.
 
 **A test runs at one width unless it says otherwise.** Desktop runs every
 spec; tablet and mobile run only what carries `@responsive`, and mobile also
