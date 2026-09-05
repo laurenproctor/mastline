@@ -3,28 +3,39 @@ import { notFound } from "next/navigation";
 import { CONSENT_COOKIE, COUNTRY_COOKIE, mayCollectOptionalAnalytics } from "@/lib/consent";
 import { isDeliveryToken } from "@/lib/delivery";
 import { openDelivery } from "@/lib/data/delivery-links";
-import { formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { AcceptTerms } from "./_components/accept-terms";
+import { DeliveryGallery } from "./_components/delivery-gallery";
+import { DeliveryGate } from "./_components/delivery-gate";
 import { ViewingTracker } from "./_components/viewing-tracker";
 
 export const metadata = { title: "A package from Mastline" };
 export const dynamic = "force-dynamic";
 
 /**
- * What a picture desk sees.
+ * What a picture desk sees: a private editorial delivery, not an
+ * administrative page.
  *
- * No account, no password, no software: the link is the whole of it, which is
- * the promise the marketing site makes to editors and the gap docs/DECISIONS.md
- * records -- a dispatch was recorded but never transmitted.
- *
- * Everything on this page arrives through a security-definer function keyed on
- * the token. There is no session, so there is nothing for row level security to
+ * No account, no password, no software: the link is the whole of it.
+ * Everything here arrives through a security-definer function keyed on the
+ * token. There is no session, so there is nothing for row level security to
  * decide, and nothing here can reach an original, a source note, a price, or
  * another workspace.
  *
+ * Two shapes, decided by the link's own options:
+ *
+ *   With the acceptance gate on and no acceptance yet, the page is the front
+ *   door — the name, the terms, and one button. The database returns no
+ *   frames for a gated link until the yes exists, so the photographs are not
+ *   merely hidden by this page; they are not here.
+ *
+ *   Otherwise it is the gallery: one photograph at a time with its headline,
+ *   caption, and people, arrow keys to browse, and the downloads exactly as
+ *   gated as they always were.
+ *
  * An unknown token, a withdrawn link, and an expired one all render the same
- * page. Telling a stranger which it was tells them something about a link they
- * do not hold.
+ * page. Telling a stranger which it was tells them something about a link
+ * they do not hold.
  */
 export default async function DeliveryPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -65,82 +76,91 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
     );
   }
 
+  const accepted = Boolean(delivery.acceptedAt);
+  const gated = delivery.requireAcceptanceToView && !accepted;
+  const count = delivery.assetCount;
+  const countWord = count === 1 ? "photograph" : "photographs";
+  const downloadLine = delivery.allowFullResolution
+    ? "Full-resolution files available after acceptance."
+    : "Marked previews only; full-resolution files are not offered on this link.";
+
   return (
-    <main className="delivery-page">
+    <main className="delivery-page delivery-editorial">
       <header className="delivery-head">
-        <p className="eyebrow">A package for review</p>
+        <p className="eyebrow">Private editorial delivery</p>
         <h1>{delivery.packageName}</h1>
-        {delivery.creditLine && <p className="section-note">{delivery.creditLine}</p>}
+        {delivery.creditLine && <p className="delivery-credit">{delivery.creditLine}</p>}
         <p className="section-note">
-          {delivery.assets.length} {delivery.assets.length === 1 ? "frame" : "frames"} · this link
-          closes {formatDateTime(delivery.expiresAt)}
+          {count} {countWord} · link expires {formatDate(delivery.expiresAt)}
         </p>
+        {accepted && (
+          <p className="delivery-accepted" role="status">
+            Terms accepted by {delivery.acceptedBy} on {formatDateTime(delivery.acceptedAt!)}.
+            {delivery.restrictions ? ` ${delivery.restrictions}` : ""}
+          </p>
+        )}
       </header>
 
-      {(delivery.terms || delivery.restrictions || delivery.embargoUntil) && (
-        <section className="delivery-terms">
-          <h2>Terms</h2>
-          {delivery.embargoUntil && (
-            <p className="section-note">
-              <strong>Embargoed until {formatDateTime(delivery.embargoUntil)}.</strong>
-            </p>
-          )}
-          {delivery.terms && <p className="section-note">{delivery.terms}</p>}
-          {delivery.restrictions && <p className="section-note">{delivery.restrictions}</p>}
-
-          {delivery.acceptedAt ? (
-            <p className="delivery-accepted" role="status">
-              Accepted by {delivery.acceptedBy} on {formatDateTime(delivery.acceptedAt)}.
-            </p>
-          ) : (
-            <AcceptTerms token={token} />
-          )}
+      {delivery.deliveryNote && (
+        <section aria-label="A note from the photographer" className="delivery-note">
+          <p>{delivery.deliveryNote}</p>
         </section>
       )}
 
-      <section className="delivery-frames">
-        {delivery.assets.map((asset) => (
-          <article className="delivery-frame" data-asset-id={asset.assetId} key={asset.assetId}>
-            {asset.hasPreview ? (
-              /* Served through the route so the only version a recipient can
-                 reach carries their name, rendered from the exact object that
-                 was approved. A signed URL here would hand over the clean
-                 file. next/image would proxy and cache something that is
-                 deliberately neither public nor durable. */
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                alt={asset.headline ?? asset.filename}
-                src={`/d/${token}/preview/${asset.assetId}`}
-              />
-            ) : (
-              <div className="delivery-frame-blank">No preview</div>
-            )}
-            <div className="delivery-frame-body">
-              <h3>{asset.headline ?? asset.filename}</h3>
-              {asset.caption && <p className="section-note">{asset.caption}</p>}
-              {/* As the photographer recorded them at approval. Nothing here
-                  is inferred from the picture. */}
-              {asset.people.length > 0 && (
-                <p className="section-note" data-people>
-                  {asset.people.join(", ")}
-                </p>
-              )}
-              {asset.capturedAt && (
-                <p className="section-note">{formatDateTime(asset.capturedAt)}</p>
-              )}
-              {delivery.acceptedAt ? (
-                <a className="button small blue" href={`/d/${token}/frame/${asset.assetId}`}>
-                  Download full resolution
-                </a>
-              ) : (
-                <p className="section-note">
-                  Accept the terms above to download the full-resolution file.
-                </p>
-              )}
+      {gated ? (
+        <div className="delivery-gate">
+          <div className="delivery-gate__tease" aria-hidden="true">
+            <div className="delivery-frame-blank">
+              {count} {countWord} · shown after the terms are accepted
             </div>
-          </article>
-        ))}
-      </section>
+          </div>
+          <DeliveryGate
+            downloadLine={downloadLine}
+            token={token}
+            usage={delivery.restrictions ?? delivery.terms}
+          />
+        </div>
+      ) : (
+        <>
+          {(delivery.terms || delivery.restrictions || delivery.embargoUntil) && (
+            <section className="delivery-terms">
+              <h2>Terms</h2>
+              {delivery.embargoUntil && (
+                <p className="section-note">
+                  <strong>Embargoed until {formatDateTime(delivery.embargoUntil)}.</strong>
+                </p>
+              )}
+              {delivery.terms && <p className="section-note">{delivery.terms}</p>}
+              {delivery.restrictions && <p className="section-note">{delivery.restrictions}</p>}
+              {!delivery.allowFullResolution && <p className="section-note">{downloadLine}</p>}
+
+              {accepted ? (
+                <p className="delivery-accepted" role="status">
+                  Accepted by {delivery.acceptedBy} on {formatDateTime(delivery.acceptedAt!)}.
+                </p>
+              ) : (
+                <AcceptTerms token={token} />
+              )}
+            </section>
+          )}
+
+          <DeliveryGallery
+            accepted={accepted}
+            allowFullResolution={delivery.allowFullResolution}
+            creditLine={delivery.creditLine}
+            frames={delivery.assets.map((asset) => ({
+              assetId: asset.assetId,
+              filename: asset.filename,
+              headline: asset.headline,
+              caption: asset.caption,
+              people: asset.people,
+              capturedLabel: asset.capturedAt ? formatDateTime(asset.capturedAt) : undefined,
+              hasPreview: asset.hasPreview,
+            }))}
+            token={token}
+          />
+        </>
+      )}
 
       <footer className="delivery-foot">
         <p className="section-note">
@@ -162,6 +182,7 @@ export default async function DeliveryPage({ params }: { params: Promise<{ token
             kept.
           </p>
         )}
+        <p className="section-note">No advertising trackers.</p>
       </footer>
       {analyticsAllowed && <ViewingTracker token={token} />}
     </main>

@@ -11,6 +11,7 @@ import {
   refuseCookies,
   shootIdByTitle,
   signIn,
+  testBudget,
 } from "./helpers";
 
 /**
@@ -43,6 +44,9 @@ test.describe("create shoot", () => {
    * consent.spec.ts.
    */
   test.beforeEach(async ({ page }) => {
+    // A loaded host renders these pages in tens of seconds; the default
+    // budget reports that stall as a failure. Assertions are unchanged.
+    test.setTimeout(testBudget(180_000, 300_000));
     await refuseCookies(page.context());
   });
 
@@ -52,7 +56,9 @@ test.describe("create shoot", () => {
 
     try {
       await page.goto(at("/shoots/new"));
-      await expect(page.getByRole("heading", { level: 1 })).toContainText("Create shoot");
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Create shoot", {
+        timeout: 60_000,
+      });
 
       // Every part of the shoot is here at once. None of these is behind a
       // step, a modal, or a second screen.
@@ -85,7 +91,7 @@ test.describe("create shoot", () => {
       await expect(page.getByText(/remain private until you choose to dispatch it/i)).toBeVisible();
 
       await create.click();
-      await page.waitForURL(/\/shoots\/[0-9a-f-]{36}/, { timeout: 20_000 });
+      await page.waitForURL(/\/shoots\/[0-9a-f-]{36}/, { timeout: 60_000 });
 
       // The confirmation is on the record, not on a screen between the two.
       expect(new URL(page.url()).pathname.startsWith(`/${SEEDED_WORKSPACE}/shoots/`)).toBe(true);
@@ -118,7 +124,7 @@ test.describe("create shoot", () => {
         mimeType: "image/jpeg",
         buffer: PIXEL_JPEG,
       });
-      await expect(page.getByText(/1 of 1 ready/)).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText(/1 of 1 ready/)).toBeVisible({ timeout: 60_000 });
 
       // Nothing is saved yet, and the review says which frame dispatch will ask
       // about -- without stopping the draft.
@@ -160,7 +166,7 @@ test.describe("create shoot", () => {
     await page.goto(at("/shoots/new"));
 
     const create = page.getByRole("button", { name: "Create shoot" });
-    await expect(create).toBeDisabled();
+    await expect(create).toBeDisabled({ timeout: 60_000 });
     await expect(page.getByText("Give the shoot a subject or event.")).toBeVisible();
 
     // Whitespace is not a title, and the client agrees with the server about it.

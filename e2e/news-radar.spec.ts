@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { at, hasHorizontalOverflow, refuseCookies, signIn } from "./helpers";
+import { at, hasHorizontalOverflow, refuseCookies, signIn, testBudget } from "./helpers";
 
 /**
  * News Radar, driven through the real interface.
@@ -154,6 +154,9 @@ async function deleteStoriesTitled(prefix: string): Promise<void> {
 }
 
 test.beforeEach(async ({ context }) => {
+  // A loaded host renders these pages in tens of seconds; the default budget
+  // reports that stall as a failure. The assertions themselves are unchanged.
+  test.setTimeout(testBudget(180_000, 300_000));
   await refuseCookies(context);
 });
 
@@ -202,7 +205,7 @@ test("one manual entry puts the story in both modes", async ({ page }) => {
     // Opened from the shoot mode, entry lands on the shoot path of the new
     // record, saying exactly what did and did not happen.
     await expect(page.getByText("Story added to the radar — once", { exact: false })).toBeVisible({
-      timeout: 15_000,
+      timeout: 60_000,
     });
     await expect(page.getByText(/Nobody was contacted/)).toBeVisible();
     await expect(page.getByText("Shoot opportunity path", { exact: false }).first()).toBeVisible();
@@ -241,7 +244,7 @@ test("watching is one motion from the queue", async ({ page }) => {
     await row.getByRole("button", { name: "Watch" }).click();
 
     await expect(page.getByText("Held on watch.", { exact: false })).toBeVisible({
-      timeout: 15_000,
+      timeout: 60_000,
     });
     await expect(row.getByText("Watching")).toBeVisible();
   } finally {
@@ -265,7 +268,7 @@ test("dismissing one path takes two motions and leaves the other path standing",
       .fill("Covered by the agency pool already.");
     await page.getByRole("button", { name: "Confirm dismiss" }).click();
 
-    await expect(page.getByText("Set aside.", { exact: false })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Set aside.", { exact: false })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByText("Covered by the agency pool already.")).toBeVisible();
     // This path is closed...
     await expect(page.getByRole("button", { name: "Watch" })).toHaveCount(0);
@@ -313,9 +316,15 @@ test("the detail screen states its suggestion, its window, and what is not built
     await expect(page.getByText("66% · suggested")).toBeVisible();
     await expect(page.getByText("Arranged by the browser suite.")).toBeVisible();
     await expect(page.getByText(/\d+ days? left/).first()).toBeVisible();
-    // The match region says nothing has run, and its handoff action is inert.
+    // The match region says nothing has run, and the handoff region says why
+    // there is nothing to act on yet.
     await expect(page.getByText("Never run. Nothing runs on its own.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Build package" })).toBeDisabled();
+    await expect(
+      page.getByText("Nothing to select from until the archive evaluation has run", {
+        exact: false,
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create draft package" })).toHaveCount(0);
   } finally {
     await deleteStory(fixture);
   }
@@ -338,7 +347,9 @@ test("a read-only role reads everything and is offered nothing", async ({ page }
 
     // The entry route itself says why, rather than showing a doomed form.
     await page.goto(at("/news/new"));
-    await expect(page.getByText(/can read the radar but not add stories/)).toBeVisible();
+    await expect(page.getByText(/can read the radar but not add stories/)).toBeVisible({
+      timeout: 30_000,
+    });
   } finally {
     await deleteStory(fixture);
   }

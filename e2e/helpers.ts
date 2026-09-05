@@ -81,7 +81,22 @@ export async function signIn(
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(SEEDED.password);
   await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(`**${destination}`, { timeout: 20_000 });
+  await page.waitForURL(`**${destination}`, { timeout: 180_000 });
+}
+
+/**
+ * A per-test budget that depends on where the suite runs.
+ *
+ * The development machine is the loaded host: it sleeps, swaps, and serves
+ * pages in tens of seconds, so locally the long journeys get a generous
+ * allowance. The CI runner is quiet, and there the generous allowance is a
+ * hazard instead of a kindness: a genuinely failing test burns its whole
+ * budget on every attempt -- budget × three attempts × three projects -- which
+ * is how one bad locator can eat the workflow's entire ceiling. CI gets what
+ * a quiet runner needs and no more, so a failure is reported, not stretched.
+ */
+export function testBudget(quietRunnerMs: number, loadedHostMs: number): number {
+  return process.env.CI ? quietRunnerMs : loadedHostMs;
 }
 
 /**
@@ -1066,5 +1081,44 @@ export async function purgeApprovedShoot(
       method: "DELETE",
       headers: { Authorization: `Bearer ${key}` },
     });
+  }
+}
+
+/**
+ * Remove the money records one journey created: the payment first, whose
+ * allocations go with it by cascade, then the license.
+ *
+ * Addressed by the run's own unique reference and licensee rather than by id,
+ * because the ids belong to the server actions and the test never sees them.
+ * Failures are surfaced for the same reason clearDeliveryLinks surfaces them:
+ * money a cleanup quietly leaves behind inflates every later run's figures.
+ */
+export async function purgeMoneyRecords(input: {
+  paymentReference?: string;
+  licenseeName?: string;
+}): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? localEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? localEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) throw new Error("No service role key: cannot clean up money records.");
+  const headers = { apikey: key, Authorization: `Bearer ${key}`, Prefer: "return=minimal" };
+  const ORG = "aaaaaaaa-0000-0000-0000-000000000001";
+
+  async function remove(table: string, filter: string): Promise<void> {
+    const response = await fetch(`${url}/rest/v1/${table}?organization_id=eq.${ORG}&${filter}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Could not clean up ${table} (HTTP ${response.status}): ${await response.text()}`,
+      );
+    }
+  }
+
+  if (input.paymentReference) {
+    await remove("payments", `external_reference=eq.${encodeURIComponent(input.paymentReference)}`);
+  }
+  if (input.licenseeName) {
+    await remove("licenses", `licensee_name=eq.${encodeURIComponent(input.licenseeName)}`);
   }
 }

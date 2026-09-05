@@ -101,7 +101,11 @@ export function ContextEditor({
       <Field
         defaultValue={values.locationName}
         error={errors.locationName}
-        label="Location"
+        // "Location name", not "Location": the shoot handoff's confirmation
+        // form on the same page also has a field accessibly named "Location",
+        // and two controls with one name is an ambiguity for assistive
+        // technology and for the tests that read the page the same way.
+        label="Location name"
         maxLength={200}
         name="locationName"
         placeholder="Venue, street, city"

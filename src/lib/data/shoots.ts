@@ -159,6 +159,11 @@ export async function getSensitiveNote(
  * This is a check before an insert, so two genuinely simultaneous submissions
  * could still both miss. The disabled button is what makes that vanishingly
  * unlikely; this covers everything slower than a race.
+ *
+ * `client_token` is this screen's namespace alone. The News Radar shoot
+ * handoff also writes a `shoot.created` event, but records its idempotency
+ * key as `request_key` (see handoff_shoot_draft in the news_radar_handoffs
+ * migration) precisely so it can never satisfy this lookup.
  */
 export async function shootCreatedWithToken(input: {
   client?: SupabaseClient;

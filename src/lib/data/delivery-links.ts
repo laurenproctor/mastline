@@ -25,10 +25,16 @@ export interface DeliveryLink {
   readonly sharedAt?: string;
   readonly sharedBy?: string;
   readonly createdAt: string;
+  /** A plain-text note shown on the delivery page. Not an email. */
+  readonly deliveryNote?: string;
+  /** Whether this link offers the full-resolution files at all. */
+  readonly allowFullResolution: boolean;
+  /** Whether the frames wait for the terms to be accepted. */
+  readonly requireAcceptanceToView: boolean;
 }
 
 const DELIVERY_COLUMNS =
-  "id, token, recipient_label, contact_reference, custom_parameters, expires_at, revoked_at, shared_at, shared_by, created_at";
+  "id, token, recipient_label, contact_reference, custom_parameters, expires_at, revoked_at, shared_at, shared_by, created_at, delivery_note, allow_full_resolution, require_acceptance_to_view";
 
 /**
  * A stored parameter snapshot, defended on the way out as well as in.
@@ -60,6 +66,9 @@ function toDeliveryLink(row: Record<string, unknown>): DeliveryLink {
     sharedAt: (row.shared_at as string | null) ?? undefined,
     sharedBy: (row.shared_by as string | null) ?? undefined,
     createdAt: row.created_at as string,
+    deliveryNote: (row.delivery_note as string | null) ?? undefined,
+    allowFullResolution: row.allow_full_resolution !== false,
+    requireAcceptanceToView: row.require_acceptance_to_view === true,
   };
 }
 
@@ -142,6 +151,12 @@ export async function createDelivery(input: {
   contactReference?: string;
   customParameters?: Readonly<Record<string, string>>;
   windowDays: DeliveryWindowDays;
+  /** Plain-text note shown on the delivery page. Trimmed; 500 characters. */
+  deliveryNote?: string;
+  /** Defaults to true: today's behavior. */
+  allowFullResolution?: boolean;
+  /** Defaults to false: today's behavior. */
+  requireAcceptanceToView?: boolean;
   now?: Date;
 }): Promise<DeliveryLink> {
   const supabase = input.client ?? (await createClient());
@@ -190,6 +205,9 @@ export async function createDelivery(input: {
       custom_parameters: input.customParameters ?? {},
       expires_at: expiryFrom(input.windowDays, now).toISOString(),
       created_by: input.actorId,
+      delivery_note: input.deliveryNote?.trim().slice(0, 500) || null,
+      allow_full_resolution: input.allowFullResolution ?? true,
+      require_acceptance_to_view: input.requireAcceptanceToView ?? false,
     })
     .select(DELIVERY_COLUMNS)
     .single();
@@ -210,6 +228,68 @@ export async function createDelivery(input: {
   });
 
   return toDeliveryLink(data as Record<string, unknown>);
+}
+
+/**
+ * One tracked link per recipient, idempotently.
+ *
+ * The flow's "Create private delivery" must survive a double-click, a retry
+ * after a half-failure, and a refresh, and there is no schema slot for a
+ * client idempotency key -- so the link is addressed deterministically, the
+ * same way the draft package is: the earliest live, unshared link on this
+ * submission made for this recipient IS the delivery, and asking again
+ * returns it. Two racing calls may both insert; both re-read, agree on the
+ * earliest, and the loser withdraws its own untouched insert.
+ *
+ * A link that was already shared, withdrawn, or has expired is never reused:
+ * asking again after any of those is a new delivery on purpose -- that is
+ * exactly what "Share with another recipient" does.
+ */
+export async function createPrivateDeliveryLink(
+  input: Parameters<typeof createDelivery>[0],
+): Promise<{ link: DeliveryLink; reused: boolean }> {
+  const supabase = input.client ?? (await createClient());
+  const now = input.now ?? new Date();
+  const label = input.recipientLabel?.trim() || null;
+
+  const earliestMatching = async (): Promise<DeliveryLink | null> => {
+    let query = supabase
+      .from("submission_deliveries")
+      .select(DELIVERY_COLUMNS)
+      .eq("organization_id", input.organizationId)
+      .eq("submission_id", input.submissionId)
+      .is("revoked_at", null)
+      .is("shared_at", null)
+      .gt("expires_at", now.toISOString())
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1);
+    query = label === null ? query.is("recipient_label", null) : query.eq("recipient_label", label);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw new Error(`Could not look for the link: ${error.message}`);
+    return data ? toDeliveryLink(data as Record<string, unknown>) : null;
+  };
+
+  const existing = await earliestMatching();
+  if (existing) return { link: existing, reused: true };
+
+  const created = await createDelivery({ ...input, client: supabase, now });
+
+  const winner = await earliestMatching();
+  if (winner && winner.id !== created.id) {
+    // A concurrent call made the link first. Ours was never handed to anyone;
+    // withdraw it so the submission carries one delivery per recipient.
+    await revokeDelivery({
+      client: supabase,
+      organizationId: input.organizationId,
+      actorId: input.actorId,
+      submissionId: input.submissionId,
+      deliveryId: created.id,
+    });
+    return { link: winner, reused: true };
+  }
+
+  return { link: created, reused: false };
 }
 
 /**
@@ -338,6 +418,17 @@ export interface OpenedDelivery {
   readonly restrictions?: string;
   readonly embargoUntil?: string;
   readonly expiresAt: string;
+  /** The photographer's plain-text note to this recipient, when one exists. */
+  readonly deliveryNote?: string;
+  /** Whether this link offers full-resolution downloads at all. */
+  readonly allowFullResolution: boolean;
+  /** Whether the frames are withheld until the terms are accepted. */
+  readonly requireAcceptanceToView: boolean;
+  /**
+   * How many frames the link carries. With the acceptance gate on and no
+   * acceptance yet, `assets` is empty while this stays the honest count.
+   */
+  readonly assetCount: number;
   readonly assets: readonly DeliveryFrame[];
 }
 
@@ -369,6 +460,10 @@ export async function openDelivery(
     expiresAt: row.expires_at as string,
     acceptedAt: (row.accepted_at as string | null) ?? undefined,
     acceptedBy: (row.accepted_by as string | null) ?? undefined,
+    deliveryNote: (row.delivery_note as string | null) ?? undefined,
+    allowFullResolution: row.allow_full_resolution !== false,
+    requireAcceptanceToView: row.require_acceptance_to_view === true,
+    assetCount: Number(row.asset_count ?? 0),
     assets: (assets.data ?? []).map((asset: Record<string, unknown>) => ({
       assetId: asset.asset_id as string,
       filename: asset.canonical_filename as string,

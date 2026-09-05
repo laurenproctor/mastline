@@ -10,6 +10,7 @@ import {
   listArchiveMatches,
   unevaluated,
 } from "@/lib/data/news-radar-evaluations";
+import { getHandoff, listMatchPlacements } from "@/lib/data/news-radar-handoffs";
 import {
   DISMISSAL_REASON_MAX,
   allowedOpportunityDecisions,
@@ -25,9 +26,11 @@ import { can } from "@/lib/permissions";
 import { workspaceContext } from "@/lib/session-context";
 import { workspaceRoutes } from "@/lib/workspace-routes";
 import { DecisionNotice, OpportunityDecisions } from "../_components/story-actions";
+import { ArchiveHandoff } from "./_components/archive-handoff";
 import { ArchiveMatches } from "./_components/archive-matches";
 import { ContextPanel } from "./_components/context-panel";
 import { ShootBriefPanel } from "./_components/shoot-brief";
+import { ShootHandoff } from "./_components/shoot-handoff";
 
 const EVALUATED_MESSAGES: Record<string, string> = {
   recorded: "Evaluated. The result below was computed from the recorded facts and written once.",
@@ -111,25 +114,54 @@ export default async function OpportunityPage({
   const now = new Date();
   const window = usefulWindow(opportunity.windowClosesAt, now);
 
-  const [sibling, pathActivity, signalActivity, members, stored, evaluationRow, matches, brief] =
-    await Promise.all([
-      getSiblingPath(organizationId, opportunity.newsSignalId, opportunity.id),
-      listActivity(organizationId, { entityType: "opportunity", entityId: opportunity.id }),
-      listActivity(organizationId, {
-        entityType: "news_signal",
-        entityId: opportunity.newsSignalId,
-      }),
-      listWorkspaceMembers(organizationId),
-      getSignalContext(organizationId, opportunity.newsSignalId),
-      getEvaluation(organizationId, opportunity.id),
-      opportunity.kind === "archive_match"
-        ? listArchiveMatches(organizationId, opportunity.id)
-        : Promise.resolve([]),
-      opportunity.kind === "shoot_opportunity"
-        ? getShootBrief(organizationId, opportunity.id)
-        : Promise.resolve(null),
-    ]);
+  const [
+    sibling,
+    pathActivity,
+    signalActivity,
+    members,
+    stored,
+    evaluationRow,
+    matches,
+    brief,
+    handoff,
+  ] = await Promise.all([
+    getSiblingPath(organizationId, opportunity.newsSignalId, opportunity.id),
+    listActivity(organizationId, { entityType: "opportunity", entityId: opportunity.id }),
+    listActivity(organizationId, {
+      entityType: "news_signal",
+      entityId: opportunity.newsSignalId,
+    }),
+    listWorkspaceMembers(organizationId),
+    getSignalContext(organizationId, opportunity.newsSignalId),
+    getEvaluation(organizationId, opportunity.id),
+    opportunity.kind === "archive_match"
+      ? listArchiveMatches(organizationId, opportunity.id)
+      : Promise.resolve([]),
+    opportunity.kind === "shoot_opportunity"
+      ? getShootBrief(organizationId, opportunity.id)
+      : Promise.resolve(null),
+    getHandoff(organizationId, opportunity.id),
+  ]);
   const evaluation = evaluationRow ?? unevaluated(opportunity);
+  // Which shoot each matched photograph sits on, and whether it has a file:
+  // what the archive selection needs that the match rows do not carry.
+  const placements =
+    opportunity.kind === "archive_match"
+      ? await listMatchPlacements(
+          organizationId,
+          matches.map((match) => match.assetId),
+        )
+      : new Map();
+  const mayAct =
+    mayReview && can(role, opportunity.kind === "archive_match" ? "package.write" : "shoot.write");
+  const continueHref = handoff
+    ? handoff.packageId && handoff.packageShootId
+      ? routes.dispatch({ shootId: handoff.packageShootId, packageId: handoff.packageId })
+      : handoff.shootId
+        ? routes.shoot(handoff.shootId)
+        : undefined
+    : undefined;
+  const timeZone = session.activeWorkspace.timezone;
   const suggestions = suggestContext(story, stored);
   const evaluatedMessage =
     evaluatedParam === "failed"
@@ -412,6 +444,48 @@ export default async function OpportunityPage({
             </div>
           </Panel>
         </div>
+
+        <Panel
+          title={
+            opportunity.kind === "archive_match"
+              ? "Act on it — a draft package from the matches"
+              : "Act on it — a draft shoot from the confirmed brief"
+          }
+        >
+          {opportunity.kind === "archive_match" ? (
+            <ArchiveHandoff
+              canAct={mayAct}
+              continueHref={continueHref}
+              evaluationRecord={evaluation}
+              existing={handoff}
+              matches={matches}
+              opportunityId={opportunity.id}
+              placements={placements}
+              storyHref={routes.newsOpportunity(opportunity.id)}
+              storyTitle={story.title}
+              timeZone={timeZone}
+              workspaceSlug={workspaceSlug}
+            />
+          ) : (
+            <ShootHandoff
+              brief={brief}
+              canAct={mayAct}
+              continueHref={continueHref}
+              evaluationRecord={evaluation}
+              existing={handoff}
+              opportunityId={opportunity.id}
+              storyHref={routes.newsOpportunity(opportunity.id)}
+              storyTitle={story.title}
+              timeZone={timeZone}
+              workspaceSlug={workspaceSlug}
+            />
+          )}
+          <p className="section-note">
+            Creating a draft here records which story, which path, and which evaluation (evaluator
+            and input) led to it. The draft is then an ordinary package or shoot: approval, terms,
+            recipients and scheduling stay where they have always been.
+          </p>
+        </Panel>
       </div>
     </AppShell>
   );

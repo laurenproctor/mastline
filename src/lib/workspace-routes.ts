@@ -104,6 +104,8 @@ export interface WorkspaceRoutes {
   readonly asset: (assetId: string, options?: RouteOptions) => string;
   readonly submissions: (options?: RouteOptions) => string;
   readonly submission: (submissionId: string, options?: RouteOptions) => string;
+  /** The internal rehearsal of what a recipient would read. Records nothing. */
+  readonly submissionPreview: (submissionId: string, options?: RouteOptions) => string;
   /** The dispatch review. Keyed on the shoot; the package rides in the query. */
   readonly dispatch: (target: DispatchTarget, options?: RouteOptions) => string;
   readonly money: (options?: RouteOptions) => string;
@@ -152,6 +154,8 @@ export function workspaceRoutes(canonicalSlug: string): WorkspaceRoutes {
     submissions: (options?: RouteOptions) => build(slug, ["submissions"], options),
     submission: (submissionId: string, options?: RouteOptions) =>
       build(slug, ["submissions", submissionId], options),
+    submissionPreview: (submissionId: string, options?: RouteOptions) =>
+      build(slug, ["submissions", submissionId, "preview"], options),
     dispatch: (target: DispatchTarget, options?: RouteOptions) =>
       build(slug, ["dispatch", target.shootId], {
         ...options,

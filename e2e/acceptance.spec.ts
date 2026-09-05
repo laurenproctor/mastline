@@ -209,10 +209,15 @@ test.describe("status is never colour alone", () => {
     }
   });
 
-  test("a blocked dispatch check says the word, not just a colour", async ({ page }) => {
+  test("incomplete details in the delivery flow say the words, not just a colour", async ({
+    page,
+  }) => {
     await signIn(page);
+    // The seeded shoot's open package carries an uncaptioned frame, so the
+    // flow lands on Details and the readiness line states the gap in words.
     await page.goto(at(`/dispatch/${SEEDED_SHOOT}`));
-    await expect(page.getByText("Blocked").first()).toBeVisible();
+    await expect(page.getByText(/of 2 photographs have required details/)).toBeVisible();
+    await expect(page.getByText(/still needs/i).first()).toBeVisible();
   });
 });
 
@@ -1014,11 +1019,16 @@ test.describe("sending a package to a picture desk", () => {
       try {
         await deskPage.goto(path);
 
-        // Before accepting: the frame can be judged, but not taken.
-        await expect(deskPage.locator(".delivery-frame img").first()).toBeVisible();
+        // Before accepting: the frame can be judged, but not taken. The
+        // redesigned gallery shows the marked preview and says in words what
+        // the download waits for.
+        await expect(deskPage.locator("[data-asset-id] img").first()).toBeVisible();
         await expect(deskPage.getByRole("link", { name: /Download full resolution/ })).toHaveCount(
           0,
         );
+        await expect(
+          deskPage.getByText("Accept the terms above to download the full-resolution file."),
+        ).toBeVisible();
 
         const refused = await deskPage.request.get(`${path}/frame/${SEEDED_ASSET}`);
         expect(refused.status()).toBe(404);
@@ -1072,7 +1082,7 @@ test.describe("sending a package to a picture desk", () => {
       const deskPage = await desk.newPage();
       try {
         await deskPage.goto(path);
-        const image = deskPage.locator(".delivery-frame img").first();
+        const image = deskPage.locator("[data-asset-id] img").first();
         const source = await image.getAttribute("src");
 
         // The property that matters: the recipient is never handed a URL to the
