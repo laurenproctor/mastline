@@ -192,139 +192,148 @@ test.describe("the five stages, walked end to end", () => {
     await refuseCookies(context);
   });
 
-  test("photos to shared, with a gated recipient who accepts, browses, and downloads", async ({
-    page,
-    browser,
-  }, testInfo) => {
-    test.setTimeout(180_000);
-    const fixture = await createApprovablePackageWithFiles(`WALK${testInfo.project.name}`);
-    const deskName = `Walk desk ${testInfo.project.name} ${Date.now()}`;
+  test(
+    "photos to shared, with a gated recipient who accepts, browses, and downloads",
+    { tag: "@responsive" },
+    async ({ page, browser }, testInfo) => {
+      test.setTimeout(180_000);
+      const fixture = await createApprovablePackageWithFiles(`WALK${testInfo.project.name}`);
+      const deskName = `Walk desk ${testInfo.project.name} ${Date.now()}`;
 
-    try {
-      await signIn(page);
-
-      // -- Photos -------------------------------------------------------
-      await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=photos`));
-      await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible({
-        timeout: 90_000,
-      });
-      await page.getByRole("link", { name: "Continue to details" }).click();
-
-      // -- Details ------------------------------------------------------
-      await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible({
-        timeout: 90_000,
-      });
-      await expect(page.getByText(/2 of 2 photographs have required details/)).toBeVisible();
-      await page.getByRole("link", { name: "Continue to recipient" }).click();
-
-      // -- Recipient ----------------------------------------------------
-      await expect(page.getByRole("heading", { name: "Choose recipient and access" })).toBeVisible({
-        timeout: 90_000,
-      });
-      await expect(page.getByText(/Recipient watermark: On/)).toBeVisible();
-      await page.getByLabel("Recipient desk or contact").fill(deskName);
-      await page.getByLabel("Contact email or reference").fill("walk-desk@example.com");
-      await page.getByLabel("Recipient note").fill("Two frames from this morning's shoot.");
-      await page.getByLabel(/Require acceptance before viewing/).check();
-      await page.getByRole("button", { name: "Review delivery" }).click();
-
-      // -- Review & share ----------------------------------------------
-      await page.waitForURL(/stage=review/, { timeout: 90_000 });
-      await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible({
-        timeout: 90_000,
-      });
-      // The recipient email travels to the record, never into any URL shown.
-      await page.getByRole("button", { name: "Create private delivery" }).click();
-      await expect(page.getByText(/This becomes permanent/)).toBeVisible();
-      await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
-
-      const deliveryHref = (await page.locator(".ml-delivery-review__url code").innerText()).trim();
-      const deliveryPath = new URL(deliveryHref).pathname;
-      expect(deliveryHref).not.toContain("walk-desk@example.com");
-      expect(deliveryHref).not.toContain(deskName.split(" ")[0]);
-
-      // Refresh: the created state survives, and no second link is minted.
-      await page.reload();
-      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
-
-      // -- Mark as shared → Shared -------------------------------------
-      await page.getByRole("button", { name: "Mark as shared" }).click();
-      await page.waitForURL(/stage=shared/, { timeout: 90_000 });
-      await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible({
-        timeout: 90_000,
-      });
-      const timeline = page.locator(".ml-delivery-timeline");
-      await expect(timeline.locator('[data-state="done"]')).toHaveCount(1);
-      await expect(timeline.getByText("Opened")).toBeVisible();
-
-      // -- The recipient: gate, accept, browse, download ----------------
-      const deskContext = await browser.newContext();
-      const deskPage = await deskContext.newPage();
       try {
-        await deskPage.goto(deliveryPath);
-        // The gate: no frames are on this page, and the database returns none.
-        await expect(deskPage.getByRole("heading", { name: "Open this delivery" })).toBeVisible({
+        await signIn(page);
+
+        // -- Photos -------------------------------------------------------
+        await page.goto(
+          at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=photos`),
+        );
+        await expect(page.getByRole("heading", { name: "Select photographs" })).toBeVisible({
           timeout: 90_000,
         });
-        await expect(deskPage.getByText("Two frames from this morning's shoot.")).toBeVisible();
-        await expect(deskPage.locator("[data-asset-id]")).toHaveCount(0);
+        await page.getByRole("link", { name: "Continue to details" }).click();
 
-        // The button waits for the explicit agreement.
-        await expect(deskPage.getByRole("button", { name: /Open delivery/ })).toBeDisabled();
-        await deskPage.getByLabel("Your name").fill("Walker Reade");
-        await deskPage.getByLabel(/I agree to these delivery terms/).check();
-        await deskPage.getByRole("button", { name: /Open delivery/ }).click();
+        // -- Details ------------------------------------------------------
+        await expect(page.getByRole("heading", { name: "Describe the photographs" })).toBeVisible({
+          timeout: 90_000,
+        });
+        await expect(page.getByText(/2 of 2 photographs have required details/)).toBeVisible();
+        await page.getByRole("link", { name: "Continue to recipient" }).click();
 
-        // The gallery: one frame at a time, arrow keys, editorial facts.
-        await expect(deskPage.locator("[data-asset-id]").first()).toBeVisible();
-        await expect(deskPage.getByText(/01 \/ 02/)).toBeVisible();
-        await deskPage.keyboard.press("ArrowRight");
-        await expect(deskPage.getByText(/02 \/ 02/)).toBeVisible();
-        await expect(deskPage.getByText("Use arrow keys to browse")).toBeVisible();
+        // -- Recipient ----------------------------------------------------
+        await expect(
+          page.getByRole("heading", { name: "Choose recipient and access" }),
+        ).toBeVisible({
+          timeout: 90_000,
+        });
+        await expect(page.getByText(/Recipient watermark: On/)).toBeVisible();
+        await page.getByLabel("Recipient desk or contact").fill(deskName);
+        await page.getByLabel("Contact email or reference").fill("walk-desk@example.com");
+        await page.getByLabel("Recipient note").fill("Two frames from this morning's shoot.");
+        await page.getByLabel(/Require acceptance before viewing/).check();
+        await page.getByRole("button", { name: "Review delivery" }).click();
 
-        // The preview is the marked route, never a storage URL.
-        const src = await deskPage.locator("[data-asset-id] img").first().getAttribute("src");
-        expect(src ?? "").toMatch(/^\/d\/[A-Za-z0-9_-]+\/preview\//);
+        // -- Review & share ----------------------------------------------
+        await page.waitForURL(/stage=review/, { timeout: 90_000 });
+        await expect(page.getByRole("heading", { name: "Review delivery" })).toBeVisible({
+          timeout: 90_000,
+        });
+        // The recipient email travels to the record, never into any URL shown.
+        await page.getByRole("button", { name: "Create private delivery" }).click();
+        await expect(page.getByText(/This becomes permanent/)).toBeVisible();
+        await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
+        await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
 
-        // Accepted, so the full file follows.
-        const download = deskPage.getByRole("link", { name: /Download full resolution/ });
-        await expect(download).toBeVisible();
-        const href = await download.getAttribute("href");
-        const response = await deskPage.request.get(href!);
-        expect(response.status()).toBe(200);
+        const deliveryHref = (
+          await page.locator(".ml-delivery-review__url code").innerText()
+        ).trim();
+        const deliveryPath = new URL(deliveryHref).pathname;
+        expect(deliveryHref).not.toContain("walk-desk@example.com");
+        expect(deliveryHref).not.toContain(deskName.split(" ")[0]);
 
-        // Copy credit line is offered beside the download.
-        await expect(deskPage.getByRole("button", { name: "Copy credit line" })).toBeVisible();
+        // Refresh: the created state survives, and no second link is minted.
+        await page.reload();
+        await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
+
+        // -- Mark as shared → Shared -------------------------------------
+        await page.getByRole("button", { name: "Mark as shared" }).click();
+        await page.waitForURL(/stage=shared/, { timeout: 90_000 });
+        await expect(page.getByRole("heading", { name: "Delivery shared" })).toBeVisible({
+          timeout: 90_000,
+        });
+        const timeline = page.locator(".ml-delivery-timeline");
+        await expect(timeline.locator('[data-state="done"]')).toHaveCount(1);
+        await expect(timeline.getByText("Opened")).toBeVisible();
+
+        // -- The recipient: gate, accept, browse, download ----------------
+        const deskContext = await browser.newContext();
+        const deskPage = await deskContext.newPage();
+        try {
+          await deskPage.goto(deliveryPath);
+          // The gate: no frames are on this page, and the database returns none.
+          await expect(deskPage.getByRole("heading", { name: "Open this delivery" })).toBeVisible({
+            timeout: 90_000,
+          });
+          await expect(deskPage.getByText("Two frames from this morning's shoot.")).toBeVisible();
+          await expect(deskPage.locator("[data-asset-id]")).toHaveCount(0);
+
+          // The button waits for the explicit agreement.
+          await expect(deskPage.getByRole("button", { name: /Open delivery/ })).toBeDisabled();
+          await deskPage.getByLabel("Your name").fill("Walker Reade");
+          await deskPage.getByLabel(/I agree to these delivery terms/).check();
+          await deskPage.getByRole("button", { name: /Open delivery/ }).click();
+
+          // The gallery: one frame at a time, arrow keys, editorial facts.
+          await expect(deskPage.locator("[data-asset-id]").first()).toBeVisible();
+          await expect(deskPage.getByText(/01 \/ 02/)).toBeVisible();
+          await deskPage.keyboard.press("ArrowRight");
+          await expect(deskPage.getByText(/02 \/ 02/)).toBeVisible();
+          await expect(deskPage.getByText("Use arrow keys to browse")).toBeVisible();
+
+          // The preview is the marked route, never a storage URL.
+          const src = await deskPage.locator("[data-asset-id] img").first().getAttribute("src");
+          expect(src ?? "").toMatch(/^\/d\/[A-Za-z0-9_-]+\/preview\//);
+
+          // Accepted, so the full file follows.
+          const download = deskPage.getByRole("link", { name: /Download full resolution/ });
+          await expect(download).toBeVisible();
+          const href = await download.getAttribute("href");
+          const response = await deskPage.request.get(href!);
+          expect(response.status()).toBe(200);
+
+          // Copy credit line is offered beside the download.
+          await expect(deskPage.getByRole("button", { name: "Copy credit line" })).toBeVisible();
+        } finally {
+          await deskContext.close();
+        }
+
+        // -- The evidence caught up on the photographer's side ------------
+        await page.goto(
+          at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=shared`),
+        );
+        await expect(timeline.locator('[data-state="done"]')).toHaveCount(4);
+        await expect(page.getByText("Walker Reade", { exact: false })).toBeVisible();
+
+        // -- Share with another recipient ---------------------------------
+        await page.getByRole("link", { name: "Share with another recipient" }).click();
+        await page.waitForURL(/stage=recipient/, { timeout: 90_000 });
+        // The package is frozen: terms are facts here, not fields.
+        await expect(page.getByText(/Frozen at approval/)).toBeVisible({ timeout: 90_000 });
+        // The terms are a stated fact here, not a field.
+        await expect(page.getByText(/^Terms:/)).toBeVisible();
+        await expect(page.getByRole("textbox", { name: "Terms", exact: true })).toHaveCount(0);
+        const secondDesk = `Second desk ${testInfo.project.name} ${Date.now()}`;
+        await page.getByLabel("Recipient desk or contact").fill(secondDesk);
+        await page.getByRole("link", { name: "Review delivery" }).click();
+        await page.waitForURL(/stage=review/, { timeout: 90_000 });
+        await page.getByRole("button", { name: "Create private delivery" }).click();
+        await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
+        await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
+        const secondHref = (await page.locator(".ml-delivery-review__url code").innerText()).trim();
+        expect(new URL(secondHref).pathname).not.toBe(deliveryPath);
       } finally {
-        await deskContext.close();
+        await clearDeliveryLinks();
+        await purgeApprovedShoot(fixture.shootId, fixture.objectKeys).catch(() => undefined);
       }
-
-      // -- The evidence caught up on the photographer's side ------------
-      await page.goto(at(`/dispatch/${fixture.shootId}?package=${fixture.packageId}&stage=shared`));
-      await expect(timeline.locator('[data-state="done"]')).toHaveCount(4);
-      await expect(page.getByText("Walker Reade", { exact: false })).toBeVisible();
-
-      // -- Share with another recipient ---------------------------------
-      await page.getByRole("link", { name: "Share with another recipient" }).click();
-      await page.waitForURL(/stage=recipient/, { timeout: 90_000 });
-      // The package is frozen: terms are facts here, not fields.
-      await expect(page.getByText(/Frozen at approval/)).toBeVisible({ timeout: 90_000 });
-      // The terms are a stated fact here, not a field.
-      await expect(page.getByText(/^Terms:/)).toBeVisible();
-      await expect(page.getByRole("textbox", { name: "Terms", exact: true })).toHaveCount(0);
-      const secondDesk = `Second desk ${testInfo.project.name} ${Date.now()}`;
-      await page.getByLabel("Recipient desk or contact").fill(secondDesk);
-      await page.getByRole("link", { name: "Review delivery" }).click();
-      await page.waitForURL(/stage=review/, { timeout: 90_000 });
-      await page.getByRole("button", { name: "Create private delivery" }).click();
-      await page.getByRole("button", { name: "Yes, create the private delivery" }).click();
-      await expect(page.getByText("Private delivery created")).toBeVisible({ timeout: 90_000 });
-      const secondHref = (await page.locator(".ml-delivery-review__url code").innerText()).trim();
-      expect(new URL(secondHref).pathname).not.toBe(deliveryPath);
-    } finally {
-      await clearDeliveryLinks();
-      await purgeApprovedShoot(fixture.shootId, fixture.objectKeys).catch(() => undefined);
-    }
-  });
+    },
+  );
 });

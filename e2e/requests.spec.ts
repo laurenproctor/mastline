@@ -60,23 +60,27 @@ test.afterAll(async () => {
   await deleteRequestsTitled(TITLE_PREFIX);
 });
 
-test("Requests sits between News radar and Shoots in the navigation", async ({ context, page }) => {
-  await refuseCookies(context);
-  await signIn(page);
+test(
+  "Requests sits between News radar and Shoots in the navigation",
+  { tag: "@responsive" },
+  async ({ context, page }) => {
+    await refuseCookies(context);
+    await signIn(page);
 
-  const nav = page.getByRole("navigation", { name: "Primary" });
-  const labels = await nav.getByRole("link").allInnerTexts();
-  const trimmed = labels.map((label) => label.trim());
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    const labels = await nav.getByRole("link").allInnerTexts();
+    const trimmed = labels.map((label) => label.trim());
 
-  expect(trimmed.indexOf("Requests")).toBe(trimmed.indexOf("News radar") + 1);
-  expect(trimmed.indexOf("Shoots")).toBe(trimmed.indexOf("Requests") + 1);
+    expect(trimmed.indexOf("Requests")).toBe(trimmed.indexOf("News radar") + 1);
+    expect(trimmed.indexOf("Shoots")).toBe(trimmed.indexOf("Requests") + 1);
 
-  await nav.getByRole("link", { name: "Requests" }).click();
-  // The canonical, workspace-scoped address -- not a bare /requests served by
-  // the middleware's legacy redirect.
-  await expect(page).toHaveURL(new RegExp(`/${SEEDED_WORKSPACE}/requests$`));
-  await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
-});
+    await nav.getByRole("link", { name: "Requests" }).click();
+    // The canonical, workspace-scoped address -- not a bare /requests served by
+    // the middleware's legacy redirect.
+    await expect(page).toHaveURL(new RegExp(`/${SEEDED_WORKSPACE}/requests$`));
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+  },
+);
 
 test("a photographer can record what a desk asked for and find it again", async ({
   context,
@@ -175,16 +179,20 @@ test("a read-only colleague can read the inbox and is offered no controls", asyn
   await expect(page.getByRole("link", { name: /record a request/i })).toHaveCount(0);
 });
 
-test("the inbox does not scroll sideways on a phone", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "mobile", "The phone viewport is the question here.");
+test(
+  "the inbox does not scroll sideways on a phone",
+  { tag: "@responsive" },
+  async ({ context, page }) => {
+    test.skip(test.info().project.name !== "mobile", "The phone viewport is the question here.");
 
-  await refuseCookies(context);
-  await signIn(page);
-  await page.goto(at("/requests"));
+    await refuseCookies(context);
+    await signIn(page);
+    await page.goto(at("/requests"));
 
-  await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
-  // A wide table is allowed to scroll inside its own labelled region; the page
-  // behind it is not.
-  expect(await hasHorizontalOverflow(page)).toBe(false);
-  await expect(page.getByRole("region", { name: "Requests" })).toBeVisible();
-});
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+    // A wide table is allowed to scroll inside its own labelled region; the page
+    // behind it is not.
+    expect(await hasHorizontalOverflow(page)).toBe(false);
+    await expect(page.getByRole("region", { name: "Requests" })).toBeVisible();
+  },
+);

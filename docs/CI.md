@@ -71,8 +71,33 @@ the full loop, and the permission-to-policy agreement stay a local check
 schema *applies* is not the same as CI proving the schema *behaves*; do not
 read a green build as the latter.
 
-The browser suite (`npm run test:e2e`) does not run here either. It signs in a
-few hundred times over roughly twelve minutes against a real stack.
+The browser suite (`npm run test:e2e`) does not run here either. It needs a
+real stack, a production build and a server, so it lives in its own
+`workflow_dispatch` workflow (`.github/workflows/e2e-suite.yml`) and is
+launched by hand.
+
+**It runs as three parallel jobs, one per viewport project.** The specs share
+one database and so cannot share a worker — `playwright.config.ts` pins
+`workers: 1` — but they can share nothing at all instead: each job starts its
+own Supabase stack, builds its own app and serves its own `next start`. The
+run is now as long as its slowest job rather than the sum of three.
+
+**A test runs at one width unless it says otherwise.** Desktop runs every
+spec; tablet and mobile run only what carries `@responsive`, and mobile also
+what carries `@webkit`. Most of this suite proves things with no viewport
+dimension — whether a split is 70/30, whether a token that was never issued
+reveals anything — and running those three times answered the same question
+three times. Tag a test when the width can change what it proves, or when the
+engine can: the mobile project is the only WebKit one, and Playwright's WebKit
+has no `navigator.storage`, which is why the import queue is tagged to reach
+it.
+
+**The seeded roles are signed in once**, by the `setup` project in
+`e2e/auth.setup.ts`, which every viewport project declares as a dependency.
+`signIn` in `e2e/helpers.ts` replays those cookies rather than driving the form
+again, and falls back to the real form for any account or workspace it has no
+saved session for. That setup project is also the suite's sign-in smoke test:
+a broken sign-in screen fails the run there, by name, before a spec has run.
 
 ### `Migration integrity`
 

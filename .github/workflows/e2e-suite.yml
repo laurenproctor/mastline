@@ -9,6 +9,10 @@
 # Nothing here contacts a hosted project: `supabase start` is entirely local
 # to the runner, and the only secrets used are the CLI's local development
 # defaults, which are public knowledge.
+#
+# It runs as three parallel jobs, one per viewport project. They share nothing
+# -- not a stack, not a database, not a server -- which is what makes running
+# them at the same time safe despite `workers: 1` inside each.
 name: E2E suite
 
 on:
@@ -16,15 +20,40 @@ on:
 
 jobs:
   e2e:
-    name: E2E suite
+    name: E2E ${{ matrix.project }}
     runs-on: ubuntu-latest
-    # 75, not 60: the suite has genuinely grown -- the delivery five-stage
-    # flow, the import queue, and the News Radar evaluation and handoff
-    # journeys all run three projects on one worker against one stack. A
-    # healthy run fits well inside this; the per-test budgets are CI-capped
-    # (see testBudget in e2e/helpers.ts) so a failing test cannot stretch to
-    # the ceiling the way an uncapped budget once did.
-    timeout-minutes: 75
+    strategy:
+      # One runner per viewport project, because the specs cannot share a
+      # database and so cannot share a worker. They can share nothing at all
+      # instead: each job below starts its own Supabase stack, builds its own
+      # app and serves its own `next start`, which is the one axis of
+      # parallelism available without rewriting every fixture to be
+      # worker-scoped. Three jobs at once rather than three projects in
+      # sequence.
+      fail-fast: false
+      matrix:
+        include:
+          # Desktop runs every spec; tablet and mobile run only what carries
+          # @responsive, and mobile also what carries @webkit. The projects in
+          # playwright.config.ts hold that gate and explain it.
+          - project: desktop
+            browsers: chromium
+          - project: tablet
+            browsers: chromium
+          # Two, and both are needed. The iPhone device descriptor is WebKit --
+          # which is the whole reason the import queue is tagged to reach this
+          # project -- but the setup project it depends on signs the seeded
+          # roles in through Chromium. A saved session is a JSON file of
+          # cookies and carries across engines perfectly well; the browser that
+          # writes it still has to exist.
+          - project: mobile
+            browsers: chromium webkit
+    # 45, not the 75 one sequential job needed. The heaviest single project is
+    # desktop, which now carries the long journeys alone rather than behind two
+    # other projects' worth of work. Per-test budgets stay CI-capped (see
+    # testBudget in e2e/helpers.ts) so a failing test cannot stretch to the
+    # ceiling the way an uncapped budget once did.
+    timeout-minutes: 45
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -68,21 +97,24 @@ jobs:
       - name: Build the app
         run: npm run build
 
-      # Chromium for the desktop and tablet projects; WebKit because the
-      # mobile project is the iPhone device descriptor, which runs WebKit.
+      # Only what this job actually launches. Every run used to download WebKit
+      # for all three projects when two of them never open it.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
 
       # The config starts `next start -p 4100` itself and refuses to reuse a
       # stray server under CI, so the build above is exactly what is tested.
+      # The setup project (e2e/auth.setup.ts) is a declared dependency of every
+      # viewport project, so naming one project here still signs the seeded
+      # roles in first.
       - name: Run the browser suite
-        run: npx playwright test
+        run: npx playwright test --project=${{ matrix.project }}
 
       - name: Keep the failure traces
         if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.project }}
           path: test-results/
           retention-days: 7
 

@@ -58,7 +58,7 @@ test.describe("every documented route renders", () => {
     });
   }
 
-  test("signed in, every application route renders", async ({ page }) => {
+  test("signed in, every application route renders", { tag: "@responsive" }, async ({ page }) => {
     const errors = collectPageErrors(page);
     await signIn(page);
 
@@ -73,7 +73,7 @@ test.describe("every documented route renders", () => {
 });
 
 test.describe("layout holds at the required sizes", () => {
-  test("public pages do not scroll sideways", async ({ page }) => {
+  test("public pages do not scroll sideways", { tag: "@responsive" }, async ({ page }) => {
     for (const route of ["/welcome", "/pricing", "/sign-in", "/sign-up"]) {
       await page.goto(route);
       const overflowing = await overflowingElements(page);
@@ -82,7 +82,7 @@ test.describe("layout holds at the required sizes", () => {
     }
   });
 
-  test("the work queue does not scroll sideways", async ({ page }) => {
+  test("the work queue does not scroll sideways", { tag: "@responsive" }, async ({ page }) => {
     await signIn(page);
     await page.goto(at("/work"));
     const overflowing = await overflowingElements(page);
@@ -90,7 +90,7 @@ test.describe("layout holds at the required sizes", () => {
     expect(await hasHorizontalOverflow(page)).toBe(false);
   });
 
-  test("the shoot inspector does not scroll sideways", async ({ page }) => {
+  test("the shoot inspector does not scroll sideways", { tag: "@responsive" }, async ({ page }) => {
     await signIn(page);
     await page.goto(at(`/shoots/${SEEDED_SHOOT}`));
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -99,7 +99,7 @@ test.describe("layout holds at the required sizes", () => {
     expect(await hasHorizontalOverflow(page)).toBe(false);
   });
 
-  test("money and archive do not scroll sideways", async ({ page }) => {
+  test("money and archive do not scroll sideways", { tag: "@responsive" }, async ({ page }) => {
     await signIn(page);
     for (const route of [at("/money"), at("/archive"), at("/settings")]) {
       await page.goto(route);
@@ -110,33 +110,41 @@ test.describe("layout holds at the required sizes", () => {
 });
 
 test.describe("navigation is reachable", () => {
-  test("every primary destination is a link that works", async ({ page }) => {
-    await signIn(page);
-    const nav = page.getByRole("navigation", { name: "Primary" });
+  test(
+    "every primary destination is a link that works",
+    { tag: "@responsive" },
+    async ({ page }) => {
+      await signIn(page);
+      const nav = page.getByRole("navigation", { name: "Primary" });
 
-    for (const label of [
-      "Work",
-      "News radar",
-      "Shoots",
-      "Submissions",
-      "Money",
-      "Rights",
-      "Archive",
-    ]) {
-      await expect(nav.getByRole("link", { name: label })).toBeVisible();
-    }
-  });
+      for (const label of [
+        "Work",
+        "News radar",
+        "Shoots",
+        "Submissions",
+        "Money",
+        "Rights",
+        "Archive",
+      ]) {
+        await expect(nav.getByRole("link", { name: label })).toBeVisible();
+      }
+    },
+  );
 
-  test("settings is reachable, including on a phone", async ({ page }) => {
+  test("settings is reachable, including on a phone", { tag: "@responsive" }, async ({ page }) => {
     await signIn(page);
     await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
   });
 
-  test("the active destination is marked for assistive technology", async ({ page }) => {
-    await signIn(page);
-    await page.goto(at("/money"));
-    await expect(page.locator('[aria-current="page"]')).toHaveText(/Money/);
-  });
+  test(
+    "the active destination is marked for assistive technology",
+    { tag: "@responsive" },
+    async ({ page }) => {
+      await signIn(page);
+      await page.goto(at("/money"));
+      await expect(page.locator('[aria-current="page"]')).toHaveText(/Money/);
+    },
+  );
 });
 
 test.describe("pricing states the approved facts", () => {
@@ -499,7 +507,7 @@ test.describe("the marketing site", () => {
     expect(errors).toEqual([]);
   });
 
-  test("no page scrolls sideways", async ({ page }) => {
+  test("no page scrolls sideways", { tag: "@responsive" }, async ({ page }) => {
     for (const route of ["/", "/pricing", "/product", "/commercial", "/press", "/terms"]) {
       await page.goto(route);
       expect(await hasHorizontalOverflow(page), `${route} scrolls sideways`).toBe(false);
@@ -552,7 +560,7 @@ test.describe("the marketing site", () => {
     }
   });
 
-  test("the header marks where you are", async ({ page }) => {
+  test("the header marks where you are", { tag: "@responsive" }, async ({ page }) => {
     await page.goto("/pricing");
     const current = page.locator(".nav ul a[aria-current='page']");
     await expect(current).toHaveCount(2); // the header and the mobile menu
@@ -677,12 +685,11 @@ test.describe("two-factor authentication", () => {
    * It runs against the seeded owner and turns the factor back off in a finally,
    * because leaving it on would challenge every other test that signs in.
    */
-  test("protects an account, and cannot be walked around", async ({ page }, testInfo) => {
-    // Desktop only. A used code cannot be replayed, so this waits out two
-    // 30-second windows, and what it proves -- that the challenge cannot be
-    // skipped -- is the same at every width. The panel's layout at 390px is
-    // covered by the layout tests.
-    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+  test("protects an account, and cannot be walked around", async ({ page }) => {
+    // Untagged, so this runs once. A used code cannot be replayed, so it waits
+    // out two 30-second windows, and what it proves -- that the challenge
+    // cannot be skipped -- is the same at every width. The panel's layout at
+    // 390px is covered by the layout tests.
     test.setTimeout(180_000);
 
     await signIn(page, SEEDED.owner);
@@ -775,8 +782,7 @@ test.describe("two-factor authentication", () => {
    * here, so the button did nothing and the only screen out of the lockout was
    * the lockout.
    */
-  test("the locked-out page can actually let you out", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+  test("the locked-out page can actually let you out", async ({ page }) => {
     test.setTimeout(180_000);
 
     await setWorkspaceMfaPolicy(true);
@@ -829,10 +835,9 @@ test.describe("two-factor authentication", () => {
     await expect(page).toHaveURL(/\/work/);
   });
 
-  test("a recovery code gets you back in when the phone is gone", async ({ page }, testInfo) => {
-    // Desktop only, for the same reason as the enrolment test: it waits out a
-    // TOTP window and proves something with no layout dimension.
-    test.skip(testInfo.project.name !== "desktop", "viewport-independent and slow");
+  test("a recovery code gets you back in when the phone is gone", async ({ page }) => {
+    // Untagged for the same reason as the enrolment test: it waits out a TOTP
+    // window and proves something with no layout dimension.
     test.setTimeout(180_000);
 
     await signIn(page, SEEDED.owner);
