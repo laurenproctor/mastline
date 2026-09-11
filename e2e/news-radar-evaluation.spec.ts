@@ -283,30 +283,32 @@ test("a read-only role reads the evaluation and is offered no controls", async (
   }
 });
 
-test("the evaluated detail screen holds at this project's viewport without sideways scroll", async ({
-  page,
-}, testInfo) => {
-  const fixture = await createStory(`Radar eval layout ${Date.now()}`);
-  try {
-    await signIn(page);
-    await page.goto(at(`/news/${fixture.archiveId}`));
-    await recordContext(page, { people: "Avery Hart", location: "Hotel Chelsea" });
-    await page.getByRole("button", { name: "Evaluate" }).click();
-    await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
+test(
+  "the evaluated detail screen holds at this project's viewport without sideways scroll",
+  { tag: "@responsive" },
+  async ({ page }, testInfo) => {
+    const fixture = await createStory(`Radar eval layout ${Date.now()}`);
+    try {
+      await signIn(page);
+      await page.goto(at(`/news/${fixture.archiveId}`));
+      await recordContext(page, { people: "Avery Hart", location: "Hotel Chelsea" });
+      await page.getByRole("button", { name: "Evaluate" }).click();
+      await expect(page.getByText("Evaluated.", { exact: false })).toBeVisible({ timeout: 60_000 });
 
-    for (const path of [`/news/${fixture.archiveId}`, `/news/${fixture.shootId}`]) {
-      await page.goto(at(path));
-      await page.waitForLoadState("networkidle");
-      expect(await hasHorizontalOverflow(page), `${path} scrolls sideways`).toBe(false);
-      if (process.env.NEWS_RADAR_SHOTS) {
-        const which = path.endsWith(fixture.archiveId) ? "archive" : "shoot";
-        await page.screenshot({
-          path: `${process.env.NEWS_RADAR_SHOTS}/${which}-${testInfo.project.name}.png`,
-          fullPage: true,
-        });
+      for (const path of [`/news/${fixture.archiveId}`, `/news/${fixture.shootId}`]) {
+        await page.goto(at(path));
+        await page.waitForLoadState("networkidle");
+        expect(await hasHorizontalOverflow(page), `${path} scrolls sideways`).toBe(false);
+        if (process.env.NEWS_RADAR_SHOTS) {
+          const which = path.endsWith(fixture.archiveId) ? "archive" : "shoot";
+          await page.screenshot({
+            path: `${process.env.NEWS_RADAR_SHOTS}/${which}-${testInfo.project.name}.png`,
+            fullPage: true,
+          });
+        }
       }
+    } finally {
+      await deleteStory(fixture);
     }
-  } finally {
-    await deleteStory(fixture);
-  }
-});
+  },
+);

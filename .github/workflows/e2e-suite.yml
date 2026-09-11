@@ -1,30 +1,96 @@
-# The browser suite, on demand.
+# The browser suite.
 #
 # The specs under e2e/ check what no amount of parsing HTML can: layouts at
 # the sizes ACCEPTANCE.md names, visible focus, and client-rendered states,
-# against a production build and a real local stack. Like the database suite,
-# they stay out of the PR gate and exist for a development machine that cannot
-# hold a healthy stack or a quiet browser run.
+# against a production build and a real local stack.
 #
 # Nothing here contacts a hosted project: `supabase start` is entirely local
 # to the runner, and the only secrets used are the CLI's local development
-# defaults, which are public knowledge.
+# defaults, which are public knowledge. That is also why it is safe on a
+# pull request from a fork, where the token is read-only and secrets are not
+# handed over: this workflow needs neither.
+#
+# TWO SHAPES, ONE WORKFLOW:
+#
+#   pull_request      desktop alone. It runs every spec -- only layout and
+#                     engine coverage lives in the other two -- so it is the
+#                     job that answers "did this break the application", and
+#                     it measured 14 minutes end to end (10.6 of tests, the
+#                     rest npm ci, supabase start, next build, browsers).
+#
+#   workflow_dispatch all three projects, in parallel. Run this before a
+#                     release, or on anything touching layout, navigation,
+#                     the consent banner or the import queue -- the things
+#                     tablet and mobile exist to catch. Tablet adds 4.8
+#                     minutes and mobile 6.9, both alongside desktop rather
+#                     than after it.
+#
+# The projects share nothing -- not a stack, not a database, not a server --
+# which is what makes running them at the same time safe despite `workers: 1`
+# inside each.
+#
+# GATING THIS AT ALL was argued from measurement rather than taste. The
+# suite's reputation for flakiness was a development machine running three
+# Supabase stacks at load average 16; on a quiet runner the tests that failed
+# there pass. And the tag-based selection means the matrix costs fewer runner
+# minutes than the old single sequential job, not more.
 name: E2E suite
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
+
+# Read-only. Nothing here comments, labels, publishes, or deploys.
+permissions:
+  contents: read
+
+# A new push to the same pull request makes the run already in flight
+# obsolete. Without this, a branch pushed three times in a minute holds three
+# stacks and three builds open at once.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   e2e:
-    name: E2E suite
+    name: E2E ${{ matrix.project }}
     runs-on: ubuntu-latest
-    # 75, not 60: the suite has genuinely grown -- the delivery five-stage
-    # flow, the import queue, and the News Radar evaluation and handoff
-    # journeys all run three projects on one worker against one stack. A
-    # healthy run fits well inside this; the per-test budgets are CI-capped
-    # (see testBudget in e2e/helpers.ts) so a failing test cannot stretch to
-    # the ceiling the way an uncapped budget once did.
-    timeout-minutes: 75
+    strategy:
+      # One runner per viewport project, because the specs cannot share a
+      # database and so cannot share a worker. They can share nothing at all
+      # instead: each job below starts its own Supabase stack, builds its own
+      # app and serves its own `next start`, which is the one axis of
+      # parallelism available without rewriting every fixture to be
+      # worker-scoped. Three jobs at once rather than three projects in
+      # sequence.
+      fail-fast: false
+      matrix:
+        # Built as JSON rather than written as a list, because a pull request
+        # gets one entry and a dispatch gets three, and a job-level `if` would
+        # instead leave two permanently skipped checks sitting on every pull
+        # request pretending to be results.
+        #
+        # Desktop runs every spec; tablet and mobile run only what carries
+        # @responsive, and mobile also what carries @webkit. The projects in
+        # playwright.config.ts hold that gate and explain it.
+        #
+        # Mobile asks for two browsers and needs both. The iPhone device
+        # descriptor is WebKit -- which is the whole reason the import queue is
+        # tagged to reach that project -- but the setup project it depends on
+        # signs the seeded roles in through Chromium. A saved session is a JSON
+        # file of cookies and carries across engines perfectly well; the
+        # browser that writes it still has to exist.
+        include: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '[{"project":"desktop","browsers":"chromium"}]'
+          || '[{"project":"desktop","browsers":"chromium"},{"project":"tablet","browsers":"chromium"},{"project":"mobile","browsers":"chromium webkit"}]') }}
+    # 45, not the 75 one sequential job needed. The heaviest project is
+    # desktop, measured at 14 minutes on a runner, so this is three times the
+    # observed cost rather than a number picked to feel safe. Per-test budgets
+    # stay CI-capped (see testBudget in e2e/helpers.ts) so a failing test
+    # cannot stretch to the ceiling the way an uncapped budget once did.
+    timeout-minutes: 45
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -68,21 +134,24 @@ jobs:
       - name: Build the app
         run: npm run build
 
-      # Chromium for the desktop and tablet projects; WebKit because the
-      # mobile project is the iPhone device descriptor, which runs WebKit.
+      # Only what this job actually launches. Every run used to download WebKit
+      # for all three projects when two of them never open it.
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps ${{ matrix.browsers }}
 
       # The config starts `next start -p 4100` itself and refuses to reuse a
       # stray server under CI, so the build above is exactly what is tested.
+      # The setup project (e2e/auth.setup.ts) is a declared dependency of every
+      # viewport project, so naming one project here still signs the seeded
+      # roles in first.
       - name: Run the browser suite
-        run: npx playwright test
+        run: npx playwright test --project=${{ matrix.project }}
 
       - name: Keep the failure traces
         if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.project }}
           path: test-results/
           retention-days: 7
 

@@ -200,16 +200,20 @@ test.describe("create shoot", () => {
     }
   });
 
-  test("holds its layout at every size, including a phone", async ({ page }) => {
-    await signIn(page, SEEDED.owner);
-    await page.goto(at("/shoots/new"));
+  test(
+    "holds its layout at every size, including a phone",
+    { tag: "@responsive" },
+    async ({ page }) => {
+      await signIn(page, SEEDED.owner);
+      await page.goto(at("/shoots/new"));
 
-    // The page grew from a brief to five sections, and a photographer captions
-    // frames on a phone at the kerbside. It must not scroll sideways.
-    const overflowing = await overflowingElements(page);
-    expect(overflowing, `overflows: ${overflowing.join(", ")}`).toEqual([]);
-    expect(await hasHorizontalOverflow(page)).toBe(false);
-  });
+      // The page grew from a brief to five sections, and a photographer captions
+      // frames on a phone at the kerbside. It must not scroll sideways.
+      const overflowing = await overflowingElements(page);
+      expect(overflowing, `overflows: ${overflowing.join(", ")}`).toEqual([]);
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+    },
+  );
 
   test("nothing on this page offers to send anything", async ({ page }) => {
     await signIn(page, SEEDED.owner);
