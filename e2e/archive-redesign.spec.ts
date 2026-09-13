@@ -252,49 +252,54 @@ test.describe("the archive", () => {
     expect(await page.locator("article[data-commercial]").count()).toBeGreaterThan(0);
   });
 
-  test("does not scroll sideways, before or after a search", async ({ page }) => {
-    await signIn(page);
-    for (const route of [
-      ARCHIVE,
-      `${ARCHIVE}?q=Avery+Hart&filter=earning`,
-      `${ARCHIVE}?view=list`,
-    ]) {
-      await open(page, route);
-      await expect(page.getByRole("heading", { level: 1, name: "Archive" })).toBeVisible();
-      const overflowing = await overflowingElements(page);
-      expect(overflowing, `${route} overflows: ${overflowing.join(", ")}`).toEqual([]);
-    }
-  });
+  test(
+    "does not scroll sideways, before or after a search",
+    { tag: "@responsive" },
+    async ({ page }) => {
+      await signIn(page);
+      for (const route of [
+        ARCHIVE,
+        `${ARCHIVE}?q=Avery+Hart&filter=earning`,
+        `${ARCHIVE}?view=list`,
+      ]) {
+        await open(page, route);
+        await expect(page.getByRole("heading", { level: 1, name: "Archive" })).toBeVisible();
+        const overflowing = await overflowingElements(page);
+        expect(overflowing, `${route} overflows: ${overflowing.join(", ")}`).toEqual([]);
+      }
+    },
+  );
 
-  test("search and filters work from the keyboard, with focus visible", async ({
-    page,
-    isMobile,
-  }) => {
-    test.skip(Boolean(isMobile), "Keyboard focus is a desktop and tablet concern.");
-    await signIn(page);
-    await open(page, ARCHIVE);
+  test(
+    "search and filters work from the keyboard, with focus visible",
+    { tag: "@responsive" },
+    async ({ page, isMobile }) => {
+      test.skip(Boolean(isMobile), "Keyboard focus is a desktop and tablet concern.");
+      await signIn(page);
+      await open(page, ARCHIVE);
 
-    // "/" puts the cursor in the field from anywhere.
-    await page.locator("body").click({ position: { x: 5, y: 5 } });
-    await page.keyboard.press("/");
-    await expect(page.getByLabel(/Search the archive/i)).toBeFocused();
-    expect(await focusRingIsVisible(page)).toBe(true);
-    await page.keyboard.type("Avery Hart");
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/[?&]q=Avery\+Hart/);
+      // "/" puts the cursor in the field from anywhere.
+      await page.locator("body").click({ position: { x: 5, y: 5 } });
+      await page.keyboard.press("/");
+      await expect(page.getByLabel(/Search the archive/i)).toBeFocused();
+      expect(await focusRingIsVisible(page)).toBe(true);
+      await page.keyboard.type("Avery Hart");
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/[?&]q=Avery\+Hart/);
 
-    // Tab to a commercial filter and activate it.
-    const filter = page.getByRole("link", { name: "Has earned" }).first();
-    await filter.focus();
-    expect(await focusRingIsVisible(page)).toBe(true);
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/[?&]filter=earning/);
+      // Tab to a commercial filter and activate it.
+      const filter = page.getByRole("link", { name: "Has earned" }).first();
+      await filter.focus();
+      expect(await focusRingIsVisible(page)).toBe(true);
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/[?&]filter=earning/);
 
-    // A card is one stop in the tab order, and shows where it is.
-    const card = page.locator("article[data-commercial] h3 a").first();
-    await card.focus();
-    await expect(card).toBeFocused();
-  });
+      // A card is one stop in the tab order, and shows where it is.
+      const card = page.locator("article[data-commercial] h3 a").first();
+      await card.focus();
+      await expect(card).toBeFocused();
+    },
+  );
 
   test("renders no private storage key or delivery token", async ({ page }) => {
     await signIn(page);
@@ -325,19 +330,23 @@ test.describe("an empty archive", () => {
     if (workspace) await purgeWorkspace(workspace.id);
   });
 
-  test("says there are no photographs, and offers the import", async ({ page }) => {
-    if (!workspace) throw new Error("No throwaway workspace.");
-    await signIn(page, SEEDED.owner, workspace.slug);
-    await open(page, at("/archive", workspace.slug));
+  test(
+    "says there are no photographs, and offers the import",
+    { tag: "@responsive" },
+    async ({ page }) => {
+      if (!workspace) throw new Error("No throwaway workspace.");
+      await signIn(page, SEEDED.owner, workspace.slug);
+      await open(page, at("/archive", workspace.slug));
 
-    await expect(page.getByRole("heading", { name: "No photographs yet" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Import a shoot" }).first()).toHaveAttribute(
-      "href",
-      at("/shoots/new", workspace.slug),
-    );
-    // Nothing to search or count yet, so neither control is drawn.
-    await expect(page.getByLabel(/Search the archive/i)).toHaveCount(0);
-    await expect(page.getByRole("complementary", { name: "Archive insights" })).toHaveCount(0);
-    expect(await overflowingElements(page)).toEqual([]);
-  });
+      await expect(page.getByRole("heading", { name: "No photographs yet" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Import a shoot" }).first()).toHaveAttribute(
+        "href",
+        at("/shoots/new", workspace.slug),
+      );
+      // Nothing to search or count yet, so neither control is drawn.
+      await expect(page.getByLabel(/Search the archive/i)).toHaveCount(0);
+      await expect(page.getByRole("complementary", { name: "Archive insights" })).toHaveCount(0);
+      expect(await overflowingElements(page)).toEqual([]);
+    },
+  );
 });

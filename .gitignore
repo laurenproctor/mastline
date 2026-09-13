@@ -44,6 +44,9 @@ yarn-error.log*
 /playwright-report
 /blob-report
 /playwright/.cache
+# Saved sign-in sessions, written by e2e/auth.setup.ts at the start of a run.
+# Real bearer tokens for the seeded accounts; regenerated every run, never kept.
+/e2e/.auth
 .vercel
 .env*
 !.env.example

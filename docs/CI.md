@@ -71,8 +71,51 @@ the full loop, and the permission-to-policy agreement stay a local check
 schema *applies* is not the same as CI proving the schema *behaves*; do not
 read a green build as the latter.
 
-The browser suite (`npm run test:e2e`) does not run here either. It signs in a
-few hundred times over roughly twelve minutes against a real stack.
+The browser suite (`npm run test:e2e`) is not part of `Verify`. It needs a
+real stack, a production build and a server, so it has its own workflow
+(`.github/workflows/e2e-suite.yml`) — which does now gate pull requests, in a
+narrower shape than a dispatch.
+
+**On a pull request: desktop alone, ~14 minutes.** Desktop runs every spec —
+only layout and engine coverage lives in the other two projects — so it is the
+job that answers "did this break the application". Of those 14 minutes, 10.6
+are tests and the rest is `npm ci`, `supabase start`, `next build` and the
+browser install.
+
+**On a dispatch: all three projects, in parallel.** Run one before a release,
+or on anything touching layout, navigation, the consent banner or the import
+queue, which is what tablet and mobile exist to catch. Tablet adds 4.8 minutes
+and mobile 6.9, both alongside desktop rather than after it.
+
+The specs share one database and so cannot share a worker —
+`playwright.config.ts` pins `workers: 1` — but they can share nothing at all
+instead: each job starts its own Supabase stack, builds its own app and serves
+its own `next start`. A run is as long as its slowest job rather than the sum
+of three, and because the tag-based selection removes so much duplicated work,
+the matrix costs *fewer* runner minutes than the old single sequential job.
+
+This suite spent a long time with a reputation for flakiness that it turned
+out not to deserve. The tests that failed repeatedly on a development machine
+running three Supabase stacks at load average 16 pass on a quiet runner. Do
+not diagnose a red browser suite from a local run; dispatch it and read the
+runner.
+
+**A test runs at one width unless it says otherwise.** Desktop runs every
+spec; tablet and mobile run only what carries `@responsive`, and mobile also
+what carries `@webkit`. Most of this suite proves things with no viewport
+dimension — whether a split is 70/30, whether a token that was never issued
+reveals anything — and running those three times answered the same question
+three times. Tag a test when the width can change what it proves, or when the
+engine can: the mobile project is the only WebKit one, and Playwright's WebKit
+has no `navigator.storage`, which is why the import queue is tagged to reach
+it.
+
+**The seeded roles are signed in once**, by the `setup` project in
+`e2e/auth.setup.ts`, which every viewport project declares as a dependency.
+`signIn` in `e2e/helpers.ts` replays those cookies rather than driving the form
+again, and falls back to the real form for any account or workspace it has no
+saved session for. That setup project is also the suite's sign-in smoke test:
+a broken sign-in screen fails the run there, by name, before a spec has run.
 
 ### `Migration integrity`
 

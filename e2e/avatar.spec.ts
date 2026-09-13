@@ -20,9 +20,7 @@ const RED_PNG = Buffer.from(
 );
 
 test.describe("a profile photo", () => {
-  test("goes on, survives a reload, and comes off", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "the same at every width");
-
+  test("goes on, survives a reload, and comes off", async ({ page }) => {
     await signIn(page, SEEDED.owner);
     await page.goto(at("/settings"));
 
@@ -65,9 +63,7 @@ test.describe("a profile photo", () => {
     }
   });
 
-  test("refuses a file that is not an image it can read", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop", "the same at every width");
-
+  test("refuses a file that is not an image it can read", async ({ page }) => {
     await signIn(page, SEEDED.owner);
     await page.goto(at("/settings"));
 
