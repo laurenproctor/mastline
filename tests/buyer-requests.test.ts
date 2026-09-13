@@ -378,12 +378,18 @@ describeIf("moving a request along", () => {
     expect(await move("owner", id, "submitted")).toBe("invalid_transition");
   });
 
-  it("refuses a win, because no license connection exists yet", async () => {
+  it("refuses a win through the generic move, because winning is a connection", async () => {
+    /*
+     * A request sitting in negotiation, arranged directly: negotiating is not
+     * evidence-gated, and walking the whole submitted path is another test's
+     * job. What this asserts is that the ordinary transition cannot claim a
+     * win -- a won request points at the license somebody connected, and this
+     * call names none. The connection flow itself, including the database's
+     * evidence gate, lives in tests/request-won-link.test.ts.
+     */
     const { id } = await record("owner");
-    await move("owner", id, "qualified");
-    await move("owner", id, "preparing_response");
-    await move("owner", id, "submitted");
-    expect(await move("owner", id, "won")).toBe("unavailable_in_phase");
+    await serviceClient().from("buyer_requests").update({ status: "negotiating" }).eq("id", id);
+    expect(await move("owner", id, "won")).toBe("connection_required");
   });
 
   it("will not record lost or declined without a reason", async () => {

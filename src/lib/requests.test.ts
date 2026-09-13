@@ -3,10 +3,11 @@ import { REQUEST_STATUSES, type BuyerRequest, type RequestStatus } from "./domai
 import { money } from "./money";
 import {
   CLOSED_STATUSES,
+  CONNECTION_STATUSES,
   NOT_PROVIDED,
   REASON_MAX_LENGTH,
-  UNAVAILABLE_STATUSES,
   allowedTransitions,
+  canRecordWin,
   canTransition,
   checkBudget,
   checkTransition,
@@ -102,26 +103,57 @@ describe("transitions", () => {
     }
   });
 
-  it("does not offer won in this phase, from anywhere", () => {
-    // The value exists in the enum so Phase 2 adds a license link rather than a
-    // migration. Until that link exists, a win would point at no money.
-    expect(UNAVAILABLE_STATUSES).toContain("won");
+  it("keeps won out of the generic move control, from everywhere", () => {
+    // Won is performed by connecting a license, never by selecting it from a
+    // dropdown: a dropdown entry with no license behind it would only ever be
+    // refused, first here and then by the database's evidence gate.
+    expect(CONNECTION_STATUSES).toContain("won");
     for (const from of REQUEST_STATUSES) {
       expect(allowedTransitions(from)).not.toContain("won");
       expect(canTransition(from, "won")).toBe(false);
     }
   });
 
-  it("still knows won is reachable in principle, so the table is not a lie", () => {
-    // The unfiltered table is what a Phase 2 change edits, and what the
-    // database enum is compared against.
+  it("reaches won through the connection, from submitted and negotiating only", () => {
     expect(allowedTransitions("submitted", { unfiltered: true })).toContain("won");
+    expect(allowedTransitions("negotiating", { unfiltered: true })).toContain("won");
+    expect(canRecordWin("submitted")).toBe(true);
+    expect(canRecordWin("negotiating")).toBe(true);
+
+    const connected = checkTransition({
+      from: "negotiating",
+      to: "won",
+      connectedLicenseId: "a0000000-0000-0000-0000-00000000b001",
+    });
+    expect(connected.ok).toBe(true);
   });
 
-  it("explains why a win is unavailable rather than calling it invalid", () => {
+  it("does not let a connection shortcut the transition table", () => {
+    // A license in hand does not make a win recordable from a request nobody
+    // has even submitted: the table row still decides, the connection is only
+    // how its allowance is exercised.
+    for (const from of ["draft", "new", "qualified", "preparing_response"] as const) {
+      expect(canRecordWin(from)).toBe(false);
+      const result = checkTransition({
+        from,
+        to: "won",
+        connectedLicenseId: "a0000000-0000-0000-0000-00000000b001",
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.reason).toBe("invalid_transition");
+    }
+    for (const from of CLOSED_STATUSES) {
+      expect(canRecordWin(from)).toBe(false);
+    }
+  });
+
+  it("explains that a win needs its connection rather than calling it invalid", () => {
     const result = checkTransition({ from: "submitted", to: "won" });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error.reason).toBe("unavailable_in_phase");
+    if (!result.ok) {
+      expect(result.error.reason).toBe("connection_required");
+      expect(result.error.message).toMatch(/connect/i);
+    }
   });
 
   it("walks the ordinary path from arrival to submitted", () => {

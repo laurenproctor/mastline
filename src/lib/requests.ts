@@ -44,15 +44,20 @@ export function isClosed(status: RequestStatus): boolean {
 }
 
 /**
- * Statuses the vocabulary contains and this phase cannot reach.
+ * Statuses performed by connecting a record, never offered by the generic
+ * "move this request to" control.
  *
- * `won` means a request turned into a license, and nothing in Mastline connects
- * those two records yet. Offering the button anyway would let somebody record
- * a win that points at no money, in the one product whose entire premise is
- * that a sale connects back to the work. It is in the enum so that Phase 2 adds
- * a link rather than a migration.
+ * `won` means a request turned into a license, and since
+ * 20260903090000_request_won_licenses.sql those two records connect: a person
+ * picks the license that closed the request, and recording that connection is
+ * what performs the transition. The move is still decided by the transition
+ * table below -- the connection is HOW the row's allowance is exercised, not a
+ * way around it -- and the database's evidence gate refuses `won` for any
+ * request with no qualifying connected license, whatever a client believes.
+ * Nothing moves a request to won automatically; there is no matcher and no
+ * suggestion engine, only an operator who knows which sale it was.
  */
-export const UNAVAILABLE_STATUSES: readonly RequestStatus[] = ["won"];
+export const CONNECTION_STATUSES: readonly RequestStatus[] = ["won"];
 
 /** Decisions that mean nothing without an explanation. */
 export const REASON_REQUIRED_STATUSES: readonly RequestStatus[] = ["lost", "declined"];
@@ -118,19 +123,33 @@ const TRANSITIONS: Record<RequestStatus, readonly RequestStatus[]> = {
 };
 
 /**
- * Where a request may go from here, in this phase.
+ * Where a request may go from here, through the generic move control.
  *
- * `unfiltered` returns the whole row including states this phase cannot reach,
- * which is what a test comparing the table against the database enum needs. The
- * default filters them out, which is what a screen needs: a control nobody can
- * complete is worse than no control.
+ * `unfiltered` returns the whole row including the connection-performed
+ * states, which is what the enum-parity test needs and what a screen deciding
+ * whether to offer "Record the win" reads. The default filters them out,
+ * because the generic control cannot complete them alone: a win is recorded by
+ * connecting a license, and a dropdown entry that would only ever be refused
+ * is worse than no entry.
  */
 export function allowedTransitions(
   from: RequestStatus,
   options: { readonly unfiltered?: boolean } = {},
 ): readonly RequestStatus[] {
   const all = TRANSITIONS[from];
-  return options.unfiltered ? all : all.filter((next) => !UNAVAILABLE_STATUSES.includes(next));
+  return options.unfiltered ? all : all.filter((next) => !CONNECTION_STATUSES.includes(next));
+}
+
+/**
+ * Whether a win could be recorded from here, if the right license exists.
+ *
+ * Read by the request screen to decide whether to draw the "Record the win"
+ * panel at all. This is the transition table's answer, not the evidence: the
+ * license still has to exist, be picked by a person, and satisfy the
+ * database's gate.
+ */
+export function canRecordWin(from: RequestStatus): boolean {
+  return TRANSITIONS[from].includes("won");
 }
 
 export function canTransition(from: RequestStatus, to: RequestStatus): boolean {
@@ -145,7 +164,8 @@ export type RequestErrorReason =
   | "invalid_transition"
   | "reason_required"
   | "reason_too_long"
-  | "unavailable_in_phase"
+  | "connection_required"
+  | "license_ineligible"
   | "not_a_member"
   | "cross_workspace"
   | "unknown";
@@ -165,6 +185,14 @@ export interface TransitionCheck {
   readonly from: RequestStatus;
   readonly to: RequestStatus;
   readonly reason?: string | null;
+  /**
+   * The license being connected, when the move is `won`. Supplied only by the
+   * connect-a-license path, which has just written (or is about to write) the
+   * connection this id names. It is a routing fact, not the enforcement: the
+   * database's evidence gate re-checks that a qualifying connected license
+   * actually exists before the status lands.
+   */
+  readonly connectedLicenseId?: string | null;
 }
 
 /**
@@ -188,22 +216,22 @@ export function checkTransition(
     };
   }
 
-  if (UNAVAILABLE_STATUSES.includes(to)) {
-    return {
-      ok: false,
-      error: new RequestError(
-        "unavailable_in_phase",
-        "Recording a win means connecting this request to a license, and that connection does not exist yet.",
-      ),
-    };
-  }
-
   if (!TRANSITIONS[from].includes(to)) {
     return {
       ok: false,
       error: new RequestError(
         "invalid_transition",
         `A request recorded as ${statusLabel(from).toLowerCase()} cannot be moved to ${statusLabel(to).toLowerCase()}.`,
+      ),
+    };
+  }
+
+  if (CONNECTION_STATUSES.includes(to) && !input.connectedLicenseId) {
+    return {
+      ok: false,
+      error: new RequestError(
+        "connection_required",
+        "Recording a win means connecting the license that closed this request. Use Record the win, which connects the license and performs this move in one act.",
       ),
     };
   }

@@ -151,10 +151,15 @@ export type RightsMatchStatus = (typeof RIGHTS_MATCH_STATUSES)[number];
  *   * `cancelled`, not `canceled`. SHOOT_STATUSES and LICENSE_STATUSES already
  *     spell it with two Ls and the Postgres enums with them, so the alternative
  *     was two spellings of one word in one schema.
- *   * `won` is here and is NOT reachable yet. Winning means connecting the
- *     request to a license, and that connection is Phase 2. The transition
- *     table in src/lib/requests.ts refuses it; the value exists so that adding
- *     the link later is a code change rather than an enum migration.
+ *   * `won` is reached by connecting the request to a license, and only that
+ *     way. The value sat unreachable through Phase 1 so that the connection
+ *     could arrive as a link table (request_licenses,
+ *     20260903090000_request_won_licenses.sql) rather than an enum migration;
+ *     now a person recording the win picks the license that closed the
+ *     request, and that one act writes the connection and performs the
+ *     transition. The generic move control never offers `won`, and the
+ *     database refuses it for any request with no qualifying connected
+ *     license.
  *
  * Nothing moves to `expired` on its own. There is no scheduler, so a passing
  * deadline is rendered as a derived fact -- see `isPastDeadline` -- and the

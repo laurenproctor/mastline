@@ -2,12 +2,15 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Badge, PageHeader, Panel } from "@/components/primitives";
 import { listActivity } from "@/lib/data/activity";
-import { getRequest, getRequestSensitiveNote } from "@/lib/data/requests";
+import { listLicenses } from "@/lib/data/money";
+import { getRequest, getRequestSensitiveNote, listConnectedLicenses } from "@/lib/data/requests";
 import { listWorkspaceBuyers, listWorkspaceMembers } from "@/lib/data/workspace";
 import { formatDateTime, formatElapsed } from "@/lib/format";
+import { formatMoney } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import {
   NOT_PROVIDED,
+  canRecordWin,
   describeBudget,
   describeQuantity,
   isClosed,
@@ -23,6 +26,7 @@ import { workspaceRoutes } from "@/lib/workspace-routes";
 import { AssignPanel } from "../_components/assign-panel";
 import { LifecyclePanel } from "../_components/lifecycle-panel";
 import { RequestForm } from "../_components/request-form";
+import { WonPanel } from "../_components/won-panel";
 
 /**
  * One request, and everything recorded about it.
@@ -65,13 +69,25 @@ export default async function RequestDetailPage({
 
   const canWrite = can(role, "request.write");
   const canSeeSourceNote = can(role, "sensitive_note.read");
+  // Whether the transition table would allow a win from here. The evidence --
+  // an actual qualifying license, picked by a person -- is still to come.
+  const winnable = canWrite && canRecordWin(request.status);
 
-  const [buyers, members, activity, sensitiveNote] = await Promise.all([
-    listWorkspaceBuyers(organizationId),
-    listWorkspaceMembers(organizationId),
-    listActivity(organizationId, { entityId: request.id, limit: 40 }),
-    canSeeSourceNote ? getRequestSensitiveNote(organizationId, request.id) : Promise.resolve(null),
-  ]);
+  const [buyers, members, activity, sensitiveNote, connectedLicenses, licenses] = await Promise.all(
+    [
+      listWorkspaceBuyers(organizationId),
+      listWorkspaceMembers(organizationId),
+      listActivity(organizationId, { entityId: request.id, limit: 40 }),
+      canSeeSourceNote
+        ? getRequestSensitiveNote(organizationId, request.id)
+        : Promise.resolve(null),
+      // Read whenever any exist so a won request always shows its sale; the
+      // query is one indexed lookup and usually empty.
+      listConnectedLicenses(organizationId, request.id),
+      // The picker's choices, loaded only when the panel will be drawn.
+      winnable ? listLicenses(organizationId) : Promise.resolve([]),
+    ],
+  );
 
   const now = new Date();
   const late = isPastDeadline(request, now);
@@ -279,6 +295,54 @@ export default async function RequestDetailPage({
             <Panel title="Where it has got to">
               <LifecyclePanel canWrite={canWrite} request={request} workspaceSlug={canonicalSlug} />
             </Panel>
+
+            {connectedLicenses.length > 0 && (
+              <Panel title="The license that won it">
+                <div className="panel-body">
+                  <p className="section-note">
+                    What this license earned lives on the Money screen; this connection only names
+                    which sale answered the request.
+                  </p>
+                  {connectedLicenses.map((connected) => (
+                    <p key={connected.id}>
+                      <strong>{connected.licenseeName}</strong> · {formatMoney(connected.saleBase)}{" "}
+                      · connected {formatDateTime(connected.linkedAt)}
+                    </p>
+                  ))}
+                  <p className="section-note">
+                    <a className="text-link" href={routes.money()}>
+                      See it on Money <span aria-hidden="true">→</span>
+                    </a>
+                  </p>
+                </div>
+              </Panel>
+            )}
+
+            {winnable && (
+              <Panel title="Record the win">
+                <WonPanel
+                  licenses={licenses
+                    /*
+                     * Only licenses the database's evidence gate would accept:
+                     * a cancelled license is not a win, and a proposed license
+                     * with no figure is an offer. Offering one anyway would be
+                     * a control that can only be refused.
+                     */
+                    .filter(
+                      (license) =>
+                        license.status !== "cancelled" &&
+                        (license.saleBase.minor > 0 || license.status === "active"),
+                    )
+                    .map((license) => ({
+                      id: license.id,
+                      label: `${license.licenseeName} — ${formatMoney(license.saleBase)} (${license.status})`,
+                    }))}
+                  moneyHref={routes.money()}
+                  request={request}
+                  workspaceSlug={canonicalSlug}
+                />
+              </Panel>
+            )}
 
             <Panel title="Who is answering it">
               <AssignPanel

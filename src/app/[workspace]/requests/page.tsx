@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge, PageHeader, Panel, TableScroll } from "@/components/primitives";
-import { listRequests } from "@/lib/data/requests";
+import { countRequestOutcomes, listRequests } from "@/lib/data/requests";
 import { listWorkspaceBuyers, listWorkspaceMembers } from "@/lib/data/workspace";
 import { REQUEST_STATUSES, type RequestStatus } from "@/lib/domain";
 import { formatDateTime } from "@/lib/format";
@@ -102,7 +102,7 @@ export default async function RequestsPage({
 
   const assignedTo = assigneeParam === "me" ? session.userId : undefined;
 
-  const [requests, buyers, members] = await Promise.all([
+  const [requests, buyers, members, outcomes] = await Promise.all([
     listRequests(organizationId, {
       status,
       buyerId: buyerParam || undefined,
@@ -116,6 +116,10 @@ export default async function RequestsPage({
     }),
     listWorkspaceBuyers(organizationId),
     listWorkspaceMembers(organizationId),
+    // Two HEAD counts, so "how often do we turn work down" is a number on the
+    // screen rather than a query somebody would have to think to run.
+    // DECISIONS.md keeps declined separate from cancelled exactly for this.
+    countRequestOutcomes(organizationId),
   ]);
 
   const memberNames = new Map(members.map((member) => [member.userId, member.displayName]));
@@ -197,6 +201,13 @@ export default async function RequestsPage({
           action={
             <span className="muted">
               {requests.length} {requests.length === 1 ? "request" : "requests"}
+              {/*
+                Declined out of everything ever recorded, not out of the rows
+                the current filter shows: the rate is about the workspace's
+                history, and a filtered view must not change the answer.
+              */}
+              {outcomes.recorded > 0 &&
+                ` · turned down ${outcomes.declined} of ${outcomes.recorded} recorded`}
             </span>
           }
         >
