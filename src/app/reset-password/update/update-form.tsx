@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { Field } from "@/components/primitives";
 import { type UpdatePasswordState, updatePasswordAction } from "../actions";
 
@@ -9,18 +8,6 @@ const INITIAL: UpdatePasswordState = {};
 
 export function UpdatePasswordForm() {
   const [state, formAction, pending] = useActionState(updatePasswordAction, INITIAL);
-
-  if (state.ok) {
-    return (
-      <div className="gate-sent" role="status">
-        <h2>Password updated</h2>
-        <p className="gate-note">The new password is ready to use.</p>
-        <Link className="btn primary" href="/sign-in">
-          Sign in
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <form action={formAction} className="gate-form">
