@@ -8,6 +8,19 @@
  * them.
  */
 
+import {
+  COMMERCIAL_USE_STATES,
+  CONTENT_CATEGORIES,
+  type CommercialUseState,
+  type ContentCategory,
+  type MetadataInput,
+  QUALITY_ESTIMATES,
+  type QualityEstimate,
+  RELEASE_STATES,
+  type ReleaseState,
+  SENSITIVITIES,
+  type Sensitivity,
+} from "./asset-metadata";
 import { OPPORTUNITY_SIGNALS, type OpportunitySignal } from "./domain";
 import {
   REQUEST_CHANNELS,
@@ -185,6 +198,125 @@ export function parseAssetMetadata(form: FormData): ParseResult<AssetMetadataInp
       usageRestrictions: optionalText(form, "usageRestrictions"),
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Photograph metadata
+// ---------------------------------------------------------------------------
+
+const MAX_ALT_TEXT = 500;
+const MAX_SHORT = 120;
+const MAX_NOTES = 2000;
+const MAX_LIST_ENTRIES = 24;
+
+/** A choice field, checked against its vocabulary rather than trusted. */
+function choice<T extends string>(
+  form: FormData,
+  key: string,
+  allowed: readonly T[],
+): T | undefined {
+  const value = text(form, key);
+  return (allowed as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+/**
+ * The photograph metadata panel.
+ *
+ * Longer than the other parsers here because the panel is longer, and every
+ * bound below is a bound the database also carries: the column checks refuse
+ * the same thing, and this exists to turn that refusal into a sentence next to
+ * the field rather than a failed action.
+ *
+ * The three enum groups are filtered against their vocabularies rather than
+ * accepted, because a select's value is only a hint about what a browser sent.
+ * An unrecognised choice falls back to the safe end of its scale -- unknown for
+ * a release, none for sensitivity -- never to the permissive end.
+ */
+export function parseMetadataForm(form: FormData): ParseResult<MetadataInput> {
+  const errors: FieldErrors<MetadataInput> = {};
+
+  const headline = optionalText(form, "headline");
+  if (headline && headline.length > MAX_TITLE) {
+    errors.headline = `Keep the headline under ${MAX_TITLE} characters.`;
+  }
+
+  const editorialCaption = optionalText(form, "editorialCaption");
+  if (editorialCaption && editorialCaption.length > MAX_CAPTION) {
+    errors.editorialCaption = `Keep the caption under ${MAX_CAPTION} characters.`;
+  }
+
+  const altText = optionalText(form, "altText");
+  if (altText && altText.length > MAX_ALT_TEXT) {
+    errors.altText = `Keep alt text under ${MAX_ALT_TEXT} characters.`;
+  }
+
+  const photographerNotes = optionalText(form, "photographerNotes");
+  if (photographerNotes && photographerNotes.length > MAX_NOTES) {
+    errors.photographerNotes = `Keep notes under ${MAX_NOTES} characters.`;
+  }
+
+  for (const field of ["eventName", "venue", "city", "region", "country", "scene"] as const) {
+    const value = optionalText(form, field);
+    if (value && value.length > MAX_SHORT) {
+      errors[field] = `Keep this under ${MAX_SHORT} characters.`;
+    }
+  }
+
+  const embargoUntil = parseTimestamp(optionalText(form, "embargoUntil"));
+  if (embargoUntil === null) errors.embargoUntil = "That date could not be read.";
+
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+
+  const list = (key: string) => parseList(optionalText(form, key)).slice(0, MAX_LIST_ENTRIES);
+
+  return {
+    ok: true,
+    value: {
+      headline,
+      editorialCaption,
+      altText,
+      subjects: list("subjects"),
+      eventName: optionalText(form, "eventName"),
+      venue: optionalText(form, "venue"),
+      city: optionalText(form, "city"),
+      region: optionalText(form, "region"),
+      country: optionalText(form, "country"),
+      scene: optionalText(form, "scene"),
+      objects: list("objects"),
+      clothing: list("clothing"),
+      brands: list("brands"),
+      keywords: list("keywords"),
+      contentCategory: choice<ContentCategory>(form, "contentCategory", CONTENT_CATEGORIES),
+      qualityEstimate: choice<QualityEstimate>(form, "qualityEstimate", QUALITY_ESTIMATES),
+      sensitivity: choice<Sensitivity>(form, "sensitivity", SENSITIVITIES) ?? "none",
+      photographerNotes,
+      // An unchecked box sends nothing. For editorial-use-only that means the
+      // absence of a tick reads as "not editorial only", which is the value the
+      // photographer sees on screen -- so the control is rendered checked by
+      // default and this simply reflects it.
+      editorialUseOnly: form.get("editorialUseOnly") === "on",
+      commercialUseEligible:
+        choice<CommercialUseState>(form, "commercialUseEligible", COMMERCIAL_USE_STATES) ??
+        "unknown",
+      modelReleaseStatus:
+        choice<ReleaseState>(form, "modelReleaseStatus", RELEASE_STATES) ?? "unknown",
+      propertyReleaseStatus:
+        choice<ReleaseState>(form, "propertyReleaseStatus", RELEASE_STATES) ?? "unknown",
+      embargoUntil: embargoUntil ?? undefined,
+      sensitiveOrMinor: form.get("sensitiveOrMinor") === "on",
+    },
+  };
+}
+
+/**
+ * The version the screen was rendered from.
+ *
+ * A save without one is refused rather than treated as "whatever is current",
+ * because "whatever is current" is precisely the overwrite this guards against.
+ */
+export function parseExpectedVersion(form: FormData): number | null {
+  const raw = Number(text(form, "expectedVersion"));
+  return Number.isInteger(raw) && raw > 0 ? raw : null;
 }
 
 /**

@@ -117,11 +117,22 @@ export function isWorkspaceSection(rest: string): boolean {
 }
 
 /**
- * The one carve-out inside /api: an inbound provider callback has no session to
- * present. It is NOT unauthenticated -- the handler verifies an HMAC signature
- * and refuses outright when no secret is configured.
+ * The carve-outs inside /api: callers that are machines, with no session to
+ * present. Neither is unauthenticated -- each handler proves its caller its own
+ * way and refuses outright when no secret is configured.
+ *
+ * - /api/webhooks: an inbound provider callback, verified by HMAC signature.
+ * - /api/jobs/metadata: the metadata queue's sweep, called by a scheduler with a
+ *   bearer secret compared in constant time. Without this entry the middleware
+ *   answers that scheduler with a redirect to /sign-in before the handler runs,
+ *   and a scheduler records a redirect as success -- so the sweep would have
+ *   reported healthy while never draining a job.
+ *
+ * Named exactly, not as /api/jobs. A job endpoint added later stays behind the
+ * session gate until somebody decides otherwise, which is the whole reason /api
+ * is deny-by-default.
  */
-export const PROTECTED_EXCEPTIONS = ["/api/webhooks"];
+export const PROTECTED_EXCEPTIONS = ["/api/webhooks", "/api/jobs/metadata"];
 
 export function matches(pathname: string, routes: string[]): boolean {
   return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));

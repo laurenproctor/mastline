@@ -35,6 +35,9 @@ vi.mock("@/lib/data/submissions", () => ({
   recordSubmissionOutcome: vi.fn(),
 }));
 vi.mock("@/lib/data/assets", () => ({ listAssets: vi.fn(async () => []) }));
+// Imported for the approve gate's metadata review; the module itself carries
+// "server-only", which a jsdom import would throw on.
+vi.mock("@/lib/data/asset-metadata", () => ({ listMetadata: vi.fn(async () => new Map()) }));
 vi.mock("@/lib/data/shoots", () => ({ getShoot: vi.fn(async () => null) }));
 vi.mock("@/lib/data/workspace", () => ({ listWorkspaceBuyers: vi.fn(async () => []) }));
 vi.mock("@/lib/dispatch-rules", () => ({ reviewDispatch: vi.fn() }));
@@ -85,7 +88,11 @@ describe("approvePackageAction refusals", () => {
   });
 
   it("re-runs the dispatch review at the gate and names what blocks approval", async () => {
-    vi.mocked(getPackage).mockResolvedValue({ id: "pkg-1", shootId: "shoot-1" } as never);
+    vi.mocked(getPackage).mockResolvedValue({
+      id: "pkg-1",
+      shootId: "shoot-1",
+      assets: [],
+    } as never);
     vi.mocked(reviewDispatch).mockReturnValue({
       isApprovable: false,
       blocking: [{ title: "Captions are incomplete" }, { title: "No terms proposed" }],

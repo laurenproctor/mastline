@@ -97,11 +97,18 @@ export async function listShoots(
   return (data ?? []).map((row) => toShoot(row as unknown as ShootRow, noteIds.has(row.id)));
 }
 
-export async function getShoot(organizationId: Id, shootId: Id): Promise<Shoot | null> {
+export async function getShoot(
+  organizationId: Id,
+  shootId: Id,
+  // The metadata worker runs with no cookies to build a client from, so it
+  // hands its own in. Everything else omits this and gets the caller-scoped
+  // client it always got.
+  client?: SupabaseClient,
+): Promise<Shoot | null> {
   // A malformed id is "no such record", not a database error.
   if (!isRecordId(shootId)) return null;
 
-  const supabase = await createClient();
+  const supabase = client ?? (await createClient());
   const [{ data, error }, noteIds] = await Promise.all([
     supabase
       .from("shoots")
@@ -109,7 +116,7 @@ export async function getShoot(organizationId: Id, shootId: Id): Promise<Shoot |
       .eq("organization_id", organizationId)
       .eq("id", shootId)
       .maybeSingle(),
-    sensitiveNoteShootIds(organizationId),
+    sensitiveNoteShootIds(organizationId, supabase),
   ]);
 
   if (error) throw new Error(`Could not load shoot: ${error.message}`);

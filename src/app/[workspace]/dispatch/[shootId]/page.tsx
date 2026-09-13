@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/button";
 import { listAssets } from "@/lib/data/assets";
+import { listMetadata } from "@/lib/data/asset-metadata";
 import { listAccessEvents, listAcceptances, listDeliveries } from "@/lib/data/delivery-links";
 import { signedUrlsFor } from "@/lib/data/imports";
 import { listPackages } from "@/lib/data/packages";
@@ -134,6 +135,12 @@ export default async function DispatchPage({
     listWorkspaceBuyers(organizationId),
     listSubmissions(organizationId),
   ]);
+  // The structured records, so every readiness figure on this flow means the
+  // same thing as the approve action's own gate.
+  const metadataRecords = await listMetadata(
+    organizationId,
+    assets.map((asset) => asset.id),
+  );
   const buyer = buyers.find((candidate) => candidate.id === pkg.buyerId) ?? null;
   const byId = new Map(assets.map((asset) => [asset.id, asset]));
 
@@ -143,7 +150,7 @@ export default async function DispatchPage({
   const packagedAssets = pkg.assets
     .map((entry) => byId.get(entry.assetId))
     .filter((asset): asset is Asset => Boolean(asset));
-  const metadata = reviewSelection(packagedAssets);
+  const metadata = reviewSelection(packagedAssets, undefined, metadataRecords);
   const approved = APPROVED.has(pkg.status);
 
   const facts: DeliveryFlowFacts = {
@@ -228,7 +235,11 @@ export default async function DispatchPage({
         filename: asset.canonicalFilename,
         previewUrl: previewUrlFor(asset.id),
         capturedAt: asset.capturedAt,
-        missingRequired: reviewAsset(asset).missingRequired.map((rule) => rule.label),
+        missingRequired: reviewAsset(
+          asset,
+          undefined,
+          metadataRecords.get(asset.id) ?? null,
+        ).missingRequired.map((rule) => rule.label),
       }));
     const memberIds = [...pkg.assets]
       .sort((a, b) => a.position - b.position)
@@ -269,7 +280,7 @@ export default async function DispatchPage({
       .map((entry): DetailFrame | null => {
         const asset = byId.get(entry.assetId);
         if (!asset) return null;
-        const report = reviewAsset(asset);
+        const report = reviewAsset(asset, undefined, metadataRecords.get(asset.id) ?? null);
         return {
           assetId: asset.id,
           filename: asset.canonicalFilename,
@@ -367,14 +378,16 @@ export default async function DispatchPage({
 
   // ------------------------------------------------------ Review & share ----
   if (stage === "review") {
-    const review = reviewDispatch({ pkg, assets, buyer });
+    const review = reviewDispatch({ pkg, assets, buyer, metadata: metadataRecords });
     const maySend = can(role, "submission.send");
     const passed = review.checks.filter((check) => check.status === "pass").length;
 
     const frames: ReviewFrame[] = pkg.assets.map((entry) => {
       const asset = byId.get(entry.assetId);
       const version = asset?.versions.find((candidate) => candidate.id === entry.assetVersionId);
-      const report = asset ? reviewAsset(asset) : undefined;
+      const report = asset
+        ? reviewAsset(asset, undefined, metadataRecords.get(asset.id) ?? null)
+        : undefined;
       return {
         assetId: entry.assetId,
         position: entry.position,

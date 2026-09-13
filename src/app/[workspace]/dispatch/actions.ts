@@ -11,6 +11,7 @@ import {
 import { approvePackageAndCreateSubmission, recordSubmissionOutcome } from "@/lib/data/submissions";
 import { getPackage } from "@/lib/data/packages";
 import { listAssets } from "@/lib/data/assets";
+import { listMetadata } from "@/lib/data/asset-metadata";
 import { getShoot } from "@/lib/data/shoots";
 import { listWorkspaceBuyers } from "@/lib/data/workspace";
 import { reviewDispatch } from "@/lib/dispatch-rules";
@@ -222,7 +223,14 @@ export async function approvePackageAction(
   ]);
   const buyer = buyers.find((candidate) => candidate.id === pkg.buyerId) ?? null;
 
-  const review = reviewDispatch({ pkg, assets, buyer });
+  // The structured records ride along so the metadata-review check runs at the
+  // last gate, not only on the screen that rendered the button.
+  const metadata = await listMetadata(
+    organizationId,
+    pkg.assets.map((entry) => entry.assetId),
+  );
+
+  const review = reviewDispatch({ pkg, assets, buyer, metadata });
   if (!review.isApprovable) {
     return {
       error: `Approval is blocked: ${review.blocking.map((check) => check.title.toLowerCase()).join(", ")}.`,
