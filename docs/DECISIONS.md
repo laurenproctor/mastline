@@ -437,6 +437,8 @@ unlocks `won` on its own, because a win that cannot name its license is not a
 commercial memory. The license end of the link is `on delete restrict`;
 unlinking a closed request's connection is refused outside the audited purge
 path.
+*Ratified by the founder 2026-09-13:* the table may exist. The ruling covers this
+no-money link only; any other second edge to a license needs a ruling of its own.
 
 **Nothing moves to `expired` on its own.** There is no scheduler in this system,
 and a status that becomes true while nobody is watching is one nobody can trust
