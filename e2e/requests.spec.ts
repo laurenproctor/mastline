@@ -54,29 +54,79 @@ async function deleteRequestsTitled(prefix: string): Promise<void> {
 
 const TITLE_PREFIX = "E2E request";
 
+/** The seeded owner, from supabase/seed.sql. */
+const OWNER = "11111111-1111-1111-1111-111111111111";
+
+/**
+ * A request sitting in the inbox, written directly.
+ *
+ * The seed carries no buyer requests at all, so the inbox is empty until a test
+ * makes one -- and an empty inbox renders a sentence where the table would be,
+ * with no labelled region to scroll inside. The phone layout test below was
+ * carried by whichever sibling had run first and left a row behind. That held
+ * only for as long as every test in this file ran in every project, which
+ * stopped being true when the projects started selecting by tag: the phone test
+ * is the only one here that runs on the phone, so it arrived at an empty inbox
+ * and found nothing to measure.
+ *
+ * It makes its own row now. Written with the service role rather than through
+ * the form because this is a fixture and not the thing under test -- recording
+ * a request by hand is what "a photographer can record what a desk asked for"
+ * above is for -- and titled with the prefix so afterAll takes it away again.
+ */
+async function createRequest(subject: string): Promise<void> {
+  const { url, key } = service();
+  const stamp = Date.now();
+  const response = await fetch(`${url}/rest/v1/buyer_requests`, {
+    method: "POST",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({
+      organization_id: ORG_A,
+      created_by: OWNER,
+      idempotency_key: `e2e-inbox-${stamp}`,
+      reference: `E2E-${stamp}`,
+      title: `${TITLE_PREFIX} — ${subject}`,
+      brief: "Rang asking what we have from last night.",
+      received_via: "phone",
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Could not create a request fixture: ${await response.text()}`);
+  }
+}
+
 test.afterAll(async () => {
   // The activity events these wrote are append-only and stay behind, which is
   // what an append-only history is for.
   await deleteRequestsTitled(TITLE_PREFIX);
 });
 
-test("Requests sits between News radar and Shoots in the navigation", async ({ context, page }) => {
-  await refuseCookies(context);
-  await signIn(page);
+test(
+  "Requests sits between News radar and Shoots in the navigation",
+  { tag: "@responsive" },
+  async ({ context, page }) => {
+    await refuseCookies(context);
+    await signIn(page);
 
-  const nav = page.getByRole("navigation", { name: "Primary" });
-  const labels = await nav.getByRole("link").allInnerTexts();
-  const trimmed = labels.map((label) => label.trim());
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    const labels = await nav.getByRole("link").allInnerTexts();
+    const trimmed = labels.map((label) => label.trim());
 
-  expect(trimmed.indexOf("Requests")).toBe(trimmed.indexOf("News radar") + 1);
-  expect(trimmed.indexOf("Shoots")).toBe(trimmed.indexOf("Requests") + 1);
+    expect(trimmed.indexOf("Requests")).toBe(trimmed.indexOf("News radar") + 1);
+    expect(trimmed.indexOf("Shoots")).toBe(trimmed.indexOf("Requests") + 1);
 
-  await nav.getByRole("link", { name: "Requests" }).click();
-  // The canonical, workspace-scoped address -- not a bare /requests served by
-  // the middleware's legacy redirect.
-  await expect(page).toHaveURL(new RegExp(`/${SEEDED_WORKSPACE}/requests$`));
-  await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
-});
+    await nav.getByRole("link", { name: "Requests" }).click();
+    // The canonical, workspace-scoped address -- not a bare /requests served by
+    // the middleware's legacy redirect.
+    await expect(page).toHaveURL(new RegExp(`/${SEEDED_WORKSPACE}/requests$`));
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+  },
+);
 
 test("a photographer can record what a desk asked for and find it again", async ({
   context,
@@ -175,16 +225,24 @@ test("a read-only colleague can read the inbox and is offered no controls", asyn
   await expect(page.getByRole("link", { name: /record a request/i })).toHaveCount(0);
 });
 
-test("the inbox does not scroll sideways on a phone", async ({ context, page }) => {
-  test.skip(test.info().project.name !== "mobile", "The phone viewport is the question here.");
+test(
+  "the inbox does not scroll sideways on a phone",
+  { tag: "@responsive" },
+  async ({ context, page }) => {
+    test.skip(test.info().project.name !== "mobile", "The phone viewport is the question here.");
 
-  await refuseCookies(context);
-  await signIn(page);
-  await page.goto(at("/requests"));
+    // A row of its own, because there is a table to measure only if the inbox
+    // has something in it. See createRequest.
+    await createRequest("Chelsea departure at dawn");
 
-  await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
-  // A wide table is allowed to scroll inside its own labelled region; the page
-  // behind it is not.
-  expect(await hasHorizontalOverflow(page)).toBe(false);
-  await expect(page.getByRole("region", { name: "Requests" })).toBeVisible();
-});
+    await refuseCookies(context);
+    await signIn(page);
+    await page.goto(at("/requests"));
+
+    await expect(page.getByRole("heading", { level: 1, name: "Requests" })).toBeVisible();
+    // A wide table is allowed to scroll inside its own labelled region; the page
+    // behind it is not.
+    expect(await hasHorizontalOverflow(page)).toBe(false);
+    await expect(page.getByRole("region", { name: "Requests" })).toBeVisible();
+  },
+);

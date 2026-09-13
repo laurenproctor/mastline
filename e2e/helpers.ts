@@ -1,13 +1,36 @@
 import { createHmac } from "node:crypto";
-import { readFileSync } from "node:fs";
-import type { BrowserContext, Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import nodePath from "node:path";
+import type { BrowserContext, Cookie, Page } from "@playwright/test";
 
 export const SEEDED = {
   owner: "marcus@mastline.test",
   editor: "jordan@mastline.test",
   viewer: "vera@mastline.test",
+  rights: "rhea@mastline.test",
   password: "mastline-dev-password",
 } as const;
+
+/**
+ * The accounts `auth.setup.ts` signs in once, at the start of a run.
+ *
+ * Every one of these is a seeded member of SEEDED_WORKSPACE, so a saved
+ * session is all `signIn` needs to put a page inside the workspace without
+ * driving the form again. An account outside this list -- or a workspace that
+ * did not exist when the run started -- still gets the real form, which is why
+ * `signIn` falls back rather than failing.
+ */
+export const PREAUTHENTICATED = [
+  SEEDED.owner,
+  SEEDED.editor,
+  SEEDED.viewer,
+  SEEDED.rights,
+] as const;
+
+/** Where `auth.setup.ts` writes a saved session, and `signIn` reads one. */
+export function authStatePath(email: string): string {
+  return nodePath.join(__dirname, ".auth", `${email.replace(/[^a-z0-9]/gi, "-")}.json`);
+}
 
 export const SEEDED_SHOOT = "a0000000-0000-0000-0000-0000000000c1";
 export const SEEDED_ASSET = "a0000000-0000-0000-0000-0000000000d1";
@@ -25,6 +48,19 @@ export const SEEDED_ASSET = "a0000000-0000-0000-0000-0000000000d1";
 export const SEEDED_WORKSPACE = "marcus-hale-studio";
 
 /**
+ * The origin the suite is pointed at, which is not always 127.0.0.1:4100.
+ *
+ * These were written against the default address as a literal. A cookie is
+ * keyed by host and not by port, so pointing E2E_BASE_URL at another port on
+ * this machine was always harmless -- but pointing it at a deployment, which
+ * the config explicitly supports, set the consent cookies on 127.0.0.1 and left
+ * the browser to meet the banner unanswered, covering the controls it is known
+ * for covering. This keeps the two in step; it must match
+ * playwright.config.ts's `baseURL`.
+ */
+const BASE_URL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:4100";
+
+/**
  * Answer the cookie banner before the test starts.
  *
  * The banner is pinned to the bottom of the window and, on a 390px phone, sits
@@ -36,9 +72,9 @@ export const SEEDED_WORKSPACE = "marcus-hale-studio";
  */
 export async function refuseCookies(context: BrowserContext): Promise<void> {
   await context.addCookies([
-    { name: "ml_consent", value: "denied", url: "http://127.0.0.1:4100" },
+    { name: "ml_consent", value: "denied", url: BASE_URL },
     // A country the banner is not required to ask in, so it does not reappear.
-    { name: "ml_country", value: "US", url: "http://127.0.0.1:4100" },
+    { name: "ml_country", value: "US", url: BASE_URL },
   ]);
 }
 
@@ -53,8 +89,8 @@ export async function refuseCookies(context: BrowserContext): Promise<void> {
  */
 export async function acceptCookies(context: BrowserContext): Promise<void> {
   await context.addCookies([
-    { name: "ml_consent", value: "granted", url: "http://127.0.0.1:4100" },
-    { name: "ml_country", value: "US", url: "http://127.0.0.1:4100" },
+    { name: "ml_consent", value: "granted", url: BASE_URL },
+    { name: "ml_country", value: "US", url: BASE_URL },
   ]);
 }
 
@@ -64,24 +100,90 @@ export function at(path: string, workspace: string = SEEDED_WORKSPACE): string {
 }
 
 /**
- * Sign in through the real form, because that is a smoke test in itself.
+ * Sign in through the real form.
  *
  * The destination is named explicitly. Signing in used to land on "/work" and
  * let the middleware choose a workspace, which is both the thing under repair
  * and ambiguous the moment an account has more than one membership -- as the
  * two-tab test's account deliberately does.
+ *
+ * The session cookies are dropped first. The middleware sends anybody already
+ * signed in away from /sign-in to /work, so becoming a different person by
+ * typing a different address into the form only works from a signed-out
+ * browser -- and since `signIn` may have put a session here already, this can
+ * no longer assume one of Playwright's fresh contexts.
+ */
+export async function signInThroughForm(
+  page: Page,
+  email: string = SEEDED.owner,
+  workspace: string = SEEDED_WORKSPACE,
+): Promise<void> {
+  const destination = at("/work", workspace);
+  await page.context().clearCookies({ name: /^sb-/ });
+  await page.goto(`/sign-in?next=${encodeURIComponent(destination)}`);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(SEEDED.password);
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL(`**${destination}`, { timeout: 180_000 });
+}
+
+/**
+ * Put a page inside the workspace as somebody, by the cheapest honest route.
+ *
+ * There are 111 calls to this across the specs and almost none of them are
+ * testing the form; they are paying a page load, a fill, a POST to GoTrue and
+ * a redirect to reach the screen the test is actually about. `auth.setup.ts`
+ * signs each seeded role in once, through that same real form, and saves the
+ * cookies; this replays them.
+ *
+ * Measured, that is worth about 6% of a project's wall clock against a healthy
+ * local stack -- a form sign-in there costs roughly 0.4s, not the seconds it
+ * looks like it might. It is worth more where the round trip is dearer, which
+ * is every loaded machine this suite has ever been slow on, and it is the
+ * smallest of the three things that made this suite faster. Do not expect it
+ * to carry a run on its own.
+ *
+ * The fast path is refused wherever it would prove something different from
+ * what the form proves:
+ *
+ *   - an account with no saved session (a throwaway workspace's owner, an
+ *     address a test just signed up), and
+ *   - any workspace other than the seeded one, because a saved session names
+ *     the memberships that existed when the run started.
+ *
+ * It is also abandoned if the replayed cookies do not land -- an expired
+ * session, a stack restarted mid-run -- so a stale file costs a slow test
+ * rather than a confusing failure.
+ *
+ * A test that means to exercise the form itself should call
+ * `signInThroughForm` and say why.
  */
 export async function signIn(
   page: Page,
   email: string = SEEDED.owner,
   workspace: string = SEEDED_WORKSPACE,
 ): Promise<void> {
+  const saved = workspace === SEEDED_WORKSPACE ? authStatePath(email) : null;
+  if (!saved || !existsSync(saved)) {
+    await signInThroughForm(page, email, workspace);
+    return;
+  }
+
+  const cookies = (JSON.parse(readFileSync(saved, "utf8")) as { cookies: Cookie[] }).cookies;
+  const context = page.context();
+  // Dropped rather than overwritten. @supabase/ssr splits a session across
+  // sb-...-auth-token.0, .1, .2 as it needs them, so replaying a two-chunk
+  // session over a three-chunk one would leave the third behind and hand the
+  // server a token spliced from two people.
+  await context.clearCookies({ name: /^sb-/ });
+  await context.addCookies(cookies);
+
   const destination = at("/work", workspace);
-  await page.goto(`/sign-in?next=${encodeURIComponent(destination)}`);
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(SEEDED.password);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await page.waitForURL(`**${destination}`, { timeout: 180_000 });
+  await page.goto(destination);
+  if (new URL(page.url()).pathname === destination) return;
+
+  // The replay did not take. Whatever the reason, the form still works.
+  await signInThroughForm(page, email, workspace);
 }
 
 /**
@@ -91,9 +193,10 @@ export async function signIn(
  * pages in tens of seconds, so locally the long journeys get a generous
  * allowance. The CI runner is quiet, and there the generous allowance is a
  * hazard instead of a kindness: a genuinely failing test burns its whole
- * budget on every attempt -- budget × three attempts × three projects -- which
- * is how one bad locator can eat the workflow's entire ceiling. CI gets what
- * a quiet runner needs and no more, so a failure is reported, not stretched.
+ * budget on every attempt -- budget × three attempts, and again on every
+ * project that runs it -- which is how one bad locator can eat a job's entire
+ * ceiling. CI gets what a quiet runner needs and no more, so a failure is
+ * reported, not stretched.
  */
 export function testBudget(quietRunnerMs: number, loadedHostMs: number): number {
   return process.env.CI ? quietRunnerMs : loadedHostMs;

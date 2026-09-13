@@ -46,19 +46,22 @@ test.beforeEach(async ({ context }) => {
   await refuseCookies(context);
 });
 
-test("the work queue holds at this size without sideways scrolling", async ({ page }) => {
-  const errors = collectPageErrors(page);
-  await signIn(page);
+test(
+  "the work queue holds at this size without sideways scrolling",
+  { tag: "@responsive" },
+  async ({ page }) => {
+    const errors = collectPageErrors(page);
+    await signIn(page);
 
-  await expect(page.getByRole("heading", { level: 1, name: "Work queue" })).toBeVisible();
-  const overflowing = await overflowingElements(page);
-  expect(overflowing, `work queue overflows: ${overflowing.join(", ")}`).toEqual([]);
-  expect(await hasHorizontalOverflow(page)).toBe(false);
-  expect(errors).toEqual([]);
-});
+    await expect(page.getByRole("heading", { level: 1, name: "Work queue" })).toBeVisible();
+    const overflowing = await overflowingElements(page);
+    expect(overflowing, `work queue overflows: ${overflowing.join(", ")}`).toEqual([]);
+    expect(await hasHorizontalOverflow(page)).toBe(false);
+    expect(errors).toEqual([]);
+  },
+);
 
-test("the composition renders each named region once, with one h1", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "viewport-independent");
+test("the composition renders each named region once, with one h1", async ({ page }) => {
   await signIn(page);
 
   await expect(page.locator("h1")).toHaveCount(1);
@@ -71,8 +74,7 @@ test("the composition renders each named region once, with one h1", async ({ pag
 
 test("the queue filters are links that keep the address and expose their state", async ({
   page,
-}, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "viewport-independent");
+}) => {
   await signIn(page);
   await page.goto(at("/work?from=archive"));
 
@@ -107,10 +109,7 @@ test("the queue filters are links that keep the address and expose their state",
   }
 });
 
-test("every row action stays inside the workspace and states its basis", async ({
-  page,
-}, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "viewport-independent");
+test("every row action stays inside the workspace and states its basis", async ({ page }) => {
   await signIn(page);
 
   const rows = page.getByRole("list", { name: "Ranked queue" }).getByRole("listitem");
@@ -125,8 +124,7 @@ test("every row action stays inside the workspace and states its basis", async (
   }
 });
 
-test("a viewer is shown no write actions", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "viewport-independent");
+test("a viewer is shown no write actions", async ({ page }) => {
   await signIn(page, SEEDED.viewer);
 
   await expect(page.getByRole("heading", { level: 1, name: "Work queue" })).toBeVisible();
@@ -138,8 +136,7 @@ test("a viewer is shown no write actions", async ({ page }, testInfo) => {
   ).toHaveCount(0);
 });
 
-test("no delivery credential reaches the page", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "viewport-independent");
+test("no delivery credential reaches the page", async ({ page }) => {
   await signIn(page);
 
   const hrefs = await page.evaluate(() =>
@@ -152,8 +149,7 @@ test("no delivery credential reaches the page", async ({ page }, testInfo) => {
   expect(text).not.toMatch(/[A-Za-z0-9_-]{40,}/);
 });
 
-test("an empty workspace renders its calm states", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "desktop", "shared fixture; one project is enough");
+test("an empty workspace renders its calm states", async ({ page }) => {
   const errors = collectPageErrors(page);
   const workspace = await createThrowawayWorkspace(SEEDED.owner, "empty-queue");
 
@@ -172,64 +168,68 @@ test("an empty workspace renders its calm states", async ({ page }, testInfo) =>
   }
 });
 
-test("a nine-figure sum stays one intact figure on a phone", async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== "mobile", "the narrow layout is the point");
-  const workspace = await createThrowawayWorkspace(SEEDED.owner, "nine-figures");
-  const { url, key } = service();
-  const headers = {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-    Prefer: "return=representation",
-  };
-  const inserted = await fetch(`${url}/rest/v1/payments`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      organization_id: workspace.id,
-      status: "received",
-      source: "manual",
-      gross_minor: 123456789012,
-      net_minor: 123456789012,
-      currency: "USD",
-      received_at: new Date().toISOString(),
-      created_by: OWNER,
-    }),
-  });
-  if (!inserted.ok) throw new Error(`Could not arrange a payment: ${await inserted.text()}`);
-  const [payment] = (await inserted.json()) as { id: string }[];
-
-  try {
-    await signIn(page);
-    await page.goto(at("/work", workspace.slug));
-
-    const value = page
-      .getByRole("group", { name: "This period" })
-      .locator(".ml-metric__value")
-      .first();
-    await expect(value).toHaveText("$1,234,567,890.12");
-
-    // One line, nothing hidden inside its own box, nothing past the viewport.
-    const facts = await value.evaluate((element) => {
-      const range = document.createRange();
-      range.selectNodeContents(element);
-      return {
-        lines: range.getClientRects().length,
-        scrollWidth: element.scrollWidth,
-        clientWidth: element.clientWidth,
-        right: element.getBoundingClientRect().right,
-        viewport: document.documentElement.clientWidth,
-      };
+test(
+  "a nine-figure sum stays one intact figure on a phone",
+  { tag: "@responsive" },
+  async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile", "the narrow layout is the point");
+    const workspace = await createThrowawayWorkspace(SEEDED.owner, "nine-figures");
+    const { url, key } = service();
+    const headers = {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    };
+    const inserted = await fetch(`${url}/rest/v1/payments`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        organization_id: workspace.id,
+        status: "received",
+        source: "manual",
+        gross_minor: 123456789012,
+        net_minor: 123456789012,
+        currency: "USD",
+        received_at: new Date().toISOString(),
+        created_by: OWNER,
+      }),
     });
-    expect(facts.lines, "the figure broke across lines").toBe(1);
-    expect(facts.scrollWidth).toBeLessThanOrEqual(facts.clientWidth + 1);
-    expect(facts.right).toBeLessThanOrEqual(facts.viewport);
-    expect(await hasHorizontalOverflow(page)).toBe(false);
-  } finally {
-    await fetch(`${url}/rest/v1/payments?id=eq.${payment.id}`, {
-      method: "DELETE",
-      headers: { apikey: key, Authorization: `Bearer ${key}` },
-    });
-    await purgeWorkspace(workspace.id);
-  }
-});
+    if (!inserted.ok) throw new Error(`Could not arrange a payment: ${await inserted.text()}`);
+    const [payment] = (await inserted.json()) as { id: string }[];
+
+    try {
+      await signIn(page);
+      await page.goto(at("/work", workspace.slug));
+
+      const value = page
+        .getByRole("group", { name: "This period" })
+        .locator(".ml-metric__value")
+        .first();
+      await expect(value).toHaveText("$1,234,567,890.12");
+
+      // One line, nothing hidden inside its own box, nothing past the viewport.
+      const facts = await value.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return {
+          lines: range.getClientRects().length,
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          right: element.getBoundingClientRect().right,
+          viewport: document.documentElement.clientWidth,
+        };
+      });
+      expect(facts.lines, "the figure broke across lines").toBe(1);
+      expect(facts.scrollWidth).toBeLessThanOrEqual(facts.clientWidth + 1);
+      expect(facts.right).toBeLessThanOrEqual(facts.viewport);
+      expect(await hasHorizontalOverflow(page)).toBe(false);
+    } finally {
+      await fetch(`${url}/rest/v1/payments?id=eq.${payment.id}`, {
+        method: "DELETE",
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+      });
+      await purgeWorkspace(workspace.id);
+    }
+  },
+);
