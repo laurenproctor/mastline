@@ -193,7 +193,11 @@ export function reviewDispatch({ pkg, assets, buyer, metadata }: DispatchInput):
       checks.push({
         id: "metadata_review",
         title: "Metadata review",
-        detail: "Every photograph's metadata has been confirmed by a person.",
+        // True of every passing case, not just the confirmed one. Most frames
+        // were captioned by hand and never had anything generated; claiming a
+        // person had "confirmed" them would be the one sentence on this screen
+        // describing an act that did not happen.
+        detail: "No machine-written metadata is waiting to be read.",
         status: "pass",
       });
     }

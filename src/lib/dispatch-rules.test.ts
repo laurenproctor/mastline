@@ -339,6 +339,11 @@ describe("the metadata review gate", () => {
       metadata: new Map([["ast_1", metadata()]]),
     });
     expect(review.isApprovable).toBe(true);
+    // Nothing was generated and nobody confirmed anything, so the passing check
+    // must not say a person did.
+    const check = review.checks.find((entry) => entry.id === "metadata_review");
+    expect(check?.status).toBe("pass");
+    expect(check?.detail).not.toMatch(/confirmed/i);
   });
 
   it("names both problems separately when a frame has each", () => {
